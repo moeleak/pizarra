@@ -39,6 +39,15 @@ pub trait ShapeTrait {
     fn draw_commands(&self) -> Vec<WireDrawCommand>;
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ShapeId(usize);
+
+impl From<usize> for ShapeId {
+    fn from(data: usize) -> ShapeId {
+        ShapeId(data)
+    }
+}
+
 pub struct Shape {
     color: Color,
     shape_impl: Box<dyn ShapeTrait>,

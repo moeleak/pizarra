@@ -1,41 +1,40 @@
 use std::collections::HashMap;
 
-use rstar::{RTree, RTreeObject, AABB};
+use rstar::RTree;
 
-use super::shape::Shape;
+use super::shape::{Shape, ShapeId};
 use super::draw_commands::DrawCommand;
 
-struct Thing {
-}
-
-impl RTreeObject for Thing {
-    type Envelope = AABB<[f64; 2]>;
-
-    fn envelope(&self) -> Self::Envelope {
-        unimplemented!()
-    }
-}
-
 pub struct ShapeStorage {
-    layers: HashMap<i32, RTree<Thing>>,
+    shape_count: usize,
+    layers: HashMap<i32, RTree<Shape>>,
 }
 
 /// A storage struct that organizes shapes by their zoom level and allos for
 /// fast queries given a zoom and a bbox.
 impl ShapeStorage {
     pub fn new() -> ShapeStorage {
-        unimplemented!()
+        ShapeStorage {
+            shape_count: 0,
+            layers: HashMap::new(),
+        }
     }
 
     pub fn iter(&self) -> ShapeIterator {
         unimplemented!()
     }
 
-    pub fn add(&mut self, shape: Shape, zoom: i32) -> usize {
-        unimplemented!()
+    pub fn add(&mut self, shape: Shape, zoom: i32) -> ShapeId {
+        let subtree = self.layers.entry(zoom).or_insert(RTree::new());
+
+        subtree.insert(shape);
+
+        self.shape_count += 1;
+
+        ShapeId::from(self.shape_count)
     }
 
-    pub fn remove(&mut self, id: usize) -> i32 {
+    pub fn remove(&mut self, id: ShapeId) -> Shape {
         unimplemented!()
     }
 
@@ -75,7 +74,7 @@ impl <'a> Iterator for ShapeIterator<'a> {
 #[cfg(test)]
 mod tests {
     use super::ShapeStorage;
-    use crate::shape::{Shape, Line, Rectangle, Circle};
+    use crate::shape::{Shape, ShapeId, Line, Rectangle, Circle};
     use crate::color::Color;
 
     #[test]
@@ -93,9 +92,9 @@ mod tests {
         assert_eq!(storage.shape_count(), 3);
         assert_eq!(storage.layer_count(), 3);
 
-        assert_eq!(ids[0], 1);
-        assert_eq!(ids[1], 2);
-        assert_eq!(ids[2], 3);
+        assert_eq!(ids[0], ShapeId::from(1));
+        assert_eq!(ids[1], ShapeId::from(2));
+        assert_eq!(ids[2], ShapeId::from(3));
     }
 
     #[test]
