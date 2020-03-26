@@ -37,6 +37,9 @@ pub trait ShapeTrait {
 
     /// Must return the necessary commands to display this shape on the screen
     fn draw_commands(&self) -> Vec<WireDrawCommand>;
+
+    /// Must know its bbox
+    fn bbox(&self) -> [[f64; 2]; 2];
 }
 
 #[derive(Debug, PartialEq)]

@@ -38,4 +38,8 @@ impl ShapeTrait for Circle {
             None => Vec::new(),
         }
     }
+
+    fn bbox(&self) -> [[f64; 2]; 2] {
+        unimplemented!()
+    }
 }

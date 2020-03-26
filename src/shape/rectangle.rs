@@ -40,4 +40,8 @@ impl ShapeTrait for Rectangle {
             None => Vec::new(),
         }
     }
+
+    fn bbox(&self) -> [[f64; 2]; 2] {
+        unimplemented!()
+    }
 }

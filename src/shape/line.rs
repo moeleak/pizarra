@@ -30,4 +30,8 @@ impl ShapeTrait for Line {
             }
         }).collect()
     }
+
+    fn bbox(&self) -> [[f64; 2]; 2] {
+        unimplemented!()
+    }
 }
