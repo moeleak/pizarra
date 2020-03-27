@@ -32,6 +32,39 @@ impl ShapeTrait for Line {
     }
 
     fn bbox(&self) -> [[f64; 2]; 2] {
-        unimplemented!()
+        self.points.iter().fold([
+            [std::f64::INFINITY, std::f64::INFINITY], // bottom-left corner
+            [std::f64::NEG_INFINITY, std::f64::NEG_INFINITY], // top right corner
+        ], |acc, point| {
+            [
+                [
+                    if point[0] < acc[0][0] { point[0] } else { acc[0][0] },
+                    if point[1] < acc[0][1] { point[1] } else { acc[0][1] },
+                ],
+                [
+                    if point[0] > acc[1][0] { point[0] } else { acc[1][0] },
+                    if point[1] > acc[1][1] { point[1] } else { acc[1][1] },
+                ],
+            ]
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Line;
+    use crate::shape::ShapeTrait;
+    use crate::color::Color;
+
+    #[test]
+    fn test_bbox() {
+        let mut line = Line {
+            points: Vec::new(),
+        };
+
+        line.handle([1.0, 0.0]);
+        line.handle([0.0, 1.0]);
+
+        assert_eq!(line.bbox(), [[0.0, 0.0], [1.0, 1.0]]);
     }
 }

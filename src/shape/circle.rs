@@ -40,6 +40,9 @@ impl ShapeTrait for Circle {
     }
 
     fn bbox(&self) -> [[f64; 2]; 2] {
-        unimplemented!()
+        match self.borders {
+            Some([x1, y1, x2, y2]) => [[x1, y1], [x2, y2]],
+            None => [[0.0, 0.0], [0.0, 0.0]],
+        }
     }
 }

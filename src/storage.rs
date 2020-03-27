@@ -47,11 +47,11 @@ impl ShapeStorage {
     }
 
     pub fn shape_count(&self) -> usize {
-        unimplemented!()
+        self.shape_count
     }
 
     pub fn layer_count(&self) -> usize {
-        unimplemented!()
+        self.layers.len()
     }
 
     pub fn draw(&self, layer: i32, bbox: [f64; 4]) -> impl Iterator<Item=DrawCommand> {

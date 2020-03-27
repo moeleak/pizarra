@@ -70,6 +70,6 @@ impl RTreeObject for Shape {
     type Envelope = AABB<[f64; 2]>;
 
     fn envelope(&self) -> Self::Envelope {
-        unimplemented!()
+        AABB::from_points(self.shape_impl.bbox().iter())
     }
 }
