@@ -4,7 +4,7 @@ use graphics::math::{self, Vec2d, Matrix2d};
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::ShapeStorage;
-use crate::Tool;
+use crate::ShapeType;
 use crate::color::Color;
 use crate::serialize::Serialize;
 
@@ -18,7 +18,7 @@ pub struct App {
     is_drawing: bool,
     is_moving: bool,
     storage: ShapeStorage,
-    selected_tool: Tool,
+    selected_tool: ShapeType,
     gl: GlGraphics,
     offset: Vec2d,
     dimentions: Vec2d,
@@ -33,7 +33,7 @@ impl App {
             is_drawing: false,
             is_moving: false,
             storage: ShapeStorage::new(),
-            selected_tool: Tool::Line,
+            selected_tool: ShapeType::Line,
             gl,
             dimentions,
             offset: math::mul_scalar(dimentions, 0.5),
@@ -109,8 +109,8 @@ impl App {
         self.dimentions = new_size;
     }
 
-    pub fn set_tool(&mut self, tool: Tool) {
-        self.selected_tool = tool;
+    pub fn set_tool(&mut self, shape_type: ShapeType) {
+        self.selected_tool = shape_type;
     }
 
     pub fn start_drawing(&mut self) {

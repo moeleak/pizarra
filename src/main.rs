@@ -12,7 +12,7 @@ use std::fs::File;
 use std::io::Write;
 use chrono::Local;
 
-use pizarra::{App, Tool};
+use pizarra::{App, ShapeType};
 use pizarra::color::Color;
 
 fn main() -> std::io::Result<()> {
@@ -48,7 +48,7 @@ fn main() -> std::io::Result<()> {
             },
             Some(Button::Keyboard(Key::R)) => {
                 if ctrl_on {
-                    app.set_tool(Tool::Rectangle);
+                    app.set_tool(ShapeType::Rectangle);
                 }
                 if alt_on {
                     app.set_color(Color::red());
@@ -70,10 +70,10 @@ fn main() -> std::io::Result<()> {
                 app.set_color(Color::white());
             },
             Some(Button::Keyboard(Key::L)) => if ctrl_on {
-                app.set_tool(Tool::Line);
+                app.set_tool(ShapeType::Line);
             },
             Some(Button::Keyboard(Key::C)) => if ctrl_on {
-                app.set_tool(Tool::Circle);
+                app.set_tool(ShapeType::Circle);
             },
             Some(Button::Keyboard(Key::NumPadPlus)) => app.zoom_in(),
             Some(Button::Keyboard(Key::NumPadMinus)) => app.zoom_out(),

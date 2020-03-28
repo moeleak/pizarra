@@ -48,5 +48,5 @@ pub mod serialize;
 pub mod app;
 pub mod draw_commands;
 
-pub use shape::Tool;
+pub use shape::ShapeType;
 pub use app::App;

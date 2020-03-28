@@ -12,22 +12,22 @@ pub use self::line::Line;
 pub use self::rectangle::Rectangle;
 pub use self::circle::Circle;
 
-pub enum Tool {
+#[derive(Debug, PartialEq)]
+pub enum ShapeType {
     Line,
     Rectangle,
     Circle,
 }
 
-impl Tool {
+impl ShapeType {
     pub fn make(&self, color: Color) -> Shape {
         match *self {
-            Tool::Line => Line::new(color),
-            Tool::Rectangle => Rectangle::new(color),
-            Tool::Circle => Circle::new(color),
+            ShapeType::Line => Line::new(color),
+            ShapeType::Rectangle => Rectangle::new(color),
+            ShapeType::Circle => Circle::new(color),
         }
     }
 }
-
 
 pub trait ShapeTrait {
     /// Must handle new coordinates given to this shape. If this method is
@@ -40,6 +40,9 @@ pub trait ShapeTrait {
 
     /// Must know its bbox
     fn bbox(&self) -> [[f64; 2]; 2];
+
+    /// Returns the current shape type
+    fn shape_type(&self) -> ShapeType;
 }
 
 #[derive(Debug, PartialEq)]
@@ -61,8 +64,12 @@ impl Shape {
         unimplemented!()
     }
 
-    fn draw_commands(&self) -> Vec<ColoredDrawCommand> {
+    pub fn draw_commands(&self) -> Vec<ColoredDrawCommand> {
         unimplemented!()
+    }
+
+    pub fn shape_type(&self) -> ShapeType {
+        self.shape_impl.shape_type()
     }
 }
 

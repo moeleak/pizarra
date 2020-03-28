@@ -8,6 +8,7 @@ use super::draw_commands::DrawCommand;
 pub struct ShapeStorage {
     shape_count: usize,
     layers: HashMap<i32, RTree<Shape>>,
+    current: Option<Shape>,
 }
 
 /// A storage struct that organizes shapes by their zoom level and allos for
@@ -17,6 +18,7 @@ impl ShapeStorage {
         ShapeStorage {
             shape_count: 0,
             layers: HashMap::new(),
+            current: None,
         }
     }
 
@@ -74,7 +76,7 @@ impl <'a> Iterator for ShapeIterator<'a> {
 #[cfg(test)]
 mod tests {
     use super::ShapeStorage;
-    use crate::shape::{Shape, ShapeId, Line, Rectangle, Circle};
+    use crate::shape::{Shape, ShapeType, ShapeId, Line, Rectangle, Circle};
     use crate::color::Color;
 
     #[test]
@@ -106,6 +108,26 @@ mod tests {
         storage.add(Line::new(Color::blue()), 0);
 
         let last_shape = storage.last_mut().unwrap();
+
+        assert_eq!(last_shape.shape_type(), ShapeType::Line);
+
+        last_shape.handle([0.0, 0.0]);
+        last_shape.handle([1.0, 0.0]);
+
+        storage.add(Rectangle::new(Color::blue()), 0);
+
+        let last_shape = storage.last_mut().unwrap();
+
+        assert_eq!(last_shape.shape_type(), ShapeType::Rectangle);
+
+        last_shape.handle([0.0, 0.0]);
+        last_shape.handle([1.0, 0.0]);
+
+        storage.add(Circle::new(Color::blue()), 0);
+
+        let last_shape = storage.last_mut().unwrap();
+
+        assert_eq!(last_shape.shape_type(), ShapeType::Circle);
 
         last_shape.handle([0.0, 0.0]);
         last_shape.handle([1.0, 0.0]);

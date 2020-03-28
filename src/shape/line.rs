@@ -2,6 +2,7 @@ use graphics::math::Vec2d;
 use crate::draw_commands::WireDrawCommand;
 use super::{Shape, ShapeTrait};
 use crate::color::Color;
+use crate::ShapeType;
 
 pub struct Line {
     points: Vec<Vec2d>,
@@ -47,6 +48,10 @@ impl ShapeTrait for Line {
                 ],
             ]
         })
+    }
+
+    fn shape_type(&self) -> ShapeType {
+        ShapeType::Line
     }
 }
 

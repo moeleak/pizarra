@@ -2,6 +2,7 @@ use graphics::math::Vec2d;
 use crate::draw_commands::WireDrawCommand;
 use super::{Shape, ShapeTrait};
 use crate::color::Color;
+use crate::ShapeType;
 
 pub struct Rectangle {
     borders: Option<[f64; 4]>,
@@ -46,5 +47,9 @@ impl ShapeTrait for Rectangle {
             Some([x1, y1, x2, y2]) => [[x1, y1], [x2, y2]],
             None => [[0.0, 0.0], [0.0, 0.0]],
         }
+    }
+
+    fn shape_type(&self) -> ShapeType {
+        ShapeType::Rectangle
     }
 }
