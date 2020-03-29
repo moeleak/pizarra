@@ -83,9 +83,9 @@ mod tests {
     fn test_add_shapes_at_zoom() {
         let mut storage = ShapeStorage::new();
         let shapes: Vec<(Shape, i32)> = vec![
-            (Line::new(Color::red()), 0),
-            (Rectangle::new(Color::green()), 1),
-            (Circle::new(Color::blue()), -1),
+            (Line::new(Color::red(), [[0.0, 0.0], [0.0, 0.0]]), 0),
+            (Rectangle::new(Color::green(), [[0.0, 0.0], [0.0, 0.0]]), 1),
+            (Circle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), -1),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|(shape, zoom)| {
             storage.add(shape, zoom)
@@ -105,7 +105,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Line::new(Color::blue()), 0);
+        storage.add(Line::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), 0);
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -114,7 +114,7 @@ mod tests {
         last_shape.handle([0.0, 0.0]);
         last_shape.handle([1.0, 0.0]);
 
-        storage.add(Rectangle::new(Color::blue()), 0);
+        storage.add(Rectangle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), 0);
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -123,7 +123,7 @@ mod tests {
         last_shape.handle([0.0, 0.0]);
         last_shape.handle([1.0, 0.0]);
 
-        storage.add(Circle::new(Color::blue()), 0);
+        storage.add(Circle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), 0);
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -148,7 +148,7 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let id = storage.add(Line::new(Color::green()), 0);
+        let id = storage.add(Line::new(Color::green(), [[0.0, 0.0], [0.0, 0.0]]), 0);
 
         assert_eq!(storage.shape_count(), 1);
 

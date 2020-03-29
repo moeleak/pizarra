@@ -14,6 +14,23 @@ enum UndoStatus {
     At(usize),
 }
 
+/// In order to add a shape to the storage it is necessary that it is fully constructed.
+/// Most shapes need at least two points to be valid so this enum handles the states before
+/// all the needed points have been collected.
+enum DrawingState {
+    /// In the begining there were no points
+    Start,
+
+    /// Then god added one point
+    OnePoint([f64; 2]),
+
+    /// And it was good, so she added nother point, and built a shape
+    TwoPoints([[f64; 2]; 2]),
+
+    /// From there the shape new what to do with its life
+    AndSoOn,
+}
+
 pub struct App {
     is_drawing: bool,
     is_moving: bool,
@@ -25,6 +42,7 @@ pub struct App {
     undo_status: UndoStatus,
     current_color: Color,
     zoom: i32,
+    drawing_state: DrawingState,
 }
 
 impl App {
@@ -40,6 +58,7 @@ impl App {
             undo_status: UndoStatus::InSync,
             current_color: Color::green(),
             zoom: 0,
+            drawing_state: DrawingState::Start,
         }
     }
 
@@ -115,8 +134,6 @@ impl App {
 
     pub fn start_drawing(&mut self) {
         self.is_drawing = true;
-
-        self.storage.add(self.selected_tool.make(self.current_color), 0);
     }
 
     pub fn finish_drawing(&mut self) {
@@ -135,8 +152,25 @@ impl App {
         if self.is_drawing && !self.is_moving {
             let inv_offset = self.get_inv_offset();
 
-            if let Some(item) = self.storage.last_mut() {
-                item.handle(math::transform_pos(inv_offset, pos));
+            match self.drawing_state {
+                DrawingState::Start => {
+                    self.drawing_state = DrawingState::OnePoint(pos);
+                },
+                DrawingState::OnePoint(p1) => {
+                    self.drawing_state = DrawingState::TwoPoints([p1, pos]);
+                },
+                DrawingState::TwoPoints(points) => {
+                    self.storage.add(
+                        self.selected_tool.make(self.current_color, points),
+                        self.zoom
+                    );
+                    self.drawing_state = DrawingState::AndSoOn;
+                },
+                DrawingState::AndSoOn => {
+                    if let Some(shape) = self.storage.last_mut() {
+                        shape.handle(math::transform_pos(inv_offset, pos));
+                    }
+                },
             }
         }
     }

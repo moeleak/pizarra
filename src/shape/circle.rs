@@ -5,15 +5,15 @@ use crate::color::Color;
 use crate::ShapeType;
 
 pub struct Circle {
-    borders: Option<[f64; 4]>,
+    rect: [f64; 4],
 }
 
 impl Circle {
-    pub fn new(color: Color) -> Shape {
+    pub fn new(color: Color, rect: [[f64; 2]; 2]) -> Shape {
         Shape {
             color,
             shape_impl: Box::new(Circle {
-                borders: None,
+                rect: [rect[0][0], rect[0][1], rect[1][0], rect[1][0]],
             })
         }
     }
@@ -21,30 +21,19 @@ impl Circle {
 
 impl ShapeTrait for Circle {
     fn handle(&mut self, val: Vec2d) {
-        match self.borders.as_mut() {
-            Some(bb) => {
-                self.borders = Some([bb[0], bb[1], val[0]-bb[0], val[1]-bb[1]]);
-            },
-            None => {
-                self.borders = Some([val[0], val[1], 0.0, 0.0]);
-            },
-        }
+        self.rect = [self.rect[0], self.rect[1], val[0]-self.rect[0], val[1]-self.rect[1]];
     }
 
     fn draw_commands(&self) -> Vec<WireDrawCommand> {
-        match self.borders {
-            Some(bb) => vec![WireDrawCommand::Circle{
-                rect: bb,
-            }],
-            None => Vec::new(),
-        }
+        vec![WireDrawCommand::Circle{
+            rect: self.rect,
+        }]
     }
 
     fn bbox(&self) -> [[f64; 2]; 2] {
-        match self.borders {
-            Some([x1, y1, x2, y2]) => [[x1, y1], [x2, y2]],
-            None => [[0.0, 0.0], [0.0, 0.0]],
-        }
+        let rect = self.rect;
+
+        [[rect[0], rect[1]], [rect[0]+rect[2], rect[1] + rect[3]]]
     }
 
     fn shape_type(&self) -> ShapeType {

@@ -20,11 +20,11 @@ pub enum ShapeType {
 }
 
 impl ShapeType {
-    pub fn make(&self, color: Color) -> Shape {
+    pub fn make(&self, color: Color, initial: [[f64; 2]; 2]) -> Shape {
         match *self {
-            ShapeType::Line => Line::new(color),
-            ShapeType::Rectangle => Rectangle::new(color),
-            ShapeType::Circle => Circle::new(color),
+            ShapeType::Line => Line::new(color, initial),
+            ShapeType::Rectangle => Rectangle::new(color, initial),
+            ShapeType::Circle => Circle::new(color, initial),
         }
     }
 }

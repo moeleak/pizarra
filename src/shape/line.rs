@@ -9,11 +9,16 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn new(color: Color) -> Shape {
+    pub fn new(color: Color, initial: [[f64; 2]; 2]) -> Shape {
+        let mut init_vec = Vec::with_capacity(1000);
+
+        init_vec.push(initial[0]);
+        init_vec.push(initial[1]);
+
         Shape {
             color,
             shape_impl: Box::new(Line {
-                points: Vec::with_capacity(1000),
+                points: init_vec,
             }),
         }
     }
@@ -33,7 +38,7 @@ impl ShapeTrait for Line {
     }
 
     fn bbox(&self) -> [[f64; 2]; 2] {
-        self.points.iter().fold([
+        let bbox = self.points.iter().fold([
             [std::f64::INFINITY, std::f64::INFINITY], // bottom-left corner
             [std::f64::NEG_INFINITY, std::f64::NEG_INFINITY], // top right corner
         ], |acc, point| {
@@ -47,7 +52,14 @@ impl ShapeTrait for Line {
                     if point[1] > acc[1][1] { point[1] } else { acc[1][1] },
                 ],
             ]
-        })
+        });
+
+        assert_ne!(bbox[0][0], std::f64::INFINITY);
+        assert_ne!(bbox[0][1], std::f64::INFINITY);
+        assert_ne!(bbox[1][0], std::f64::NEG_INFINITY);
+        assert_ne!(bbox[1][1], std::f64::NEG_INFINITY);
+
+        bbox
     }
 
     fn shape_type(&self) -> ShapeType {
