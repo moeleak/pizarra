@@ -139,6 +139,7 @@ impl App {
     pub fn finish_drawing(&mut self) {
         self.is_drawing = false;
         self.drawing_state = DrawingState::Start;
+        self.storage.flush();
     }
 
     pub fn start_moving(&mut self) {

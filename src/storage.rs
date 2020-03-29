@@ -27,19 +27,23 @@ impl ShapeStorage {
     }
 
     pub fn add(&mut self, shape: Shape, zoom: i32) -> ShapeId {
-        let old_current = self.current.take();
-
         // The previous shape has been finished, move it to the immutable storage
-        if let Some((old_shape, old_zoom)) = old_current {
-            let subtree = self.layers.entry(old_zoom).or_insert(RTree::new());
-
-            subtree.insert(old_shape);
-        }
+        self.flush();
 
         self.current = Some((shape, zoom));
 
         self.shape_count += 1;
         ShapeId::from(self.shape_count)
+    }
+
+    pub fn flush(&mut self) {
+        let old_current = self.current.take();
+
+        if let Some((old_shape, old_zoom)) = old_current {
+            let subtree = self.layers.entry(old_zoom).or_insert(RTree::new());
+
+            subtree.insert(old_shape);
+        }
     }
 
     pub fn remove(&mut self, id: ShapeId) -> Shape {
@@ -137,6 +141,21 @@ mod tests {
 
         last_shape.handle([0.0, 0.0]);
         last_shape.handle([1.0, 0.0]);
+    }
+
+    #[test]
+    fn test_flush() {
+        let mut storage = ShapeStorage::new();
+
+        assert!(storage.last_mut().is_none());
+
+        storage.add(Line::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), 0);
+
+        assert!(storage.last_mut().is_some());
+
+        storage.flush();
+
+        assert!(storage.last_mut().is_none());
     }
 
     #[test]
