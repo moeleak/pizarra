@@ -8,7 +8,7 @@ use super::draw_commands::DrawCommand;
 pub struct ShapeStorage {
     shape_count: usize,
     layers: HashMap<i32, RTree<Shape>>,
-    current: Option<Shape>,
+    current: Option<(Shape, i32)>,
 }
 
 /// A storage struct that organizes shapes by their zoom level and allos for
@@ -27,12 +27,18 @@ impl ShapeStorage {
     }
 
     pub fn add(&mut self, shape: Shape, zoom: i32) -> ShapeId {
-        let subtree = self.layers.entry(zoom).or_insert(RTree::new());
+        let old_current = self.current.take();
 
-        subtree.insert(shape);
+        // The previous shape has been finished, move it to the immutable storage
+        if let Some((old_shape, old_zoom)) = old_current {
+            let subtree = self.layers.entry(old_zoom).or_insert(RTree::new());
+
+            subtree.insert(old_shape);
+        }
+
+        self.current = Some((shape, zoom));
 
         self.shape_count += 1;
-
         ShapeId::from(self.shape_count)
     }
 
@@ -41,7 +47,7 @@ impl ShapeStorage {
     }
 
     pub fn last_mut(&mut self) -> Option<&mut Shape> {
-        unimplemented!()
+        self.current.as_mut().map(|(shape, _)| shape)
     }
 
     pub fn pop(&mut self) -> Option<Shape> {

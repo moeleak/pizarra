@@ -61,7 +61,7 @@ pub struct Shape {
 
 impl Shape {
     pub fn handle(&mut self, val: Vec2d) {
-        unimplemented!()
+        self.shape_impl.handle(val);
     }
 
     pub fn draw_commands(&self) -> Vec<ColoredDrawCommand> {
