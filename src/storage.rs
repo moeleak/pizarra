@@ -32,7 +32,6 @@ impl ShapeStorage {
 
         self.current = Some((shape, zoom));
 
-        self.shape_count += 1;
         ShapeId::from(self.shape_count)
     }
 
@@ -43,6 +42,8 @@ impl ShapeStorage {
             let subtree = self.layers.entry(old_zoom).or_insert(RTree::new());
 
             subtree.insert(old_shape);
+
+            self.shape_count += 1;
         }
     }
 
@@ -101,12 +102,14 @@ mod tests {
             storage.add(shape, zoom)
         }).collect();
 
+        storage.flush();
+
         assert_eq!(storage.shape_count(), 3);
         assert_eq!(storage.layer_count(), 3);
 
-        assert_eq!(ids[0], ShapeId::from(1));
-        assert_eq!(ids[1], ShapeId::from(2));
-        assert_eq!(ids[2], ShapeId::from(3));
+        assert_eq!(ids[0], ShapeId::from(0));
+        assert_eq!(ids[1], ShapeId::from(1));
+        assert_eq!(ids[2], ShapeId::from(2));
     }
 
     #[test]
