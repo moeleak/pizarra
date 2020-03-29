@@ -199,5 +199,7 @@ mod tests {
     #[test]
     fn test_relative_coordinates() {
         assert!(false, "at each zoom level coordinates should be relative, such that then rendering from it no transformation will be needed");
+        assert!(false, "Add two shapes with same coordinates but different zoom levels");
+        assert!(false, "test that they're returned with their same coordinates but enough information to paint them in perspective");
     }
 }
