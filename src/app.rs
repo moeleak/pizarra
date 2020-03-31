@@ -3,7 +3,7 @@ use piston::input::RenderArgs;
 use graphics::math::{self, Vec2d, Matrix2d};
 
 use crate::draw_commands::DrawCommand;
-use crate::storage::ShapeStorage;
+use crate::storage::{ShapeStorage, Zoom};
 use crate::ShapeType;
 use crate::color::Color;
 use crate::serialize::Serialize;
@@ -41,7 +41,7 @@ pub struct App {
     dimentions: Vec2d,
     undo_status: UndoStatus,
     current_color: Color,
-    zoom: i32,
+    zoom: Zoom,
     drawing_state: DrawingState,
 }
 
@@ -57,7 +57,7 @@ impl App {
             offset: math::mul_scalar(dimentions, 0.5),
             undo_status: UndoStatus::InSync,
             current_color: Color::green(),
-            zoom: 0,
+            zoom: Zoom::from(0),
             drawing_state: DrawingState::Start,
         }
     }
@@ -76,7 +76,7 @@ impl App {
         self.gl.draw(args.viewport(), |c, g| {
             let t = math::multiply(
                 math::multiply(c.transform, offset_t),
-                math::scale(2.0_f64.powi(zoom), 2.0_f64.powi(zoom))
+                math::scale(2.0_f64.powi(zoom.to_i32()), 2.0_f64.powi(zoom.to_i32()))
             );
 
             graphics::clear(bgcolor, g);
@@ -184,20 +184,16 @@ impl App {
     }
 
     pub fn zoom_in(&mut self) {
-        if self.zoom < i32::max_value() {
-            self.zoom += 1;
-        }
+        self.zoom.increase();
     }
 
     pub fn zoom_out(&mut self) {
-        if self.zoom > i32::min_value() {
-            self.zoom -= 1;
-        }
+        self.zoom.decrease();
     }
 
     pub fn go_home(&mut self) {
         self.offset = math::mul_scalar(self.dimentions, 0.5);
-        self.zoom = 0;
+        self.zoom.reset();
     }
 
     pub fn set_color(&mut self, color: Color) {

@@ -45,7 +45,7 @@ pub trait ShapeTrait {
     fn shape_type(&self) -> ShapeType;
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ShapeId(usize);
 
 impl From<usize> for ShapeId {

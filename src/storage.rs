@@ -1,23 +1,73 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 
-use rstar::RTree;
+use rstar::{RTree, RTreeObject, AABB};
 
 use super::shape::{Shape, ShapeId};
 use super::draw_commands::DrawCommand;
 
-pub struct ShapeStorage {
-    shape_count: usize,
-    layers: HashMap<i32, RTree<Shape>>,
-    current: Option<(Shape, i32)>,
+struct ShapeRef(Rc<Shape>);
+
+impl From<Shape> for ShapeRef {
+    fn from(shape: Shape) -> ShapeRef {
+        ShapeRef(Rc::new(shape))
+    }
 }
 
-/// A storage struct that organizes shapes by their zoom level and allos for
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Zoom(i32);
+
+impl Zoom {
+    pub fn to_i32(&self) -> i32 {
+        self.0
+    }
+
+    pub fn increase(&mut self) {
+        if self.0 < i32::max_value() {
+            self.0 += 1;
+        }
+    }
+
+    pub fn decrease(&mut self) {
+        if self.0 > i32::min_value() {
+            self.0 -= 1;
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.0 = 0;
+    }
+}
+
+impl From<i32> for Zoom {
+    fn from(zoom: i32) -> Zoom {
+        Zoom(zoom)
+    }
+}
+
+impl RTreeObject for ShapeRef {
+    type Envelope = AABB<[f64; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        self.0.envelope()
+    }
+}
+
+pub struct ShapeStorage {
+    shape_count: usize,
+    shapes: HashMap<ShapeId, ShapeRef>,
+    layers: HashMap<Zoom, RTree<ShapeRef>>,
+    current: Option<(Shape, Zoom)>,
+}
+
+/// A storage struct that organizes shapes by their zoom level and allows for
 /// fast queries given a zoom and a bbox.
 impl ShapeStorage {
     pub fn new() -> ShapeStorage {
         ShapeStorage {
             shape_count: 0,
             layers: HashMap::new(),
+            shapes: HashMap::new(),
             current: None,
         }
     }
@@ -26,7 +76,7 @@ impl ShapeStorage {
         unimplemented!()
     }
 
-    pub fn add(&mut self, shape: Shape, zoom: i32) -> ShapeId {
+    pub fn add(&mut self, shape: Shape, zoom: Zoom) -> ShapeId {
         // The previous shape has been finished, move it to the immutable storage
         self.flush();
 
@@ -41,7 +91,7 @@ impl ShapeStorage {
         if let Some((old_shape, old_zoom)) = old_current {
             let subtree = self.layers.entry(old_zoom).or_insert(RTree::new());
 
-            subtree.insert(old_shape);
+            subtree.insert(ShapeRef::from(old_shape));
 
             self.shape_count += 1;
         }
@@ -67,7 +117,7 @@ impl ShapeStorage {
         self.layers.len()
     }
 
-    pub fn draw(&self, layer: i32, bbox: [f64; 4]) -> impl Iterator<Item=DrawCommand> {
+    pub fn draw(&self, zoom: Zoom, bbox: [f64; 4]) -> impl Iterator<Item=DrawCommand> {
         Vec::new().into_iter()
     }
 }
@@ -86,17 +136,17 @@ impl <'a> Iterator for ShapeIterator<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::ShapeStorage;
+    use super::{ShapeStorage, Zoom};
     use crate::shape::{Shape, ShapeType, ShapeId, Line, Rectangle, Circle};
     use crate::color::Color;
 
     #[test]
     fn test_add_shapes_at_zoom() {
         let mut storage = ShapeStorage::new();
-        let shapes: Vec<(Shape, i32)> = vec![
-            (Line::new(Color::red(), [[0.0, 0.0], [0.0, 0.0]]), 0),
-            (Rectangle::new(Color::green(), [[0.0, 0.0], [0.0, 0.0]]), 1),
-            (Circle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), -1),
+        let shapes: Vec<(Shape, Zoom)> = vec![
+            (Line::new(Color::red(), [[0.0, 0.0], [0.0, 0.0]]), Zoom::from(0)),
+            (Rectangle::new(Color::green(), [[0.0, 0.0], [0.0, 0.0]]), Zoom::from(1)),
+            (Circle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), Zoom::from(-1)),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|(shape, zoom)| {
             storage.add(shape, zoom)
@@ -118,7 +168,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Line::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), 0);
+        storage.add(Line::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), Zoom::from(0));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -127,7 +177,7 @@ mod tests {
         last_shape.handle([0.0, 0.0]);
         last_shape.handle([1.0, 0.0]);
 
-        storage.add(Rectangle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), 0);
+        storage.add(Rectangle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), Zoom::from(0));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -136,7 +186,7 @@ mod tests {
         last_shape.handle([0.0, 0.0]);
         last_shape.handle([1.0, 0.0]);
 
-        storage.add(Circle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), 0);
+        storage.add(Circle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), Zoom::from(0));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -152,7 +202,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Line::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), 0);
+        storage.add(Line::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]]), Zoom::from(0));
 
         assert!(storage.last_mut().is_some());
 
@@ -176,7 +226,9 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let id = storage.add(Line::new(Color::green(), [[0.0, 0.0], [0.0, 0.0]]), 0);
+        let id = storage.add(Line::new(Color::green(), [[0.0, 0.0], [0.0, 0.0]]), Zoom::from(0));
+
+        storage.flush();
 
         assert_eq!(storage.shape_count(), 1);
 
