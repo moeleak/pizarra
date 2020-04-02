@@ -1,6 +1,6 @@
 use graphics::math::Vec2d;
 use crate::draw_commands::WireDrawCommand;
-use super::{Shape, ShapeTrait};
+use super::{Shape, ShapeTrait, ShapeId};
 use crate::color::Color;
 use crate::ShapeType;
 
@@ -10,8 +10,9 @@ pub struct Rectangle {
 }
 
 impl Rectangle {
-    pub fn new(color: Color, rect: [[f64; 2]; 2]) -> Shape {
+    pub fn new(color: Color, rect: [[f64; 2]; 2], id: ShapeId) -> Shape {
         Shape {
+            id,
             color,
             shape_impl: Box::new(Rectangle {
                 rect: [rect[0][0], rect[0][1], rect[1][0], rect[1][0]],
@@ -46,9 +47,10 @@ impl ShapeTrait for Rectangle {
 mod tests {
     use super::Rectangle;
     use crate::color::Color;
+    use crate::shape::ShapeId;
 
     fn test_bbox() {
-        let shape = Rectangle::new(Color::green(), [[1.0, 1.0], [1.0, 1.0]]);
+        let shape = Rectangle::new(Color::green(), [[1.0, 1.0], [1.0, 1.0]], ShapeId::from(1));
 
         assert_eq!(shape.shape_impl.bbox(), [[1.0, 1.0], [2.0, 2.0]]);
     }

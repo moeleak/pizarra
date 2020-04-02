@@ -4,7 +4,7 @@ use graphics::math::{self, Vec2d, Matrix2d};
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::{ShapeStorage, Zoom};
-use crate::ShapeType;
+use crate::shape::{ShapeType, ShapeId};
 use crate::color::Color;
 use crate::serialize::Serialize;
 
@@ -43,6 +43,7 @@ pub struct App {
     current_color: Color,
     zoom: Zoom,
     drawing_state: DrawingState,
+    next_id: ShapeId,
 }
 
 impl App {
@@ -59,6 +60,7 @@ impl App {
             current_color: Color::green(),
             zoom: Zoom::from(0),
             drawing_state: DrawingState::Start,
+            next_id: ShapeId::from(1),
         }
     }
 
@@ -163,9 +165,10 @@ impl App {
                 },
                 DrawingState::TwoPoints(points) => {
                     self.storage.add(
-                        self.selected_tool.make(self.current_color, points),
+                        self.selected_tool.make(self.current_color, points, self.next_id),
                         self.zoom
                     );
+                    self.next_id.incr();
                     self.drawing_state = DrawingState::AndSoOn;
                 },
                 DrawingState::AndSoOn => {

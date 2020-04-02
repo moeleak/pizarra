@@ -1,6 +1,6 @@
 use graphics::math::Vec2d;
 use crate::draw_commands::WireDrawCommand;
-use super::{Shape, ShapeTrait};
+use super::{Shape, ShapeTrait, ShapeId};
 use crate::color::Color;
 use crate::ShapeType;
 
@@ -9,13 +9,14 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn new(color: Color, initial: [[f64; 2]; 2]) -> Shape {
+    pub fn new(color: Color, initial: [[f64; 2]; 2], id: ShapeId) -> Shape {
         let mut init_vec = Vec::with_capacity(1000);
 
         init_vec.push(initial[0]);
         init_vec.push(initial[1]);
 
         Shape {
+            id,
             color,
             shape_impl: Box::new(Line {
                 points: init_vec,

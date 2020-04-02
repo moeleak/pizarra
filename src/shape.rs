@@ -20,11 +20,11 @@ pub enum ShapeType {
 }
 
 impl ShapeType {
-    pub fn make(&self, color: Color, initial: [[f64; 2]; 2]) -> Shape {
+    pub fn make(&self, color: Color, initial: [[f64; 2]; 2], id: ShapeId) -> Shape {
         match *self {
-            ShapeType::Line => Line::new(color, initial),
-            ShapeType::Rectangle => Rectangle::new(color, initial),
-            ShapeType::Circle => Circle::new(color, initial),
+            ShapeType::Line => Line::new(color, initial, id),
+            ShapeType::Rectangle => Rectangle::new(color, initial, id),
+            ShapeType::Circle => Circle::new(color, initial, id),
         }
     }
 }
@@ -45,8 +45,14 @@ pub trait ShapeTrait {
     fn shape_type(&self) -> ShapeType;
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ShapeId(usize);
+
+impl ShapeId {
+    pub fn incr(&mut self) {
+        self.0 += 1;
+    }
+}
 
 impl From<usize> for ShapeId {
     fn from(data: usize) -> ShapeId {
@@ -56,6 +62,7 @@ impl From<usize> for ShapeId {
 
 pub struct Shape {
     color: Color,
+    id: ShapeId,
     shape_impl: Box<dyn ShapeTrait>,
 }
 
@@ -70,6 +77,10 @@ impl Shape {
 
     pub fn shape_type(&self) -> ShapeType {
         self.shape_impl.shape_type()
+    }
+
+    pub fn id(&self) -> ShapeId {
+        self.id
     }
 }
 
