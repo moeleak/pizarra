@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use rstar::{RTree, RTreeObject, AABB};
+use rstar::{RTree, RTreeObject, AABB, SelectionFunction};
 
 use super::shape::{Shape, ShapeId};
 use super::draw_commands::DrawCommand;
@@ -34,6 +34,25 @@ impl Zoom {
 impl From<i32> for Zoom {
     fn from(zoom: i32) -> Zoom {
         Zoom(zoom)
+    }
+}
+
+struct BBoxIdSelection {
+}
+
+impl BBoxIdSelection {
+    fn new(bbox: AABB<[f64; 2]>, id: ShapeId) -> BBoxIdSelection {
+        unimplemented!()
+    }
+}
+
+impl SelectionFunction<Shape> for BBoxIdSelection {
+    fn should_unpack_parent(&self, envelope: &<Shape as RTreeObject>::Envelope) -> bool {
+        unimplemented!()
+    }
+
+    fn should_unpack_leaf(&self, leaf: &Shape) -> bool {
+        unimplemented!()
     }
 }
 
@@ -85,7 +104,13 @@ impl ShapeStorage {
     }
 
     pub fn remove(&mut self, id: ShapeId) -> Option<Shape> {
-        unimplemented!()
+        if let Some((zoom, bbox)) = self.shapes.get(&id) {
+            self.layers.get_mut(zoom).map(|tree| {
+                tree.remove_with_selection_function(BBoxIdSelection::new(*bbox, id))
+            }).flatten()
+        } else {
+            None
+        }
     }
 
     pub fn last_mut(&mut self) -> Option<&mut Shape> {
