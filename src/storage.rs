@@ -1,3 +1,4 @@
+use rstar::Envelope;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -38,21 +39,26 @@ impl From<i32> for Zoom {
 }
 
 struct BBoxIdSelection {
+    bbox: AABB<[f64; 2]>,
+    id: ShapeId,
 }
 
 impl BBoxIdSelection {
     fn new(bbox: AABB<[f64; 2]>, id: ShapeId) -> BBoxIdSelection {
-        unimplemented!()
+        BBoxIdSelection {
+            bbox,
+            id,
+        }
     }
 }
 
 impl SelectionFunction<Shape> for BBoxIdSelection {
     fn should_unpack_parent(&self, envelope: &<Shape as RTreeObject>::Envelope) -> bool {
-        unimplemented!()
+        envelope.contains_envelope(&self.bbox)
     }
 
     fn should_unpack_leaf(&self, leaf: &Shape) -> bool {
-        unimplemented!()
+        leaf.id() == self.id
     }
 }
 
@@ -105,9 +111,15 @@ impl ShapeStorage {
 
     pub fn remove(&mut self, id: ShapeId) -> Option<Shape> {
         if let Some((zoom, bbox)) = self.shapes.get(&id) {
-            self.layers.get_mut(zoom).map(|tree| {
+            let maybe_shape = self.layers.get_mut(zoom).map(|tree| {
                 tree.remove_with_selection_function(BBoxIdSelection::new(*bbox, id))
-            }).flatten()
+            }).flatten();
+
+            if maybe_shape.is_some() {
+                self.shape_count -= 1;
+            }
+
+            maybe_shape
         } else {
             None
         }
@@ -238,18 +250,50 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let id = storage.add(Line::new(Color::green(), [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(1)), Zoom::from(0));
+        let id_to_remove = ShapeId::from(1);
+        let id_to_interfere = ShapeId::from(2);
+
+        let obj_to_remove = Line::new(Color::green(), [[0.0, 0.0], [1.0, 1.0]], id_to_remove);
+        let obj_to_interfere = Line::new(Color::blue(), [[1.0, 0.0], [0.0, 1.0]], id_to_interfere);
+
+        let id = storage.add(obj_to_remove, Zoom::from(0));
+        storage.add(obj_to_interfere, Zoom::from(0));
 
         storage.flush();
 
+        assert_eq!(storage.shape_count(), 2);
+
+        let data = storage.remove(id).unwrap();
+
         assert_eq!(storage.shape_count(), 1);
 
-        let data = storage.remove(id);
+        assert_eq!(data.id(), id_to_remove);
+    }
+
+    #[test]
+    fn test_remove_by_id_2() {
+        let mut storage = ShapeStorage::new();
 
         assert_eq!(storage.shape_count(), 0);
 
-        assert!(false, "given a shape identifier remove it and return enough info to add it again");
-        assert!(false, "this is to implement ctrl-z after adding a shape");
+        let id_to_remove = ShapeId::from(1);
+        let id_to_interfere = ShapeId::from(2);
+
+        let obj_to_remove = Line::new(Color::green(), [[0.0, 0.0], [1.0, 1.0]], id_to_remove);
+        let obj_to_interfere = Line::new(Color::blue(), [[1.0, 0.0], [0.0, 1.0]], id_to_interfere);
+
+        storage.add(obj_to_interfere, Zoom::from(0));
+        let id = storage.add(obj_to_remove, Zoom::from(0));
+
+        storage.flush();
+
+        assert_eq!(storage.shape_count(), 2);
+
+        let data = storage.remove(id).unwrap();
+
+        assert_eq!(storage.shape_count(), 1);
+
+        assert_eq!(data.id(), id_to_remove);
     }
 
     #[test]
