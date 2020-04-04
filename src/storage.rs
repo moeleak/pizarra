@@ -1,6 +1,5 @@
 use rstar::Envelope;
 use std::collections::HashMap;
-use std::rc::Rc;
 
 use rstar::{RTree, RTreeObject, AABB, SelectionFunction};
 
@@ -141,8 +140,8 @@ impl ShapeStorage {
         self.layers.len()
     }
 
-    pub fn draw(&self, zoom: Zoom, bbox: [f64; 4]) -> impl Iterator<Item=DrawCommand> {
-        Vec::new().into_iter()
+    pub fn draw_commands(&self, zoom: Zoom, bbox: [f64; 4], buffer: &mut Vec<DrawCommand>) {
+        assert_eq!(buffer.len(), 0);
     }
 }
 
@@ -163,6 +162,7 @@ mod tests {
     use super::{ShapeStorage, Zoom};
     use crate::shape::{Shape, ShapeType, ShapeId, Line, Rectangle, Circle};
     use crate::color::Color;
+    use crate::draw_commands::DrawCommand;
 
     #[test]
     fn test_add_shapes_at_zoom() {
@@ -306,6 +306,29 @@ mod tests {
 
     #[test]
     fn test_relative_coordinates() {
+        let mut storage = ShapeStorage::new();
+
+        // A rectangle of 2x2 in zoom 0 aournd the oriign
+        storage.add(Rectangle::new(Color::blue(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(1)), Zoom::from(0));
+
+        // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
+        storage.add(Rectangle::new(Color::red(), [[1.0, 1.0], [3.0, 3.0]], ShapeId::from(2)), Zoom::from(-1));
+
+        let mut buffer = Vec::new();
+
+        storage.draw_commands(Zoom::from(0), [-2.0, -2.0, 4.0, 4.0], &mut buffer);
+
+        assert_eq!(buffer, vec![
+            DrawCommand::Rectangle{
+                color: Color::blue().to_a(),
+                rect: [-1.0, -1.0, 1.0, 1.0],
+            },
+            DrawCommand::Rectangle{
+                color: Color::red().to_a(),
+                rect: [0.5, 0.5, 1.5, 1.5],
+            },
+        ]);
+
         assert!(false, "at each zoom level coordinates should be relative, such that then rendering from it no transformation will be needed");
         assert!(false, "Add two shapes with same coordinates but different zoom levels");
         assert!(false, "test that they're returned with their same coordinates but enough information to paint them in perspective");

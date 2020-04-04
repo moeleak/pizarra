@@ -71,9 +71,7 @@ impl App {
         let mut commands = Vec::new();
         let zoom = self.zoom;
 
-        for item in self.storage.draw(zoom, [0.0, 0.0, 1.1, 1.1]) {
-            commands.push(item);
-        }
+        self.storage.draw_commands(zoom, [0.0, 0.0, 1.1, 1.1], &mut commands);
 
         self.gl.draw(args.viewport(), |c, g| {
             let t = math::multiply(
@@ -87,13 +85,13 @@ impl App {
             for cmd in commands {
                 match cmd {
                     DrawCommand::Line{
-                        color, line, relative_layer,
-                    } => graphics::line(color, 2.0 * 2.0_f64.powi(relative_layer), line, t, g),
+                        color, line, thickness,
+                    } => graphics::line(color, thickness, line, t, g),
                     DrawCommand::Rectangle{
-                        color, rect, relative_layer,
+                        color, rect,
                     } => graphics::rectangle(color, rect, t, g),
                     DrawCommand::Circle{
-                        color, rect, relative_layer,
+                        color, rect,
                     } => graphics::ellipse(color, rect, t, g),
                 }
             }

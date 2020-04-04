@@ -28,20 +28,19 @@ pub enum ColoredDrawCommand {
 }
 
 /// A Full Draw command returned by the storage
+#[derive(Debug, PartialEq)]
 pub enum DrawCommand {
     Line{
         color: [f32; 4],
         line: [f64; 4],
-        relative_layer: i32,
+        thickness: f64,
     },
     Rectangle{
         color: [f32; 4],
         rect: [f64; 4],
-        relative_layer: i32,
     },
     Circle{
         color: [f32; 4],
         rect: [f64; 4],
-        relative_layer: i32,
     },
 }
