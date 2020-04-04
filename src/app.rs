@@ -3,7 +3,8 @@ use piston::input::RenderArgs;
 use graphics::math::{self, Vec2d, Matrix2d};
 
 use crate::draw_commands::DrawCommand;
-use crate::storage::{ShapeStorage, Zoom};
+use crate::storage::ShapeStorage;
+use crate::zoom::Zoom;
 use crate::shape::{ShapeType, ShapeId};
 use crate::color::Color;
 use crate::serialize::Serialize;

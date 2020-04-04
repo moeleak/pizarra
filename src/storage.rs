@@ -5,37 +5,7 @@ use rstar::{RTree, RTreeObject, AABB, SelectionFunction};
 
 use super::shape::{Shape, ShapeId};
 use super::draw_commands::DrawCommand;
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Zoom(i32);
-
-impl Zoom {
-    pub fn to_i32(&self) -> i32 {
-        self.0
-    }
-
-    pub fn increase(&mut self) {
-        if self.0 < i32::max_value() {
-            self.0 += 1;
-        }
-    }
-
-    pub fn decrease(&mut self) {
-        if self.0 > i32::min_value() {
-            self.0 -= 1;
-        }
-    }
-
-    pub fn reset(&mut self) {
-        self.0 = 0;
-    }
-}
-
-impl From<i32> for Zoom {
-    fn from(zoom: i32) -> Zoom {
-        Zoom(zoom)
-    }
-}
+use crate::zoom::Zoom;
 
 struct BBoxIdSelection {
     bbox: AABB<[f64; 2]>,
