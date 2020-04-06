@@ -49,6 +49,7 @@ mod tests {
     use crate::color::Color;
     use crate::shape::ShapeId;
 
+    #[test]
     fn test_bbox() {
         let shape = Rectangle::new(Color::green(), [[1.0, 1.0], [1.0, 1.0]], ShapeId::from(1));
 

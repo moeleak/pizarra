@@ -1,6 +1,7 @@
 use opengl_graphics::GlGraphics;
 use piston::input::RenderArgs;
 use graphics::math::{self, Vec2d, Matrix2d};
+use rstar::AABB;
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::ShapeStorage;
@@ -72,7 +73,7 @@ impl App {
         let mut commands = Vec::new();
         let zoom = self.zoom;
 
-        self.storage.draw_commands(zoom, [0.0, 0.0, 1.1, 1.1], &mut commands);
+        self.storage.draw_commands(zoom, AABB::from_corners([0.0, 0.0], [1.1, 1.1]), &mut commands);
 
         self.gl.draw(args.viewport(), |c, g| {
             let t = math::multiply(

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use rstar::{RTree, RTreeObject, AABB, SelectionFunction};
 
 use super::shape::{Shape, ShapeId};
-use super::draw_commands::DrawCommand;
+use super::draw_commands::{ColoredDrawCommand, DrawCommand};
 use crate::zoom::Zoom;
 
 struct BBoxIdSelection {
@@ -110,8 +110,29 @@ impl ShapeStorage {
         self.layers.len()
     }
 
-    pub fn draw_commands(&self, zoom: Zoom, bbox: [f64; 4], buffer: &mut Vec<DrawCommand>) {
+    pub fn draw_commands(&self, zoom: Zoom, bbox: AABB<[f64; 2]>, buffer: &mut Vec<DrawCommand>) {
         assert_eq!(buffer.len(), 0);
+
+        for (zoom, relative) in zoom.visible_layers().iter() {
+            if let Some(tree) = self.layers.get(&zoom) {
+                for shape in tree.locate_in_envelope_intersecting(&bbox) {
+                    let mut shape_commands = shape.draw_commands().into_iter().map(|cmd| match cmd {
+                        ColoredDrawCommand::Rectangle { rect, color } => DrawCommand::Rectangle {
+                            rect, color,
+                        },
+                        ColoredDrawCommand::Circle { rect, color } => DrawCommand::Circle {
+                            rect, color,
+                        },
+                        ColoredDrawCommand::Line { line, color } => DrawCommand::Line {
+                            line, color,
+                            thickness: 2.0_f64.powi(*relative),
+                        },
+                    }).collect();
+
+                    buffer.append(&mut shape_commands);
+                }
+            }
+        }
     }
 }
 
@@ -133,6 +154,8 @@ mod tests {
     use crate::shape::{Shape, ShapeType, ShapeId, Line, Rectangle, Circle};
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;
+
+    use rstar::AABB;
 
     #[test]
     fn test_add_shapes_at_zoom() {
@@ -286,7 +309,7 @@ mod tests {
 
         let mut buffer = Vec::new();
 
-        storage.draw_commands(Zoom::from(0), [-2.0, -2.0, 4.0, 4.0], &mut buffer);
+        storage.draw_commands(Zoom::from(0), AABB::from_corners([-2.0, -2.0], [4.0, 4.0]), &mut buffer);
 
         assert_eq!(buffer, vec![
             DrawCommand::Rectangle{

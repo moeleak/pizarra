@@ -1,4 +1,4 @@
-/// A wireframe-only draw command returned by the underlying shape impl
+/// The most primitive draw command: the one returned by the shape impl
 pub enum WireDrawCommand {
     Line{
         line: [f64; 4],
@@ -11,19 +11,19 @@ pub enum WireDrawCommand {
     },
 }
 
-/// A wireframe plus color draw command returned by the Shape struct
+/// The draw command as returned by the shape: adds the color 
 pub enum ColoredDrawCommand {
     Line{
-        line: [f64; 4],
         color: [f32; 4],
+        line: [f64; 4],
     },
     Rectangle{
-        rect: [f64; 4],
         color: [f32; 4],
+        rect: [f64; 4],
     },
     Circle{
-        rect: [f64; 4],
         color: [f32; 4],
+        rect: [f64; 4],
     },
 }
 

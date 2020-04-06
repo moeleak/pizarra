@@ -72,7 +72,13 @@ impl Shape {
     }
 
     pub fn draw_commands(&self) -> Vec<ColoredDrawCommand> {
-        unimplemented!()
+        self.shape_impl.draw_commands().into_iter().map(|wire| {
+            match wire {
+                WireDrawCommand::Circle{ rect } => ColoredDrawCommand::Circle{ rect, color: self.color.to_a() },
+                WireDrawCommand::Rectangle{ rect } => ColoredDrawCommand::Rectangle{ rect, color: self.color.to_a() },
+                WireDrawCommand::Line{ line } => ColoredDrawCommand::Line{ line, color: self.color.to_a() },
+            }
+        }).collect()
     }
 
     pub fn shape_type(&self) -> ShapeType {

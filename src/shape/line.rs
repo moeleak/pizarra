@@ -72,7 +72,6 @@ impl ShapeTrait for Line {
 mod tests {
     use super::Line;
     use crate::shape::ShapeTrait;
-    use crate::color::Color;
 
     #[test]
     fn test_bbox() {
