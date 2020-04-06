@@ -118,10 +118,22 @@ impl ShapeStorage {
                 for shape in tree.locate_in_envelope_intersecting(&bbox) {
                     let mut shape_commands = shape.draw_commands().into_iter().map(|cmd| match cmd {
                         ColoredDrawCommand::Rectangle { rect, color } => DrawCommand::Rectangle {
-                            rect, color,
+                            color,
+                            rect: [
+                                rect[0] * 2.0_f64.powi(*relative),
+                                rect[1] * 2.0_f64.powi(*relative),
+                                rect[2] * 2.0_f64.powi(*relative),
+                                rect[3] * 2.0_f64.powi(*relative),
+                            ],
                         },
                         ColoredDrawCommand::Circle { rect, color } => DrawCommand::Circle {
-                            rect, color,
+                            color,
+                            rect: [
+                                rect[0] * 2.0_f64.powi(*relative),
+                                rect[1] * 2.0_f64.powi(*relative),
+                                rect[2] * 2.0_f64.powi(*relative),
+                                rect[3] * 2.0_f64.powi(*relative),
+                            ],
                         },
                         ColoredDrawCommand::Line { line, color } => DrawCommand::Line {
                             line, color,
@@ -295,6 +307,7 @@ mod tests {
         assert!(false, "consider returning an iterator over draw commands instead of shapes");
         assert!(false, "each command must include a relative zoom level and a relative location");
         assert!(false, "shapes at different layers are returned by their relative_layer");
+        assert!(false, "test that only shapes within the bounds are returned, and only within the visible layers from the chosen layer");
     }
 
     #[test]
@@ -307,23 +320,21 @@ mod tests {
         // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
         storage.add(Rectangle::new(Color::red(), [[1.0, 1.0], [3.0, 3.0]], ShapeId::from(2)), Zoom::from(-1));
 
+        storage.flush();
+
         let mut buffer = Vec::new();
 
         storage.draw_commands(Zoom::from(0), AABB::from_corners([-2.0, -2.0], [4.0, 4.0]), &mut buffer);
 
         assert_eq!(buffer, vec![
             DrawCommand::Rectangle{
-                color: Color::blue().to_a(),
-                rect: [-1.0, -1.0, 1.0, 1.0],
-            },
-            DrawCommand::Rectangle{
                 color: Color::red().to_a(),
                 rect: [0.5, 0.5, 1.5, 1.5],
             },
+            DrawCommand::Rectangle{
+                color: Color::blue().to_a(),
+                rect: [-1.0, -1.0, 1.0, 1.0],
+            },
         ]);
-
-        assert!(false, "at each zoom level coordinates should be relative, such that then rendering from it no transformation will be needed");
-        assert!(false, "Add two shapes with same coordinates but different zoom levels");
-        assert!(false, "test that they're returned with their same coordinates but enough information to paint them in perspective");
     }
 }
