@@ -311,6 +311,11 @@ mod tests {
     }
 
     #[test]
+    fn test_last_shape() {
+        assert!(false, "The shape that is being drawn must appear in the commands");
+    }
+
+    #[test]
     fn test_relative_coordinates() {
         let mut storage = ShapeStorage::new();
 
