@@ -31,6 +31,34 @@ impl SelectionFunction<Shape> for BBoxIdSelection {
     }
 }
 
+fn make_map(relative: i32) -> impl Fn(ColoredDrawCommand) -> DrawCommand + 'static {
+    move |cmd| match cmd {
+        ColoredDrawCommand::Rectangle { rect, color } => DrawCommand::Rectangle {
+            color,
+            rect: [
+                rect[0] * 2.0_f64.powi(relative),
+                rect[1] * 2.0_f64.powi(relative),
+                rect[2] * 2.0_f64.powi(relative),
+                rect[3] * 2.0_f64.powi(relative),
+            ],
+        },
+        ColoredDrawCommand::Circle { rect, color } => DrawCommand::Circle {
+            color,
+            rect: [
+                rect[0] * 2.0_f64.powi(relative),
+                rect[1] * 2.0_f64.powi(relative),
+                rect[2] * 2.0_f64.powi(relative),
+                rect[3] * 2.0_f64.powi(relative),
+            ],
+        },
+        ColoredDrawCommand::Line { line, color } => DrawCommand::Line {
+            line, color,
+            thickness: 2.0_f64.powi(relative),
+        },
+    }
+}
+
+/// This struct handles storage and fast retrieval of shapes.
 pub struct ShapeStorage {
     shape_count: usize,
     shapes: HashMap<ShapeId, (Zoom, AABB<[f64; 2]>)>,
@@ -116,34 +144,16 @@ impl ShapeStorage {
         for (zoom, relative) in zoom.visible_layers().iter() {
             if let Some(tree) = self.layers.get(&zoom) {
                 for shape in tree.locate_in_envelope_intersecting(&bbox) {
-                    let mut shape_commands = shape.draw_commands().into_iter().map(|cmd| match cmd {
-                        ColoredDrawCommand::Rectangle { rect, color } => DrawCommand::Rectangle {
-                            color,
-                            rect: [
-                                rect[0] * 2.0_f64.powi(*relative),
-                                rect[1] * 2.0_f64.powi(*relative),
-                                rect[2] * 2.0_f64.powi(*relative),
-                                rect[3] * 2.0_f64.powi(*relative),
-                            ],
-                        },
-                        ColoredDrawCommand::Circle { rect, color } => DrawCommand::Circle {
-                            color,
-                            rect: [
-                                rect[0] * 2.0_f64.powi(*relative),
-                                rect[1] * 2.0_f64.powi(*relative),
-                                rect[2] * 2.0_f64.powi(*relative),
-                                rect[3] * 2.0_f64.powi(*relative),
-                            ],
-                        },
-                        ColoredDrawCommand::Line { line, color } => DrawCommand::Line {
-                            line, color,
-                            thickness: 2.0_f64.powi(*relative),
-                        },
-                    }).collect();
+                    let mut shape_commands = shape.draw_commands().into_iter().map(make_map(*relative)).collect();
 
                     buffer.append(&mut shape_commands);
                 }
             }
+        }
+
+        if let Some((shape, _zoom)) = &self.current {
+            let mut commands = shape.draw_commands().into_iter().map(make_map(0)).collect();
+            buffer.append(&mut commands);
         }
     }
 }
@@ -312,7 +322,31 @@ mod tests {
 
     #[test]
     fn test_last_shape() {
-        assert!(false, "The shape that is being drawn must appear in the commands");
+        let mut storage = ShapeStorage::new();
+
+        // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
+        storage.add(Rectangle::new(Color::red(), [[1.0, 1.0], [3.0, 3.0]], ShapeId::from(2)), Zoom::from(-1));
+
+        // only the previous shape is in permanent storage
+        storage.flush();
+
+        // A rectangle of 2x2 in zoom 0 aournd the oriign
+        storage.add(Rectangle::new(Color::blue(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(1)), Zoom::from(0));
+
+        let mut buffer = Vec::new();
+
+        storage.draw_commands(Zoom::from(0), AABB::from_corners([-2.0, -2.0], [4.0, 4.0]), &mut buffer);
+
+        assert_eq!(buffer, vec![
+            DrawCommand::Rectangle{
+                color: Color::red().to_a(),
+                rect: [0.5, 0.5, 1.5, 1.5],
+            },
+            DrawCommand::Rectangle{
+                color: Color::blue().to_a(),
+                rect: [-1.0, -1.0, 1.0, 1.0],
+            },
+        ]);
     }
 
     #[test]
