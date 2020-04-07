@@ -44,3 +44,13 @@ pub enum DrawCommand {
         rect: [f64; 4],
     },
 }
+
+impl DrawCommand {
+    pub fn color(&self) -> [f32; 4] {
+        match self {
+            DrawCommand::Line { color, .. } => *color,
+            DrawCommand::Rectangle { color, .. } => *color,
+            DrawCommand::Circle { color, .. } => *color,
+        }
+    }
+}

@@ -88,6 +88,10 @@ impl Shape {
     pub fn id(&self) -> ShapeId {
         self.id
     }
+
+    pub fn color(&self) -> Color {
+        self.color
+    }
 }
 
 impl RTreeObject for Shape {

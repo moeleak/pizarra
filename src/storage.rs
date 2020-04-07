@@ -313,11 +313,46 @@ mod tests {
 
     #[test]
     fn test_iter_by_zoom_and_bounds() {
-        assert!(false, "return an iterator over all the shapes that are visible given a zoom level and a bbox");
-        assert!(false, "consider returning an iterator over draw commands instead of shapes");
-        assert!(false, "each command must include a relative zoom level and a relative location");
-        assert!(false, "shapes at different layers are returned by their relative_layer");
-        assert!(false, "test that only shapes within the bounds are returned, and only within the visible layers from the chosen layer");
+        let mut storage = ShapeStorage::new();
+
+        let shapes = vec![
+            // in green the ones that go
+            // this ones because of their zoom level
+            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(-2)), // TODO adjust for zoom
+            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(-1)), // TODO adjust for zoom
+            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(0)), // TODO adjust for zoom
+            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(1)), // TODO adjust for zoom
+            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(2)), // TODO adjust for zoom
+            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(3)), // TODO adjust for zoom
+
+            // in red the ones that dont
+            (Rectangle::new(Color::red(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(-4)), // this shape is just too far // TODO adjust for zoom
+            (Rectangle::new(Color::red(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(-3)), // this shape is just too far // TODO adjust for zoom
+            (Rectangle::new(Color::red(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(4)), // this shape is just too far // TODO adjust for zoom
+            (Rectangle::new(Color::red(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(5)), // this shape is just too far // TODO adjust for zoom
+        ];
+
+        let num_green: usize = shapes.iter().filter(|(shape, zoom)| shape.color() == Color::green()).count();
+
+        for (shape, zoom) in shapes.into_iter() {
+            storage.add(shape, zoom);
+        }
+
+        storage.flush();
+
+        assert!(false, "test that only shapes within the bounds are returned");
+        assert!(false, "only within the visible layers from the chosen layer");
+        assert!(false, "create a shape");
+
+        let mut buffer = Vec::new();
+
+        storage.draw_commands(Zoom::from(0), AABB::from_corners([-1.0, -1.0], [1.0, 1.0]), &mut buffer);
+
+        assert_eq!(buffer.len(), num_green);
+
+        for command in buffer.into_iter() {
+            assert_eq!(command.color(), Color::green().to_a());
+        }
     }
 
     #[test]
