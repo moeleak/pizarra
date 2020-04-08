@@ -34,7 +34,16 @@ impl ShapeTrait for Circle {
     fn bbox(&self) -> [[f64; 2]; 2] {
         let rect = self.rect;
 
-        [[rect[0], rect[1]], [rect[0]+rect[2], rect[1] + rect[3]]]
+        [
+            [
+                rect[0].min(rect[2]),
+                rect[1].min(rect[3]),
+            ],
+            [
+                rect[0].min(rect[2]),
+                rect[1].min(rect[3]),
+            ],
+        ]
     }
 
     fn shape_type(&self) -> ShapeType {
