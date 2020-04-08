@@ -312,27 +312,18 @@ mod tests {
     }
 
     #[test]
-    fn test_iter_by_zoom_and_bounds() {
+    fn test_iter_by_bounds() {
         let mut storage = ShapeStorage::new();
 
         let shapes = vec![
             // in green the ones that go
-            // this ones because of their zoom level
-            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(-2)), // TODO adjust for zoom
-            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(-1)), // TODO adjust for zoom
-            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(0)), // TODO adjust for zoom
-            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(1)), // TODO adjust for zoom
-            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(2)), // TODO adjust for zoom
-            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(3)), // TODO adjust for zoom
+            (Rectangle::new(Color::green(), [[-1.1, -1.1], [1.1, 1.1]], ShapeId::from(1)), Zoom::from(-1)),
+            (Rectangle::new(Color::green(), [[-1.5, -0.5], [-0.5, 1.5]], ShapeId::from(2)), Zoom::from(0)),
+            (Rectangle::new(Color::green(), [[0.25, -0.5], [0.5, -0.25]], ShapeId::from(3)), Zoom::from(1)),
 
             // in red the ones that dont
-            (Rectangle::new(Color::red(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(-4)), // this shape is just too far // TODO adjust for zoom
-            (Rectangle::new(Color::red(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(-3)), // this shape is just too far // TODO adjust for zoom
-            (Rectangle::new(Color::red(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(4)), // this shape is just too far // TODO adjust for zoom
-            (Rectangle::new(Color::red(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(2)), Zoom::from(5)), // this shape is just too far // TODO adjust for zoom
+            (Rectangle::new(Color::red(), [[-0.03125, -0.03125], [0.03125, 0.03125]], ShapeId::from(2)), Zoom::from(5)),
         ];
-
-        let num_green: usize = shapes.iter().filter(|(shape, zoom)| shape.color() == Color::green()).count();
 
         for (shape, zoom) in shapes.into_iter() {
             storage.add(shape, zoom);
@@ -340,9 +331,54 @@ mod tests {
 
         storage.flush();
 
-        assert!(false, "test that only shapes within the bounds are returned");
-        assert!(false, "only within the visible layers from the chosen layer");
-        assert!(false, "create a shape");
+        let mut buffer = Vec::new();
+
+        storage.draw_commands(Zoom::from(0), AABB::from_corners([-1.0, -1.0], [1.0, 1.0]), &mut buffer);
+
+        assert_eq!(buffer, vec![
+            DrawCommand::Rectangle {
+                color: Color::green().to_a(),
+                rect: [-0.55, -0.55, 0.55, 0.55],
+            },
+            DrawCommand::Rectangle {
+                color: Color::green().to_a(),
+                rect: [0.5, -1.0, 1.0, -0.5],
+            },
+            DrawCommand::Rectangle {
+                color: Color::green().to_a(),
+                rect: [-1.5, -0.5, -0.5, 1.5],
+            },
+        ]);
+    }
+
+    #[test]
+    fn test_iter_by_zoom() {
+        let mut storage = ShapeStorage::new();
+
+        let shapes = vec![
+            // in green the ones that go
+            // this ones because of their zoom level
+            (Rectangle::new(Color::green(), [[-4.0, -4.0], [4.0, 4.0]], ShapeId::from(1)), Zoom::from(-2)),
+            (Rectangle::new(Color::green(), [[-2.0, -2.0], [2.0, 2.0]], ShapeId::from(2)), Zoom::from(-1)),
+            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(3)), Zoom::from(0)),
+            (Rectangle::new(Color::green(), [[-0.5, -0.5], [0.5, 0.5]], ShapeId::from(4)), Zoom::from(1)),
+            (Rectangle::new(Color::green(), [[-0.25, -0.25], [0.25, 0.25]], ShapeId::from(5)), Zoom::from(2)),
+            (Rectangle::new(Color::green(), [[-0.125, -0.125], [0.125, 0.125]], ShapeId::from(6)), Zoom::from(3)),
+
+            // in red the ones that dont
+            (Rectangle::new(Color::red(), [[-16.0, -16.0], [16.0, 16.0]], ShapeId::from(7)), Zoom::from(-4)),
+            (Rectangle::new(Color::red(), [[-8.0, -8.0], [8.0, 8.0]], ShapeId::from(8)), Zoom::from(-3)),
+            (Rectangle::new(Color::red(), [[-0.625, -0.0625], [0.0625, 0.0625]], ShapeId::from(9)), Zoom::from(4)),
+            (Rectangle::new(Color::red(), [[-0.03125, -0.03125], [0.03125, 0.03125]], ShapeId::from(10)), Zoom::from(5)),
+        ];
+
+        let num_green: usize = shapes.iter().filter(|(shape, _zoom)| shape.color() == Color::green()).count();
+
+        for (shape, zoom) in shapes.into_iter() {
+            storage.add(shape, zoom);
+        }
+
+        storage.flush();
 
         let mut buffer = Vec::new();
 

@@ -22,13 +22,14 @@ impl Zoom {
         self.0 = 0;
     }
 
-    pub fn visible_layers(&self) -> [(Zoom, i32); 5] {
+    pub fn visible_layers(&self) -> [(Zoom, i32); 6] {
         [
             (*self-2, -2),
             (*self-1, -1),
             (*self, 0),
             (*self+1, 1),
             (*self+2, 2),
+            (*self+3, 3),
         ]
     }
 }
@@ -69,6 +70,7 @@ mod tests {
             (Zoom::from(0), 0),
             (Zoom::from(1), 1),
             (Zoom::from(2), 2),
+            (Zoom::from(3), 3),
         ]);
     }
 
