@@ -98,6 +98,8 @@ impl RTreeObject for Shape {
     type Envelope = AABB<[f64; 2]>;
 
     fn envelope(&self) -> Self::Envelope {
-        AABB::from_points(self.shape_impl.bbox().iter())
+        let [p1, p2] = self.shape_impl.bbox();
+
+        AABB::from_corners(p1, p2)
     }
 }
