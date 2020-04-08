@@ -84,4 +84,9 @@ mod tests {
 
         assert_eq!(line.bbox(), [[0.0, 0.0], [1.0, 1.0]]);
     }
+
+    #[test]
+    fn test_bbox_twisted_line() {
+        assert!(false, "a line that starts in the center of the left side of a square goes down to the center of the bottom side, then up to the center of the top side and ends at the center of the right side");
+    }
 }

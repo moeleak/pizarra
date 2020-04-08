@@ -25,3 +25,14 @@ impl Serialize for ShapeStorage {
 </svg>")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_can_serialize() {
+        assert!(false, "the storage can be serialized");
+        assert!(false, "the size of the svg is the last window size");
+        assert!(false, "shapes of different layers are in different layers that inkscape can use");
+        assert!(false, "sizes and thicknesses are as expected");
+    }
+}

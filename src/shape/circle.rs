@@ -41,3 +41,24 @@ impl ShapeTrait for Circle {
         ShapeType::Circle
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Circle;
+    use crate::color::Color;
+    use crate::shape::ShapeId;
+
+    #[test]
+    fn test_bbox() {
+        let shape = Circle::new(Color::green(), [[1.0, 1.0], [1.0, 1.0]], ShapeId::from(1));
+
+        assert_eq!(shape.shape_impl.bbox(), [[1.0, 1.0], [2.0, 2.0]]);
+    }
+
+    #[test]
+    fn test_bbox_extended() {
+        assert!(false, "a Circle with coordinates in every cuadrant both with top-left,bottom-right and bottom-left,top-right coordinates");
+        assert!(false, "a Circle with one coordinate in every cuadrant, given its top-left and bottom-right coordinates");
+        assert!(false, "a Circle with one coordinate in every cuadrant, given its bottom-left and top-right coordinates");
+    }
+}
