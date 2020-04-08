@@ -15,7 +15,7 @@ impl Rectangle {
             id,
             color,
             shape_impl: Box::new(Rectangle {
-                rect: [rect[0][0], rect[0][1], rect[1][0], rect[1][0]],
+                rect: [rect[0][0], rect[0][1], rect[1][0], rect[1][1]],
             }),
         }
     }
@@ -41,8 +41,8 @@ impl ShapeTrait for Rectangle {
                 rect[1].min(rect[3]),
             ],
             [
-                rect[0].min(rect[2]),
-                rect[1].min(rect[3]),
+                rect[0].max(rect[2]),
+                rect[1].max(rect[3]),
             ],
         ]
     }

@@ -58,6 +58,22 @@ fn make_map(relative: i32) -> impl Fn(ColoredDrawCommand) -> DrawCommand + 'stat
     }
 }
 
+fn scale(bbox: AABB<[f64; 2]>, relative: i32) -> AABB<[f64; 2]> {
+    let lower = bbox.lower();
+    let upper = bbox.upper();
+
+    AABB::from_corners(
+        [
+            lower[0] * 2.0_f64.powi(relative*-1),
+            lower[1] * 2.0_f64.powi(relative*-1),
+        ],
+        [
+            upper[0] * 2.0_f64.powi(relative*-1),
+            upper[1] * 2.0_f64.powi(relative*-1),
+        ],
+    )
+}
+
 /// This struct handles storage and fast retrieval of shapes.
 pub struct ShapeStorage {
     shape_count: usize,
@@ -143,7 +159,7 @@ impl ShapeStorage {
 
         for (zoom, relative) in zoom.visible_layers().iter() {
             if let Some(tree) = self.layers.get(&zoom) {
-                for shape in tree.locate_in_envelope_intersecting(&bbox) {
+                for shape in tree.locate_in_envelope_intersecting(&scale(bbox, *relative)) {
                     let mut shape_commands = shape.draw_commands().into_iter().map(make_map(*relative)).collect();
 
                     buffer.append(&mut shape_commands);
@@ -317,9 +333,9 @@ mod tests {
 
         let shapes = vec![
             // in green the ones that go
-            (Rectangle::new(Color::green(), [[-1.1, -1.1], [1.1, 1.1]], ShapeId::from(1)), Zoom::from(-1)),
-            (Rectangle::new(Color::green(), [[-1.5, -0.5], [-0.5, 1.5]], ShapeId::from(2)), Zoom::from(0)),
-            (Rectangle::new(Color::green(), [[0.25, -0.5], [0.5, -0.25]], ShapeId::from(3)), Zoom::from(1)),
+            (Rectangle::new(Color::green(), [[-1.1, -1.1], [1.1, 1.1]], ShapeId::from(1)), Zoom::from(-1)), // A
+            (Rectangle::new(Color::green(), [[-1.5, 0.5], [-0.5, 1.5]], ShapeId::from(2)), Zoom::from(0)), // B
+            (Rectangle::new(Color::green(), [[0.25, -0.5], [0.5, -0.25]], ShapeId::from(3)), Zoom::from(1)), // C
 
             // in red the ones that dont
             (Rectangle::new(Color::red(), [[-0.03125, -0.03125], [0.03125, 0.03125]], ShapeId::from(2)), Zoom::from(5)),
@@ -336,17 +352,22 @@ mod tests {
         storage.draw_commands(Zoom::from(0), AABB::from_corners([-1.0, -1.0], [1.0, 1.0]), &mut buffer);
 
         assert_eq!(buffer, vec![
+            // A
             DrawCommand::Rectangle {
                 color: Color::green().to_a(),
                 rect: [-0.55, -0.55, 0.55, 0.55],
             },
+
+            // B
+            DrawCommand::Rectangle {
+                color: Color::green().to_a(),
+                rect: [-1.5, 0.5, -0.5, 1.5],
+            },
+
+            // C
             DrawCommand::Rectangle {
                 color: Color::green().to_a(),
                 rect: [0.5, -1.0, 1.0, -0.5],
-            },
-            DrawCommand::Rectangle {
-                color: Color::green().to_a(),
-                rect: [-1.5, -0.5, -0.5, 1.5],
             },
         ]);
     }
@@ -446,5 +467,10 @@ mod tests {
                 rect: [-1.0, -1.0, 1.0, 1.0],
             },
         ]);
+    }
+
+    #[test]
+    fn test_scale() {
+        assert!(false, "test proper scaling of AABB objects in the four cuadrants and mixed situations");
     }
 }
