@@ -71,7 +71,8 @@ impl ShapeTrait for Line {
 #[cfg(test)]
 mod tests {
     use super::Line;
-    use crate::shape::ShapeTrait;
+    use crate::shape::{ShapeTrait, ShapeId};
+    use crate::color::Color;
 
     #[test]
     fn test_bbox() {
@@ -87,6 +88,11 @@ mod tests {
 
     #[test]
     fn test_bbox_twisted_line() {
-        assert!(false, "a line that starts in the center of the left side of a square goes down to the center of the bottom side, then up to the center of the top side and ends at the center of the right side");
+        let mut line = Line::new(Color::green(), [[-12.0, -1.0], [-5.0, 0.0]], ShapeId::from(1));
+
+        line.handle([-2.0, 7.0]);
+        line.handle([2.0, -8.0]);
+
+        assert_eq!(line.shape_impl.bbox(), [[-12.0, -8.0], [2.0, 7.0]]);
     }
 }

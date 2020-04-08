@@ -355,19 +355,19 @@ mod tests {
             // A
             DrawCommand::Rectangle {
                 color: Color::green().to_a(),
-                rect: [-0.55, -0.55, 0.55, 0.55],
+                rect: [-0.55, -0.55, 1.1, 1.1],
             },
 
             // B
             DrawCommand::Rectangle {
                 color: Color::green().to_a(),
-                rect: [-1.5, 0.5, -0.5, 1.5],
+                rect: [-1.5, 0.5, 1.0, 1.0],
             },
 
             // C
             DrawCommand::Rectangle {
                 color: Color::green().to_a(),
-                rect: [0.5, -1.0, 1.0, -0.5],
+                rect: [0.5, -1.0, 0.5, 0.5],
             },
         ]);
     }
@@ -432,11 +432,11 @@ mod tests {
         assert_eq!(buffer, vec![
             DrawCommand::Rectangle{
                 color: Color::red().to_a(),
-                rect: [0.5, 0.5, 1.5, 1.5],
+                rect: [0.5, 0.5, 1.0, 1.0],
             },
             DrawCommand::Rectangle{
                 color: Color::blue().to_a(),
-                rect: [-1.0, -1.0, 1.0, 1.0],
+                rect: [-1.0, -1.0, 2.0, 2.0],
             },
         ]);
     }
@@ -460,11 +460,11 @@ mod tests {
         assert_eq!(buffer, vec![
             DrawCommand::Rectangle{
                 color: Color::red().to_a(),
-                rect: [0.5, 0.5, 1.5, 1.5],
+                rect: [0.5, 0.5, 1.0, 1.0],
             },
             DrawCommand::Rectangle{
                 color: Color::blue().to_a(),
-                rect: [-1.0, -1.0, 1.0, 1.0],
+                rect: [-1.0, -1.0, 2.0, 2.0],
             },
         ]);
     }
