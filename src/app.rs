@@ -73,13 +73,14 @@ impl App {
         let mut commands = Vec::new();
         let zoom = self.zoom;
 
-        self.storage.draw_commands(zoom, AABB::from_corners([0.0, 0.0], [1.1, 1.1]), &mut commands);
+        // the bbox of the visible things
+        let corner_1 = math::mul_scalar(self.offset, -1.0);
+        let corner_2 = math::mul_scalar(math::add(corner_1, math::mul_scalar(self.dimentions, -1.0)), -1.0);
+
+        self.storage.draw_commands(zoom, AABB::from_corners(corner_1, corner_2), &mut commands);
 
         self.gl.draw(args.viewport(), |c, g| {
-            let t = math::multiply(
-                math::multiply(c.transform, offset_t),
-                math::scale(2.0_f64.powi(zoom.to_i32()), 2.0_f64.powi(zoom.to_i32()))
-            );
+            let t = math::multiply(c.transform, offset_t);
 
             graphics::clear(bgcolor, g);
 
@@ -155,13 +156,14 @@ impl App {
     pub fn handle_cursor(&mut self, pos: Vec2d) {
         if self.is_drawing && !self.is_moving {
             let inv_offset = self.get_inv_offset();
+            let translated_pos = math::transform_pos(inv_offset, pos);
 
             match self.drawing_state {
                 DrawingState::Start => {
-                    self.drawing_state = DrawingState::OnePoint(pos);
+                    self.drawing_state = DrawingState::OnePoint(translated_pos);
                 },
                 DrawingState::OnePoint(p1) => {
-                    self.drawing_state = DrawingState::TwoPoints([p1, pos]);
+                    self.drawing_state = DrawingState::TwoPoints([p1, translated_pos]);
                 },
                 DrawingState::TwoPoints(points) => {
                     self.storage.add(
@@ -173,7 +175,7 @@ impl App {
                 },
                 DrawingState::AndSoOn => {
                     if let Some(shape) = self.storage.last_mut() {
-                        shape.handle(math::transform_pos(inv_offset, pos));
+                        shape.handle(translated_pos);
                     }
                 },
             }
@@ -187,11 +189,11 @@ impl App {
     }
 
     pub fn zoom_in(&mut self) {
-        self.zoom.increase();
+        self.zoom.decrease();
     }
 
     pub fn zoom_out(&mut self) {
-        self.zoom.decrease();
+        self.zoom.increase();
     }
 
     pub fn go_home(&mut self) {

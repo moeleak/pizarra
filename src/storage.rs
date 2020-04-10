@@ -470,6 +470,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_scale() {
         assert!(false, "test proper scaling of AABB objects in the four cuadrants and mixed situations");
     }
