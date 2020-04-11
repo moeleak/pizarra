@@ -52,7 +52,13 @@ fn make_map(relative: i32) -> impl Fn(ColoredDrawCommand) -> DrawCommand + 'stat
             ],
         },
         ColoredDrawCommand::Line { line, color } => DrawCommand::Line {
-            line, color,
+            color,
+            line: [
+                line[0] * 2.0_f64.powi(relative),
+                line[1] * 2.0_f64.powi(relative),
+                line[2] * 2.0_f64.powi(relative),
+                line[3] * 2.0_f64.powi(relative),
+            ],
             thickness: 2.0_f64.powi(relative),
         },
     }
