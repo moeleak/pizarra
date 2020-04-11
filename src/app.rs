@@ -39,25 +39,35 @@ pub struct App {
     storage: ShapeStorage,
     selected_tool: ShapeType,
     gl: GlGraphics,
+
+    /// This value represents a vector from the top left corner of the window to
+    /// the center of the drawing
     offset: Vec2d,
-    dimentions: Vec2d,
+
+    /// The window's dimensions
+    dimensions: Vec2d,
     undo_status: UndoStatus,
     selected_color: Color,
     zoom: Zoom,
+
+    /// Since at least two points are needed to create a shape this enum keeps
+    /// track of some intermediate states like Start, OnePoint and TwoPoints
     drawing_state: DrawingState,
+
+    /// Next available id for a shape
     next_id: ShapeId,
 }
 
 impl App {
-    pub fn new(gl: GlGraphics, dimentions: Vec2d) -> App {
+    pub fn new(gl: GlGraphics, dimensions: Vec2d) -> App {
         App {
             is_drawing: false,
             is_moving: false,
             storage: ShapeStorage::new(),
             selected_tool: ShapeType::Line,
             gl,
-            dimentions,
-            offset: math::mul_scalar(dimentions, 0.5),
+            dimensions,
+            offset: math::mul_scalar(dimensions, 0.5),
             undo_status: UndoStatus::InSync,
             selected_color: Color::Green,
             zoom: Zoom::from(0),
@@ -77,9 +87,7 @@ impl App {
 
         // the bbox of the visible things
         let corner_1 = math::mul_scalar(self.offset, -1.0);
-        let corner_2 = math::add(corner_1, self.dimentions);
-
-        println!("Offset: {:?}, bbox: {:?}, {:?}", self.offset, corner_1, corner_2);
+        let corner_2 = math::add(corner_1, self.dimensions);
 
         self.storage.draw_commands(zoom, AABB::from_corners(corner_1, corner_2), &mut commands);
 
@@ -122,7 +130,7 @@ impl App {
     }
 
     pub fn get_dimentions(&self) -> Vec2d {
-        self.dimentions
+        self.dimensions
     }
 
     fn get_inv_offset(&mut self) -> Matrix2d {
@@ -139,12 +147,12 @@ impl App {
 
     pub fn resize(&mut self, new_size: Vec2d) {
         let delta = math::mul_scalar(math::add(
-            math::mul_scalar(self.dimentions, -1.0),
+            math::mul_scalar(self.dimensions, -1.0),
             new_size
         ), 0.5);
 
         self.delta_offset(delta);
-        self.dimentions = new_size;
+        self.dimensions = new_size;
     }
 
     pub fn set_tool(&mut self, shape_type: ShapeType) {
@@ -213,7 +221,7 @@ impl App {
     }
 
     pub fn go_home(&mut self) {
-        self.offset = math::mul_scalar(self.dimentions, 0.5);
+        self.offset = math::mul_scalar(self.dimensions, 0.5);
         self.zoom.reset();
     }
 
