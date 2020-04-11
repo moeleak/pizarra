@@ -77,7 +77,9 @@ impl App {
 
         // the bbox of the visible things
         let corner_1 = math::mul_scalar(self.offset, -1.0);
-        let corner_2 = math::mul_scalar(math::add(corner_1, math::mul_scalar(self.dimentions, -1.0)), -1.0);
+        let corner_2 = math::add(corner_1, self.dimentions);
+
+        println!("Offset: {:?}, bbox: {:?}, {:?}", self.offset, corner_1, corner_2);
 
         self.storage.draw_commands(zoom, AABB::from_corners(corner_1, corner_2), &mut commands);
 
