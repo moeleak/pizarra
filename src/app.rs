@@ -59,7 +59,7 @@ impl App {
             dimentions,
             offset: math::mul_scalar(dimentions, 0.5),
             undo_status: UndoStatus::InSync,
-            selected_color: Color::green(),
+            selected_color: Color::Green,
             zoom: Zoom::from(0),
             drawing_state: DrawingState::Start,
             next_id: ShapeId::from(1),
@@ -67,8 +67,8 @@ impl App {
     }
 
     pub fn render(&mut self, args: &RenderArgs) {
-        let bgcolor = Color::black().to_a();
-        let guidecolor = Color::gray().to_a();
+        let bgcolor = Color::Black.to_a();
+        let guidecolor = Color::Gray.to_a();
         let offset_t = self.get_offset_t();
         let mut commands = Vec::new();
         let zoom = self.zoom;
@@ -217,6 +217,10 @@ impl App {
 
     pub fn set_color(&mut self, color: Color) {
         self.selected_color = color;
+    }
+
+    pub fn cycle_color(&mut self) {
+        self.selected_color = self.selected_color.cycle();
     }
 
     pub fn serialize(&self) -> String {

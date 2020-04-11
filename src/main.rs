@@ -51,23 +51,23 @@ fn main() -> std::io::Result<()> {
                     app.set_tool(ShapeType::Rectangle);
                 }
                 if alt_on {
-                    app.set_color(Color::red());
+                    app.set_color(Color::Red);
                 }
             },
             Some(Button::Keyboard(Key::B)) => if alt_on {
-                app.set_color(Color::blue());
+                app.set_color(Color::Blue);
             },
             Some(Button::Keyboard(Key::G)) => if alt_on {
-                app.set_color(Color::green());
+                app.set_color(Color::Green);
             },
             Some(Button::Keyboard(Key::Y)) => if alt_on {
-                app.set_color(Color::yellow());
+                app.set_color(Color::Yellow);
             },
             Some(Button::Keyboard(Key::O)) => if alt_on {
-                app.set_color(Color::orange());
+                app.set_color(Color::Orange);
             },
             Some(Button::Keyboard(Key::W)) => if alt_on {
-                app.set_color(Color::white());
+                app.set_color(Color::White);
             },
             Some(Button::Keyboard(Key::L)) => if ctrl_on {
                 app.set_tool(ShapeType::Line);
@@ -78,6 +78,7 @@ fn main() -> std::io::Result<()> {
             Some(Button::Keyboard(Key::NumPadPlus)) => app.zoom_in(),
             Some(Button::Keyboard(Key::NumPadMinus)) => app.zoom_out(),
             Some(Button::Keyboard(Key::D0)) => app.go_home(),
+            Some(Button::Mouse(MouseButton::Right)) => app.cycle_color(),
             _ => {},
         }
 

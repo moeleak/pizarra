@@ -199,9 +199,9 @@ mod tests {
     fn test_add_shapes_at_zoom() {
         let mut storage = ShapeStorage::new();
         let shapes: Vec<(Shape, Zoom)> = vec![
-            (Line::new(Color::red(), [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(1)), Zoom::from(0)),
-            (Rectangle::new(Color::green(), [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(2)), Zoom::from(1)),
-            (Circle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(3)), Zoom::from(-1)),
+            (Line::new(Color::Red, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(1)), Zoom::from(0)),
+            (Rectangle::new(Color::Green, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(2)), Zoom::from(1)),
+            (Circle::new(Color::Blue, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(3)), Zoom::from(-1)),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|(shape, zoom)| {
             storage.add(shape, zoom)
@@ -223,7 +223,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Line::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(1)), Zoom::from(0));
+        storage.add(Line::new(Color::Blue, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(1)), Zoom::from(0));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -232,7 +232,7 @@ mod tests {
         last_shape.handle([0.0, 0.0]);
         last_shape.handle([1.0, 0.0]);
 
-        storage.add(Rectangle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(2)), Zoom::from(0));
+        storage.add(Rectangle::new(Color::Blue, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(2)), Zoom::from(0));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -241,7 +241,7 @@ mod tests {
         last_shape.handle([0.0, 0.0]);
         last_shape.handle([1.0, 0.0]);
 
-        storage.add(Circle::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(2)), Zoom::from(0));
+        storage.add(Circle::new(Color::Blue, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(2)), Zoom::from(0));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -257,7 +257,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Line::new(Color::blue(), [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(1)), Zoom::from(0));
+        storage.add(Line::new(Color::Blue, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(1)), Zoom::from(0));
 
         assert!(storage.last_mut().is_some());
 
@@ -284,8 +284,8 @@ mod tests {
         let id_to_remove = ShapeId::from(1);
         let id_to_interfere = ShapeId::from(2);
 
-        let obj_to_remove = Line::new(Color::green(), [[0.0, 0.0], [1.0, 1.0]], id_to_remove);
-        let obj_to_interfere = Line::new(Color::blue(), [[1.0, 0.0], [0.0, 1.0]], id_to_interfere);
+        let obj_to_remove = Line::new(Color::Green, [[0.0, 0.0], [1.0, 1.0]], id_to_remove);
+        let obj_to_interfere = Line::new(Color::Blue, [[1.0, 0.0], [0.0, 1.0]], id_to_interfere);
 
         let id = storage.add(obj_to_remove, Zoom::from(0));
         storage.add(obj_to_interfere, Zoom::from(0));
@@ -310,8 +310,8 @@ mod tests {
         let id_to_remove = ShapeId::from(1);
         let id_to_interfere = ShapeId::from(2);
 
-        let obj_to_remove = Line::new(Color::green(), [[0.0, 0.0], [1.0, 1.0]], id_to_remove);
-        let obj_to_interfere = Line::new(Color::blue(), [[1.0, 0.0], [0.0, 1.0]], id_to_interfere);
+        let obj_to_remove = Line::new(Color::Green, [[0.0, 0.0], [1.0, 1.0]], id_to_remove);
+        let obj_to_interfere = Line::new(Color::Blue, [[1.0, 0.0], [0.0, 1.0]], id_to_interfere);
 
         storage.add(obj_to_interfere, Zoom::from(0));
         let id = storage.add(obj_to_remove, Zoom::from(0));
@@ -333,12 +333,12 @@ mod tests {
 
         let shapes = vec![
             // in green the ones that go
-            (Rectangle::new(Color::green(), [[-1.1, -1.1], [1.1, 1.1]], ShapeId::from(1)), Zoom::from(-1)), // A
-            (Rectangle::new(Color::green(), [[-1.5, 0.5], [-0.5, 1.5]], ShapeId::from(2)), Zoom::from(0)), // B
-            (Rectangle::new(Color::green(), [[0.25, -0.5], [0.5, -0.25]], ShapeId::from(3)), Zoom::from(1)), // C
+            (Rectangle::new(Color::Green, [[-1.1, -1.1], [1.1, 1.1]], ShapeId::from(1)), Zoom::from(-1)), // A
+            (Rectangle::new(Color::Green, [[-1.5, 0.5], [-0.5, 1.5]], ShapeId::from(2)), Zoom::from(0)), // B
+            (Rectangle::new(Color::Green, [[0.25, -0.5], [0.5, -0.25]], ShapeId::from(3)), Zoom::from(1)), // C
 
             // in red the ones that dont
-            (Rectangle::new(Color::red(), [[-0.03125, -0.03125], [0.03125, 0.03125]], ShapeId::from(2)), Zoom::from(5)),
+            (Rectangle::new(Color::Red, [[-0.03125, -0.03125], [0.03125, 0.03125]], ShapeId::from(2)), Zoom::from(5)),
         ];
 
         for (shape, zoom) in shapes.into_iter() {
@@ -354,19 +354,19 @@ mod tests {
         assert_eq!(buffer, vec![
             // A
             DrawCommand::Rectangle {
-                color: Color::green().to_a(),
+                color: Color::Green.to_a(),
                 rect: [-0.55, -0.55, 1.1, 1.1],
             },
 
             // B
             DrawCommand::Rectangle {
-                color: Color::green().to_a(),
+                color: Color::Green.to_a(),
                 rect: [-1.5, 0.5, 1.0, 1.0],
             },
 
             // C
             DrawCommand::Rectangle {
-                color: Color::green().to_a(),
+                color: Color::Green.to_a(),
                 rect: [0.5, -1.0, 0.5, 0.5],
             },
         ]);
@@ -379,21 +379,21 @@ mod tests {
         let shapes = vec![
             // in green the ones that go
             // this ones because of their zoom level
-            (Rectangle::new(Color::green(), [[-4.0, -4.0], [4.0, 4.0]], ShapeId::from(1)), Zoom::from(-2)),
-            (Rectangle::new(Color::green(), [[-2.0, -2.0], [2.0, 2.0]], ShapeId::from(2)), Zoom::from(-1)),
-            (Rectangle::new(Color::green(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(3)), Zoom::from(0)),
-            (Rectangle::new(Color::green(), [[-0.5, -0.5], [0.5, 0.5]], ShapeId::from(4)), Zoom::from(1)),
-            (Rectangle::new(Color::green(), [[-0.25, -0.25], [0.25, 0.25]], ShapeId::from(5)), Zoom::from(2)),
-            (Rectangle::new(Color::green(), [[-0.125, -0.125], [0.125, 0.125]], ShapeId::from(6)), Zoom::from(3)),
+            (Rectangle::new(Color::Green, [[-4.0, -4.0], [4.0, 4.0]], ShapeId::from(1)), Zoom::from(-2)),
+            (Rectangle::new(Color::Green, [[-2.0, -2.0], [2.0, 2.0]], ShapeId::from(2)), Zoom::from(-1)),
+            (Rectangle::new(Color::Green, [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(3)), Zoom::from(0)),
+            (Rectangle::new(Color::Green, [[-0.5, -0.5], [0.5, 0.5]], ShapeId::from(4)), Zoom::from(1)),
+            (Rectangle::new(Color::Green, [[-0.25, -0.25], [0.25, 0.25]], ShapeId::from(5)), Zoom::from(2)),
+            (Rectangle::new(Color::Green, [[-0.125, -0.125], [0.125, 0.125]], ShapeId::from(6)), Zoom::from(3)),
 
             // in red the ones that dont
-            (Rectangle::new(Color::red(), [[-16.0, -16.0], [16.0, 16.0]], ShapeId::from(7)), Zoom::from(-4)),
-            (Rectangle::new(Color::red(), [[-8.0, -8.0], [8.0, 8.0]], ShapeId::from(8)), Zoom::from(-3)),
-            (Rectangle::new(Color::red(), [[-0.625, -0.0625], [0.0625, 0.0625]], ShapeId::from(9)), Zoom::from(4)),
-            (Rectangle::new(Color::red(), [[-0.03125, -0.03125], [0.03125, 0.03125]], ShapeId::from(10)), Zoom::from(5)),
+            (Rectangle::new(Color::Red, [[-16.0, -16.0], [16.0, 16.0]], ShapeId::from(7)), Zoom::from(-4)),
+            (Rectangle::new(Color::Red, [[-8.0, -8.0], [8.0, 8.0]], ShapeId::from(8)), Zoom::from(-3)),
+            (Rectangle::new(Color::Red, [[-0.625, -0.0625], [0.0625, 0.0625]], ShapeId::from(9)), Zoom::from(4)),
+            (Rectangle::new(Color::Red, [[-0.03125, -0.03125], [0.03125, 0.03125]], ShapeId::from(10)), Zoom::from(5)),
         ];
 
-        let num_green: usize = shapes.iter().filter(|(shape, _zoom)| shape.color() == Color::green()).count();
+        let num_green: usize = shapes.iter().filter(|(shape, _zoom)| shape.color() == Color::Green).count();
 
         for (shape, zoom) in shapes.into_iter() {
             storage.add(shape, zoom);
@@ -408,7 +408,7 @@ mod tests {
         assert_eq!(buffer.len(), num_green);
 
         for command in buffer.into_iter() {
-            assert_eq!(command.color(), Color::green().to_a());
+            assert_eq!(command.color(), Color::Green.to_a());
         }
     }
 
@@ -417,13 +417,13 @@ mod tests {
         let mut storage = ShapeStorage::new();
 
         // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
-        storage.add(Rectangle::new(Color::red(), [[1.0, 1.0], [3.0, 3.0]], ShapeId::from(2)), Zoom::from(-1));
+        storage.add(Rectangle::new(Color::Red, [[1.0, 1.0], [3.0, 3.0]], ShapeId::from(2)), Zoom::from(-1));
 
         // only the previous shape is in permanent storage
         storage.flush();
 
         // A rectangle of 2x2 in zoom 0 aournd the oriign
-        storage.add(Rectangle::new(Color::blue(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(1)), Zoom::from(0));
+        storage.add(Rectangle::new(Color::Blue, [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(1)), Zoom::from(0));
 
         let mut buffer = Vec::new();
 
@@ -431,11 +431,11 @@ mod tests {
 
         assert_eq!(buffer, vec![
             DrawCommand::Rectangle{
-                color: Color::red().to_a(),
+                color: Color::Red.to_a(),
                 rect: [0.5, 0.5, 1.0, 1.0],
             },
             DrawCommand::Rectangle{
-                color: Color::blue().to_a(),
+                color: Color::Blue.to_a(),
                 rect: [-1.0, -1.0, 2.0, 2.0],
             },
         ]);
@@ -446,10 +446,10 @@ mod tests {
         let mut storage = ShapeStorage::new();
 
         // A rectangle of 2x2 in zoom 0 aournd the oriign
-        storage.add(Rectangle::new(Color::blue(), [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(1)), Zoom::from(0));
+        storage.add(Rectangle::new(Color::Blue, [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(1)), Zoom::from(0));
 
         // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
-        storage.add(Rectangle::new(Color::red(), [[1.0, 1.0], [3.0, 3.0]], ShapeId::from(2)), Zoom::from(-1));
+        storage.add(Rectangle::new(Color::Red, [[1.0, 1.0], [3.0, 3.0]], ShapeId::from(2)), Zoom::from(-1));
 
         storage.flush();
 
@@ -459,11 +459,11 @@ mod tests {
 
         assert_eq!(buffer, vec![
             DrawCommand::Rectangle{
-                color: Color::red().to_a(),
+                color: Color::Red.to_a(),
                 rect: [0.5, 0.5, 1.0, 1.0],
             },
             DrawCommand::Rectangle{
-                color: Color::blue().to_a(),
+                color: Color::Blue.to_a(),
                 rect: [-1.0, -1.0, 2.0, 2.0],
             },
         ]);

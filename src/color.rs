@@ -1,64 +1,74 @@
 use std::fmt;
 
+fn to_float(color: [u8; 4]) -> [f32; 4] {
+    [
+        color[0] as f32/0xff as f32,
+        color[1] as f32/0xff as f32,
+        color[2] as f32/0xff as f32,
+        color[3] as f32/0xff as f32,
+    ]
+}
+
 #[derive(Copy, Clone, PartialEq)]
-pub struct Color([u8; 4]);
+pub enum Color {
+    Red,
+    Blue,
+    Green,
+    Yellow,
+    Orange,
+    Brown,
+    White,
+    Black,
+    Gray,
+}
 
 impl Color {
-
-    pub fn red() -> Color {
-        Color([0xF4, 0x43, 0x36, 0xff])
+    pub fn code(&self) -> [u8; 4] {
+        match self {
+            Color::Red => [0xF4, 0x43, 0x36, 0xff],
+            Color::Blue => [0x21, 0x96, 0xF3, 0xff],
+            Color::Green => [0x4C, 0xAF, 0x50, 0xff],
+            Color::Yellow => [0xFF, 0xEB, 0x3B, 0xff],
+            Color::Orange => [0xFF, 0x98, 0x00, 0xff],
+            Color::Brown => [0x79, 0x55, 0x48, 0xff],
+            Color::White => [0xFF, 0xFF, 0xFF, 0xff],
+            Color::Black => [0x30, 0x36, 0x33, 0xff],
+            Color::Gray => [0x7f, 0x7b, 0x82, 0xff],
+        }
     }
 
-    pub fn blue() -> Color {
-        Color([0x21, 0x96, 0xF3, 0xff])
-    }
+    pub fn cycle(&self) -> Color {
+        match self {
+            Color::Red => Color::Blue,
+            Color::Blue => Color::Green,
+            Color::Green => Color::Yellow,
+            Color::Yellow => Color::Orange,
+            Color::Orange => Color::Brown,
+            Color::Brown => Color::White,
+            Color::White => Color::Gray,
+            Color::Gray => Color::Red,
 
-    pub fn green() -> Color {
-        Color([0x4C, 0xAF, 0x50, 0xff])
-    }
-
-    pub fn yellow() -> Color {
-        Color([0xFF, 0xEB, 0x3B, 0xff])
-    }
-
-    pub fn orange() -> Color {
-        Color([0xFF, 0x98, 0x00, 0xff])
-    }
-
-    pub fn brown() -> Color {
-        Color([0x79, 0x55, 0x48, 0xff])
-    }
-
-    pub fn white() -> Color {
-        Color([0xFF, 0xFF, 0xFF, 0xff])
-    }
-
-    pub fn black() -> Color {
-        Color([0x30, 0x36, 0x33, 0xff])
-    }
-
-    pub fn gray() -> Color {
-        Color([0x7f, 0x7b, 0x82, 0xff])
+            Color::Black => Color::Green,
+        }
     }
 
     pub fn to_a(&self) -> [f32; 4] {
-        [
-            self.0[0] as f32/0xff as f32,
-            self.0[1] as f32/0xff as f32,
-            self.0[2] as f32/0xff as f32,
-            self.0[3] as f32/0xff as f32,
-        ]
+        to_float(self.code())
     }
 }
 
 impl fmt::UpperHex for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "#{:X}{:X}{:X}", self.0[0], self.0[1], self.0[2])
+        let code = self.code();
+
+        write!(f, "#{:X}{:X}{:X}", code[0], code[1], code[2])
     }
 }
 
 impl fmt::LowerHex for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "#{:x}{:x}{:x}", self.0[0], self.0[1], self.0[2])
+        let code = self.code();
+
+        write!(f, "#{:x}{:x}{:x}", code[0], code[1], code[2])
     }
 }
