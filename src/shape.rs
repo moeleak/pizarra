@@ -12,7 +12,7 @@ pub use self::line::Line;
 pub use self::rectangle::Rectangle;
 pub use self::circle::Circle;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum ShapeType {
     Line,
     Rectangle,

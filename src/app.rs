@@ -42,7 +42,7 @@ pub struct App {
     offset: Vec2d,
     dimentions: Vec2d,
     undo_status: UndoStatus,
-    current_color: Color,
+    selected_color: Color,
     zoom: Zoom,
     drawing_state: DrawingState,
     next_id: ShapeId,
@@ -59,7 +59,7 @@ impl App {
             dimentions,
             offset: math::mul_scalar(dimentions, 0.5),
             undo_status: UndoStatus::InSync,
-            current_color: Color::green(),
+            selected_color: Color::green(),
             zoom: Zoom::from(0),
             drawing_state: DrawingState::Start,
             next_id: ShapeId::from(1),
@@ -72,6 +72,8 @@ impl App {
         let offset_t = self.get_offset_t();
         let mut commands = Vec::new();
         let zoom = self.zoom;
+        let selected_color = self.selected_color;
+        let selected_tool = self.selected_tool;
 
         // the bbox of the visible things
         let corner_1 = math::mul_scalar(self.offset, -1.0);
@@ -100,8 +102,20 @@ impl App {
             }
 
             // UI
+            // a cross that marks the center
             graphics::line(guidecolor, 1.0, [-20.0, 0.0, 20.0, 0.0], t, g);
             graphics::line(guidecolor, 1.0, [0.0, 20.0, 0.0, -20.0], t, g);
+
+            // a symbol that represents the tool in use
+            match selected_tool {
+                ShapeType::Circle => graphics::ellipse(selected_color.to_a(), [25.0, 25.0, 25.0, 25.0], c.transform, g),
+                ShapeType::Rectangle => graphics::rectangle(selected_color.to_a(), [25.0, 25.0, 25.0, 25.0], c.transform, g),
+                ShapeType::Line => {
+                    graphics::line(selected_color.to_a(), 2.0, [25.0, 25.0, 25.0, 50.0], c.transform, g);
+                    graphics::line(selected_color.to_a(), 2.0, [25.0, 50.0, 50.0, 25.0], c.transform, g);
+                    graphics::line(selected_color.to_a(), 2.0, [50.0, 25.0, 50.0, 50.0], c.transform, g);
+                }
+            }
         });
     }
 
@@ -167,7 +181,7 @@ impl App {
                 },
                 DrawingState::TwoPoints(points) => {
                     self.storage.add(
-                        self.selected_tool.make(self.current_color, points, self.next_id),
+                        self.selected_tool.make(self.selected_color, points, self.next_id),
                         self.zoom
                     );
                     self.next_id.incr();
@@ -202,7 +216,7 @@ impl App {
     }
 
     pub fn set_color(&mut self, color: Color) {
-        self.current_color = color;
+        self.selected_color = color;
     }
 
     pub fn serialize(&self) -> String {
