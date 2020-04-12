@@ -22,14 +22,20 @@ impl Zoom {
         self.0 = 0;
     }
 
-    pub fn visible_layers(&self) -> [(Zoom, i32); 6] {
-        [
+    pub fn visible_layers(&self) -> Vec<(Zoom, i32)> {
+        vec![
+            (*self-5, -5),
+            (*self-4, -4),
+            (*self-3, -3),
             (*self-2, -2),
             (*self-1, -1),
             (*self, 0),
             (*self+1, 1),
             (*self+2, 2),
             (*self+3, 3),
+            (*self+4, 4),
+            (*self+5, 5),
+            (*self+6, 6),
         ]
     }
 }
@@ -65,12 +71,13 @@ mod tests {
         let zoom = Zoom::from(0);
 
         assert_eq!(zoom.visible_layers(), [
-            (Zoom::from(-2), -2),
-            (Zoom::from(-1), -1),
-            (Zoom::from(0), 0),
-            (Zoom::from(1), 1),
-            (Zoom::from(2), 2),
-            (Zoom::from(3), 3),
+                   (Zoom::from(-2), -2),
+                   (Zoom::from(-1), -1),
+                   (Zoom::from(0), 0),
+                   (Zoom::from(1), 1),
+                   (Zoom::from(2), 2),
+                   (Zoom::from(3), 3),
+                   (Zoom::from(4), 4),
         ]);
     }
 
