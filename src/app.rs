@@ -213,10 +213,20 @@ impl App {
     }
 
     pub fn zoom_in(&mut self) {
+        self.offset = math::mul_scalar(math::add(
+            self.offset,
+            math::mul_scalar(self.dimensions, -0.25),
+        ), 2.0);
+
         self.zoom.decrease();
     }
 
     pub fn zoom_out(&mut self) {
+        self.offset = math::mul_scalar(math::add(
+            self.offset,
+            math::mul_scalar(self.dimensions, 0.5),
+        ), 0.5);
+
         self.zoom.increase();
     }
 
