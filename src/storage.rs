@@ -59,7 +59,7 @@ fn make_map(relative: i32) -> impl Fn(ColoredDrawCommand) -> DrawCommand + 'stat
                 line[2] * 2.0_f64.powi(relative),
                 line[3] * 2.0_f64.powi(relative),
             ],
-            thickness: 2.0_f64.powi(relative),
+            thickness: 2.0 * 2.0_f64.powi(relative),
         },
     }
 }
