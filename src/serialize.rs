@@ -30,8 +30,18 @@ impl Serialize for App {
   version=\"1.1\"
   id=\"svg8\"
 >
+  <sodipodi:namedview
+     id=\"base\"
+     pagecolor=\"{pagecolor}\"
+     bordercolor=\"#666666\"
+     borderopacity=\"1.0\"
+     inkscape:pageopacity=\"0\"
+     inkscape:pageshadow=\"2\"
+     inkscape:zoom=\"1.0\"
+     inkscape:document-units=\"px\"
+     showgrid=\"false\" />
   {layers}
-</svg>", width=dimensions[0], height=dimensions[1], layers=layer_string)
+</svg>", width=dimensions[0], height=dimensions[1], layers=layer_string, pagecolor=Color::Black)
     }
 }
 

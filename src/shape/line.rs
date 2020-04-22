@@ -35,9 +35,9 @@ impl ShapeSerialize for Line {
 
         format!("<path
            style=\"fill:none;stroke:{color};stroke-width:{width}px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1\"
-           d=\"m {path}\"
+           d=\"M {path}\"
            id=\"{id}\"
-           inkscape:connector-curvature=\"0\" />", id=id, color=color, width=1.0, path=path)
+           inkscape:connector-curvature=\"0\" />", id=id, color=color, width=2.0, path=path)
     }
 }
 
