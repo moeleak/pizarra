@@ -3,6 +3,7 @@ use crate::draw_commands::WireDrawCommand;
 use super::{Shape, ShapeTrait, ShapeId};
 use crate::color::Color;
 use crate::ShapeType;
+use crate::serialize::ShapeSerialize;
 
 pub struct Line {
     points: Vec<Vec2d>,
@@ -22,6 +23,21 @@ impl Line {
                 points: init_vec,
             }),
         }
+    }
+}
+
+impl ShapeSerialize for Line {
+    fn serialize(&self, id: ShapeId, color: Color) -> String {
+        let path_vec: Vec<String> = self.points.iter().map(|p| {
+            format!("{},{}", p[0], p[1])
+        }).collect();
+        let path = path_vec.join(" ");
+
+        format!("<path
+           style=\"fill:none;stroke:{color};stroke-width:{width}px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1\"
+           d=\"m {path}\"
+           id=\"{id}\"
+           inkscape:connector-curvature=\"0\" />", id=id, color=color, width=1.0, path=path)
     }
 }
 

@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Zoom(i32);
 
@@ -59,6 +61,12 @@ impl std::ops::Sub<i32> for Zoom {
 
     fn sub(self, other: i32) -> Zoom {
         Zoom::from(self.0 - other)
+    }
+}
+
+impl fmt::Display for Zoom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

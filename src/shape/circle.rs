@@ -3,6 +3,7 @@ use crate::draw_commands::WireDrawCommand;
 use super::{Shape, ShapeTrait, ShapeId};
 use crate::color::Color;
 use crate::ShapeType;
+use crate::serialize::ShapeSerialize;
 
 pub struct Circle {
     x: f64,
@@ -23,6 +24,18 @@ impl Circle {
                 height: y2 - y1,
             }),
         }
+    }
+}
+
+impl ShapeSerialize for Circle {
+    fn serialize(&self, id: ShapeId, color: Color) -> String {
+        format!("<ellipse
+           style=\"fill:{color};fill-opacity:1;stroke:none;stroke-width:0.0;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1\"
+           id=\"{id}\"
+           cx=\"{x}\"
+           cy=\"{y}\"
+           rx=\"{width}\"
+           ry=\"{height}\" />", id=id, color=color, x=self.x, y=self.y, width=self.width, height=self.height)
     }
 }
 

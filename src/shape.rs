@@ -1,3 +1,5 @@
+use std::fmt;
+
 use graphics::math::Vec2d;
 use rstar::{RTreeObject, AABB};
 
@@ -7,6 +9,7 @@ pub mod circle;
 
 use super::color::Color;
 use crate::draw_commands::{WireDrawCommand, ColoredDrawCommand};
+use crate::serialize::{Serialize, ShapeSerialize};
 
 pub use self::line::Line;
 pub use self::rectangle::Rectangle;
@@ -29,7 +32,7 @@ impl ShapeType {
     }
 }
 
-pub trait ShapeTrait {
+pub trait ShapeTrait: ShapeSerialize {
     /// Must handle new coordinates given to this shape. If this method is
     /// called it means that the shape is being modified (thus this is the most
     /// recently added shape
@@ -57,6 +60,12 @@ impl ShapeId {
 impl From<usize> for ShapeId {
     fn from(data: usize) -> ShapeId {
         ShapeId(data)
+    }
+}
+
+impl fmt::Display for ShapeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "shape{}", self.0)
     }
 }
 
@@ -101,5 +110,11 @@ impl RTreeObject for Shape {
         let [p1, p2] = self.shape_impl.bbox();
 
         AABB::from_corners(p1, p2)
+    }
+}
+
+impl Serialize for Shape {
+    fn serialize(&self) -> String {
+        self.shape_impl.serialize(self.id, self.color)
     }
 }

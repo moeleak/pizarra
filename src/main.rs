@@ -14,6 +14,7 @@ use chrono::Local;
 
 use pizarra::{App, ShapeType};
 use pizarra::color::Color;
+use pizarra::serialize::Serialize;
 
 fn main() -> std::io::Result<()> {
     let opengl = OpenGL::V3_2;

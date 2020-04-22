@@ -72,3 +72,11 @@ impl fmt::LowerHex for Color {
         write!(f, "#{:x}{:x}{:x}", code[0], code[1], code[2])
     }
 }
+
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let code = self.code();
+
+        write!(f, "#{:X}{:X}{:X}", code[0], code[1], code[2])
+    }
+}

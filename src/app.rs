@@ -8,7 +8,6 @@ use crate::storage::ShapeStorage;
 use crate::zoom::Zoom;
 use crate::shape::{ShapeType, ShapeId};
 use crate::color::Color;
-use crate::serialize::Serialize;
 
 #[derive(Copy,Clone)]
 enum UndoStatus {
@@ -243,11 +242,11 @@ impl App {
         self.selected_color = self.selected_color.cycle();
     }
 
-    pub fn serialize(&self) -> String {
-        self.storage.serialize()
-    }
-
     pub fn undo(&mut self) {
         self.storage.pop();
+    }
+
+    pub fn storage(&self) -> &ShapeStorage {
+        &self.storage
     }
 }

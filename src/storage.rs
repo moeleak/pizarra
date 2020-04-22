@@ -100,10 +100,6 @@ impl ShapeStorage {
         }
     }
 
-    pub fn iter(&self) -> ShapeIterator {
-        unimplemented!()
-    }
-
     pub fn add(&mut self, shape: Shape, zoom: Zoom) -> ShapeId {
         // The previous shape has been finished, move it to the immutable storage
         self.flush();
@@ -177,6 +173,10 @@ impl ShapeStorage {
             let mut commands = shape.draw_commands().into_iter().map(make_map(0)).collect();
             buffer.append(&mut commands);
         }
+    }
+
+    pub fn iter_layers(&self) -> impl Iterator<Item=(&Zoom, &RTree<Shape>)> {
+        self.layers.iter()
     }
 }
 
