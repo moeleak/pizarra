@@ -23,6 +23,7 @@ fn main() -> std::io::Result<()> {
     let mut window: AppWindow = WindowSettings::new("Pizarra", initial_dimentions)
         .graphics_api(opengl)
         .exit_on_esc(true)
+        .automatic_close(true)
         .build()
         .unwrap();
 
