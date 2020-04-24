@@ -285,7 +285,13 @@ impl<G> App<G> {
 
             Action::Draw(id) => Action::Delete(self.storage.remove(id).unwrap()),
 
-            Action::Delete((shape, zoom)) => Action::Draw(self.storage.add(shape, zoom)),
+            Action::Delete((shape, zoom)) => {
+                let id = self.storage.add(shape, zoom);
+
+                self.storage.flush();
+
+                Action::Draw(id)
+            },
         }
     }
 
@@ -377,6 +383,52 @@ mod tests {
 
     #[test]
     fn test_do_do_do_undo_redo_redo_undo() {
-        let app = App::new(FakeGraphics {}, [800.0, 600.0]);
+        let mut app = App::new(FakeGraphics {}, [800.0, 600.0]);
+
+        // Do
+        app.start_drawing();
+        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor([1.0, 0.0]);
+        app.handle_cursor([0.0, 1.0]);
+        app.finish_drawing();
+
+        // Do
+        app.start_drawing();
+        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor([1.0, 0.0]);
+        app.handle_cursor([0.0, 1.0]);
+        app.finish_drawing();
+
+        // Do
+        app.start_drawing();
+        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor([1.0, 0.0]);
+        app.handle_cursor([0.0, 1.0]);
+        app.finish_drawing();
+
+        app.undo();
+
+        app.redo();
+        app.redo();
+
+        app.undo();
+    }
+
+    #[test]
+    fn test_do_undo_redo_undo() {
+        let mut app = App::new(FakeGraphics {}, [800.0, 600.0]);
+
+        // Do
+        app.start_drawing();
+        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor([1.0, 0.0]);
+        app.handle_cursor([1.0, 1.0]);
+        app.finish_drawing();
+
+        app.undo();
+
+        app.redo();
+
+        app.undo();
     }
 }
