@@ -48,6 +48,7 @@ pub mod serialize;
 pub mod app;
 pub mod draw_commands;
 pub mod zoom;
+pub mod action;
 
 pub use shape::ShapeType;
 pub use app::App;

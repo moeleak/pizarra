@@ -3,7 +3,8 @@ use crate::draw_commands::WireDrawCommand;
 use super::{Shape, ShapeTrait, ShapeId};
 use crate::color::Color;
 use crate::ShapeType;
-use crate::serialize::ShapeSerialize;
+use crate::serialize::ShapeTraitSerialize;
+use crate::zoom::Zoom;
 
 pub struct Line {
     points: Vec<Vec2d>,
@@ -26,8 +27,8 @@ impl Line {
     }
 }
 
-impl ShapeSerialize for Line {
-    fn serialize(&self, id: ShapeId, color: Color) -> String {
+impl ShapeTraitSerialize for Line {
+    fn serialize(&self, id: ShapeId, color: Color, zoom: Zoom) -> String {
         let path_vec: Vec<String> = self.points.iter().map(|p| {
             format!("{},{}", p[0], p[1])
         }).collect();

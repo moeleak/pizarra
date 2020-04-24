@@ -111,24 +111,29 @@ impl ShapeStorage {
         id
     }
 
-    pub fn flush(&mut self) {
+    pub fn flush(&mut self) -> Option<ShapeId> {
         let old_current = self.current.take();
 
         if let Some((old_shape, old_zoom)) = old_current {
+            let old_id = old_shape.id();
             let subtree = self.layers.entry(old_zoom).or_insert(RTree::new());
 
-            self.shapes.insert(old_shape.id(), (old_zoom, old_shape.envelope()));
+            self.shapes.insert(old_id, (old_zoom, old_shape.envelope()));
             subtree.insert(old_shape);
 
             self.shape_count += 1;
+
+            Some(old_id)
+        } else {
+            None
         }
     }
 
-    pub fn remove(&mut self, id: ShapeId) -> Option<Shape> {
+    pub fn remove(&mut self, id: ShapeId) -> Option<(Shape, Zoom)> {
         if let Some((zoom, bbox)) = self.shapes.get(&id) {
             let maybe_shape = self.layers.get_mut(zoom).map(|tree| {
                 tree.remove_with_selection_function(BBoxIdSelection::new(*bbox, id))
-            }).flatten();
+            }).flatten().map(|shape| (shape, *zoom));
 
             if maybe_shape.is_some() {
                 self.shape_count -= 1;
@@ -142,10 +147,6 @@ impl ShapeStorage {
 
     pub fn last_mut(&mut self) -> Option<&mut Shape> {
         self.current.as_mut().map(|(shape, _)| shape)
-    }
-
-    pub fn pop(&mut self) -> Option<Shape> {
-        unimplemented!()
     }
 
     pub fn shape_count(&self) -> usize {
@@ -304,7 +305,7 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 1);
 
-        assert_eq!(data.id(), id_to_remove);
+        assert_eq!(data.0.id(), id_to_remove);
     }
 
     #[test]
@@ -330,7 +331,7 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 1);
 
-        assert_eq!(data.id(), id_to_remove);
+        assert_eq!(data.0.id(), id_to_remove);
     }
 
     #[test]

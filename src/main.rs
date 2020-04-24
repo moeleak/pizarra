@@ -45,8 +45,18 @@ fn main() -> std::io::Result<()> {
             Some(Button::Mouse(MouseButton::Middle)) => app.start_moving(),
             Some(Button::Keyboard(Key::LCtrl)) | Some(Button::Keyboard(Key::RCtrl)) => { ctrl_on = true; },
             Some(Button::Keyboard(Key::LAlt)) | Some(Button::Keyboard(Key::RAlt)) => { alt_on = true; },
-            Some(Button::Keyboard(Key::Z)) => if ctrl_on {
-                app.undo();
+            Some(Button::Keyboard(Key::Z)) => {
+                if ctrl_on {
+                    app.undo();
+                }
+            },
+            Some(Button::Keyboard(Key::Y)) => {
+                if ctrl_on {
+                    app.redo();
+                }
+                if alt_on {
+                    app.set_color(Color::Yellow);
+                }
             },
             Some(Button::Keyboard(Key::R)) => {
                 if ctrl_on {
@@ -61,9 +71,6 @@ fn main() -> std::io::Result<()> {
             },
             Some(Button::Keyboard(Key::G)) => if alt_on {
                 app.set_color(Color::Green);
-            },
-            Some(Button::Keyboard(Key::Y)) => if alt_on {
-                app.set_color(Color::Yellow);
             },
             Some(Button::Keyboard(Key::O)) => if alt_on {
                 app.set_color(Color::Orange);

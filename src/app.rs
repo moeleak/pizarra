@@ -1,4 +1,6 @@
 use opengl_graphics::GlGraphics;
+use std::mem;
+
 use piston::input::RenderArgs;
 use graphics::math::{self, Vec2d, Matrix2d};
 use rstar::AABB;
@@ -8,11 +10,22 @@ use crate::storage::ShapeStorage;
 use crate::zoom::Zoom;
 use crate::shape::{ShapeType, ShapeId};
 use crate::color::Color;
+use crate::action::Action;
 
 #[derive(Copy,Clone)]
-enum UndoStatus {
+/// Describes the possible states of the undo_queue and a pointer that moves
+/// in it
+enum UndoState {
+    /// the last action is effectively the last action of que queue
     InSync,
+
+    /// some actions have been undone and thus the pointer of the last action
+    /// is at this location
     At(usize),
+
+    /// due to excesive undoing the pointer points past the begining of the
+    /// undo_queue but the queue is not empty, some actions can be redone
+    Reset,
 }
 
 /// In order to add a shape to the storage it is necessary that it is fully constructed.
@@ -45,9 +58,12 @@ pub struct App {
 
     /// The window's dimensions
     dimensions: Vec2d,
-    undo_status: UndoStatus,
     selected_color: Color,
     zoom: Zoom,
+
+    /// Undo
+    undo_state: UndoState,
+    undo_queue: Vec<Action>,
 
     /// Since at least two points are needed to create a shape this enum keeps
     /// track of some intermediate states like Start, OnePoint and TwoPoints
@@ -67,7 +83,10 @@ impl App {
             gl,
             dimensions,
             offset: math::mul_scalar(dimensions, 0.5),
-            undo_status: UndoStatus::InSync,
+
+            undo_state: UndoState::InSync,
+            undo_queue: Vec::new(),
+
             selected_color: Color::Green,
             zoom: Zoom::from(0),
             drawing_state: DrawingState::Start,
@@ -165,7 +184,22 @@ impl App {
     pub fn finish_drawing(&mut self) {
         self.is_drawing = false;
         self.drawing_state = DrawingState::Start;
-        self.storage.flush();
+
+        if let Some(inserted_id) = self.storage.flush() {
+            self.conclude_action(Action::Draw(inserted_id));
+        }
+    }
+
+    pub fn conclude_action(&mut self, action: Action) {
+        // this means some undos have been applied. Doing something from here
+        // means effectively dropping some actions such that we're again in the
+        // end of the undo_queue
+        if let UndoState::At(point) = self.undo_state {
+            self.undo_state = UndoState::InSync;
+            self.undo_queue.resize_with(point+1, Default::default);
+        }
+
+        self.undo_queue.push(action);
     }
 
     pub fn start_moving(&mut self) {
@@ -242,8 +276,80 @@ impl App {
         self.selected_color = self.selected_color.cycle();
     }
 
+    fn revert(&mut self, action: Action) -> Action {
+        match action {
+            Action::Skip => Action::Skip,
+
+            Action::Draw(id) => Action::Delete(self.storage.remove(id).unwrap()),
+
+            Action::Delete((shape, zoom)) => Action::Draw(self.storage.add(shape, zoom)),
+        }
+    }
+
     pub fn undo(&mut self) {
-        self.storage.pop();
+        match self.undo_state {
+            // this is the first undo of this queue, we'll invert the last state
+            // to its oposite and move the pointer backwards
+            UndoState::InSync => {
+                if let Some(action) = self.undo_queue.pop() {
+                    let reverted = self.revert(action);
+
+                    self.undo_queue.push(reverted);
+
+                    if self.undo_queue.len() == 1 {
+                        self.undo_state = UndoState::Reset;
+                    } else {
+                        self.undo_state = UndoState::At(self.undo_queue.len() - 2);
+                    }
+                }
+            },
+
+            UndoState::At(point) => {
+                let action_to_undo = mem::replace(&mut self.undo_queue[point], Action::Skip);
+
+                self.undo_queue[point] = self.revert(action_to_undo);
+
+                if point == 0 {
+                    self.undo_state = UndoState::Reset;
+                } else {
+                    self.undo_state = UndoState::At(point - 1);
+                }
+            },
+
+            // nothing has to be done for we're past the end of the queue
+            UndoState::Reset => { },
+        }
+    }
+
+    pub fn redo(&mut self) {
+        match self.undo_state {
+            // nothing has to be done for nothing has been undone
+            UndoState::InSync => {},
+
+            UndoState::At(point) => {
+                let action_to_redo = mem::replace(&mut self.undo_queue[point + 1], Action::Skip);
+
+                self.undo_queue[point + 1] = self.revert(action_to_redo);
+
+                if point == self.undo_queue.len() - 2 {
+                    self.undo_state = UndoState::InSync;
+                } else {
+                    self.undo_state = UndoState::At(point + 1);
+                }
+            },
+
+            UndoState::Reset => {
+                let action_to_redo = mem::replace(&mut self.undo_queue[0], Action::Skip);
+
+                self.undo_queue[0] = self.revert(action_to_redo);
+
+                if self.undo_queue.len() == 1 {
+                    self.undo_state = UndoState::InSync;
+                } else {
+                    self.undo_state = UndoState::At(0);
+                }
+            },
+        }
     }
 
     pub fn storage(&self) -> &ShapeStorage {

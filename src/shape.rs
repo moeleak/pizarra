@@ -9,7 +9,8 @@ pub mod circle;
 
 use super::color::Color;
 use crate::draw_commands::{WireDrawCommand, ColoredDrawCommand};
-use crate::serialize::{Serialize, ShapeSerialize};
+use crate::serialize::{ShapeSerialize, ShapeTraitSerialize};
+use crate::zoom::Zoom;
 
 pub use self::line::Line;
 pub use self::rectangle::Rectangle;
@@ -32,7 +33,7 @@ impl ShapeType {
     }
 }
 
-pub trait ShapeTrait: ShapeSerialize {
+pub trait ShapeTrait: ShapeTraitSerialize {
     /// Must handle new coordinates given to this shape. If this method is
     /// called it means that the shape is being modified (thus this is the most
     /// recently added shape
@@ -113,8 +114,8 @@ impl RTreeObject for Shape {
     }
 }
 
-impl Serialize for Shape {
-    fn serialize(&self) -> String {
-        self.shape_impl.serialize(self.id, self.color)
+impl ShapeSerialize for Shape {
+    fn serialize(&self, zoom: Zoom) -> String {
+        self.shape_impl.serialize(self.id, self.color, zoom)
     }
 }

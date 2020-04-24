@@ -2,13 +2,18 @@ use super::app::App;
 use super::storage::ShapeStorage;
 use super::shape::ShapeId;
 use super::color::Color;
+use super::zoom::Zoom;
 
 pub trait Serialize {
     fn serialize(&self) -> String;
 }
 
 pub trait ShapeSerialize {
-    fn serialize(&self, id: ShapeId, color: Color) -> String;
+    fn serialize(&self, zoom: Zoom) -> String;
+}
+
+pub trait ShapeTraitSerialize {
+    fn serialize(&self, id: ShapeId, color: Color, zoom: Zoom) -> String;
 }
 
 impl Serialize for App {
@@ -49,7 +54,7 @@ impl Serialize for ShapeStorage {
     fn serialize(&self) -> String {
         let layers: Vec<String> = self.iter_layers().map(|(zoom, layer_tree)| {
             let shape_strings: Vec<String> = layer_tree.iter().map(|shape| {
-                shape.serialize()
+                shape.serialize(*zoom)
             }).collect();
             let strings = shape_strings.join("\n");
 

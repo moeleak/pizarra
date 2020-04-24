@@ -3,7 +3,8 @@ use crate::draw_commands::WireDrawCommand;
 use super::{Shape, ShapeTrait, ShapeId};
 use crate::color::Color;
 use crate::ShapeType;
-use crate::serialize::ShapeSerialize;
+use crate::serialize::ShapeTraitSerialize;
+use crate::zoom::Zoom;
 
 pub struct Rectangle {
     x: f64,
@@ -27,8 +28,8 @@ impl Rectangle {
     }
 }
 
-impl ShapeSerialize for Rectangle {
-    fn serialize(&self, id: ShapeId, color: Color) -> String {
+impl ShapeTraitSerialize for Rectangle {
+    fn serialize(&self, id: ShapeId, color: Color, zoom: Zoom) -> String {
         format!("<rect
            style=\"fill:{color};fill-opacity:1;stroke:none;stroke-width:0.0;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1\"
            id=\"{id}\"
