@@ -16,7 +16,7 @@ pub trait ShapeTraitSerialize {
     fn serialize(&self, id: ShapeId, color: Color, zoom: Zoom) -> String;
 }
 
-impl Serialize for App {
+impl<G> Serialize for App<G> {
     fn serialize(&self) -> String {
         let layer_string = self.storage().serialize();
         let dimensions = self.get_dimentions();

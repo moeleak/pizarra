@@ -1,8 +1,8 @@
-use opengl_graphics::GlGraphics;
 use std::mem;
 
 use piston::input::RenderArgs;
 use graphics::math::{self, Vec2d, Matrix2d};
+use graphics::Graphics as PistonGraphics;
 use rstar::AABB;
 
 use crate::draw_commands::DrawCommand;
@@ -11,6 +11,7 @@ use crate::zoom::Zoom;
 use crate::shape::{ShapeType, ShapeId};
 use crate::color::Color;
 use crate::action::Action;
+use crate::graphics::Graphics;
 
 #[derive(Copy,Clone)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -45,12 +46,12 @@ enum DrawingState {
     AndSoOn,
 }
 
-pub struct App {
+pub struct App<G> {
     is_drawing: bool,
     is_moving: bool,
     storage: ShapeStorage,
     selected_tool: ShapeType,
-    gl: GlGraphics,
+    gl: G,
 
     /// This value represents a vector from the top left corner of the window to
     /// the center of the drawing
@@ -73,27 +74,7 @@ pub struct App {
     next_id: ShapeId,
 }
 
-impl App {
-    pub fn new(gl: GlGraphics, dimensions: Vec2d) -> App {
-        App {
-            is_drawing: false,
-            is_moving: false,
-            storage: ShapeStorage::new(),
-            selected_tool: ShapeType::Line,
-            gl,
-            dimensions,
-            offset: math::mul_scalar(dimensions, 0.5),
-
-            undo_state: UndoState::InSync,
-            undo_queue: Vec::new(),
-
-            selected_color: Color::Green,
-            zoom: Zoom::from(0),
-            drawing_state: DrawingState::Start,
-            next_id: ShapeId::from(1),
-        }
-    }
-
+impl<G: Graphics + PistonGraphics> App<G> {
     pub fn render(&mut self, args: &RenderArgs) {
         let bgcolor = Color::Black.to_a();
         let guidecolor = Color::Gray.to_a();
@@ -145,6 +126,28 @@ impl App {
                 }
             }
         });
+    }
+}
+
+impl<G> App<G> {
+    pub fn new(gl: G, dimensions: Vec2d) -> App<G> {
+        App {
+            is_drawing: false,
+            is_moving: false,
+            storage: ShapeStorage::new(),
+            selected_tool: ShapeType::Line,
+            gl,
+            dimensions,
+            offset: math::mul_scalar(dimensions, 0.5),
+
+            undo_state: UndoState::InSync,
+            undo_queue: Vec::new(),
+
+            selected_color: Color::Green,
+            zoom: Zoom::from(0),
+            drawing_state: DrawingState::Start,
+            next_id: ShapeId::from(1),
+        }
     }
 
     pub fn get_dimentions(&self) -> Vec2d {
@@ -354,5 +357,26 @@ impl App {
 
     pub fn storage(&self) -> &ShapeStorage {
         &self.storage
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::App;
+    use crate::graphics::Graphics;
+    use graphics::Viewport;
+
+    struct FakeGraphics {
+    }
+
+    impl Graphics for FakeGraphics {
+        fn draw<F, U>(&mut self, _v: Viewport, _f: F) -> U {
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    fn test_do_do_do_undo_redo_redo_undo() {
+        let app = App::new(FakeGraphics {}, [800.0, 600.0]);
     }
 }
