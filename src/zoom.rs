@@ -75,21 +75,6 @@ mod tests {
     use super::Zoom;
 
     #[test]
-    fn test_visible_layers() {
-        let zoom = Zoom::from(0);
-
-        assert_eq!(zoom.visible_layers(), [
-                   (Zoom::from(-2), -2),
-                   (Zoom::from(-1), -1),
-                   (Zoom::from(0), 0),
-                   (Zoom::from(1), 1),
-                   (Zoom::from(2), 2),
-                   (Zoom::from(3), 3),
-                   (Zoom::from(4), 4),
-        ]);
-    }
-
-    #[test]
     fn test_sub() {
         let zoom = Zoom::from(23);
 
