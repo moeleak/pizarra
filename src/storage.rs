@@ -160,10 +160,10 @@ impl ShapeStorage {
     pub fn draw_commands(&self, zoom: Zoom, bbox: AABB<[f64; 2]>, buffer: &mut Vec<DrawCommand>) {
         assert_eq!(buffer.len(), 0);
 
-        for (zoom, relative) in zoom.visible_layers().iter() {
+        for (zoom, relative) in self.layers.keys().filter(|z| zoom.can_see(**z)).map(|z| (z, z.relative_to(zoom))) {
             if let Some(tree) = self.layers.get(&zoom) {
-                for shape in tree.locate_in_envelope_intersecting(&scale(bbox, *relative)) {
-                    let mut shape_commands = shape.draw_commands().into_iter().map(make_map(*relative)).collect();
+                for shape in tree.locate_in_envelope_intersecting(&scale(bbox, relative)) {
+                    let mut shape_commands = shape.draw_commands().into_iter().map(make_map(relative)).collect();
 
                     buffer.append(&mut shape_commands);
                 }

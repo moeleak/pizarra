@@ -24,21 +24,12 @@ impl Zoom {
         self.0 = 0;
     }
 
-    pub fn visible_layers(&self) -> Vec<(Zoom, i32)> {
-        vec![
-            (*self-5, -5),
-            (*self-4, -4),
-            (*self-3, -3),
-            (*self-2, -2),
-            (*self-1, -1),
-            (*self, 0),
-            (*self+1, 1),
-            (*self+2, 2),
-            (*self+3, 3),
-            (*self+4, 4),
-            (*self+5, 5),
-            (*self+6, 6),
-        ]
+    pub fn can_see(&self, other: Zoom) -> bool {
+        other > *self || (*self - other) <= 5
+    }
+
+    pub fn relative_to(&self, other: Zoom) -> i32 {
+        *self - other
     }
 }
 
@@ -64,6 +55,20 @@ impl std::ops::Sub<i32> for Zoom {
     }
 }
 
+impl std::ops::Sub<Zoom> for Zoom {
+    type Output = i32;
+
+    fn sub(self, other: Zoom) -> i32 {
+        self.0 - other.0
+    }
+}
+
+impl std::cmp::PartialOrd for Zoom {
+    fn partial_cmp(&self, other: &Zoom) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
 impl fmt::Display for Zoom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -79,5 +84,29 @@ mod tests {
         let zoom = Zoom::from(23);
 
         assert_eq!(zoom-4, Zoom::from(19));
+    }
+
+    #[test]
+    fn test_can_see() {
+        let zoom = Zoom::from(0);
+
+        // too small to be seen
+        for i in -10_000..=-6 {
+            assert!(!zoom.can_see(Zoom::from(i)));
+        }
+
+        // visible range
+        for i in -5..=10_000 {
+            println!("{}", i);
+            assert!(zoom.can_see(Zoom::from(i)))
+        }
+    }
+
+    #[test]
+    fn test_relative_to() {
+        let zoom = Zoom::from(0);
+
+        assert_eq!(zoom.relative_to(Zoom::from(3)), -3);
+        assert_eq!(zoom.relative_to(Zoom::from(-3)), 3);
     }
 }
