@@ -13,7 +13,7 @@ use crate::color::Color;
 use crate::action::Action;
 use crate::graphics::Graphics;
 
-#[derive(Copy,Clone)]
+#[derive(Copy,Clone,Debug)]
 /// Describes the possible states of the undo_queue and a pointer that moves
 /// in it
 enum UndoState {
@@ -203,6 +203,7 @@ impl<G> App<G> {
         }
 
         self.undo_queue.push(action);
+        self.undo_state = UndoState::InSync;
     }
 
     pub fn start_moving(&mut self) {
@@ -430,5 +431,63 @@ mod tests {
         app.redo();
 
         app.undo();
+    }
+
+    #[test]
+    fn test_do_undo_do_do_undo() {
+        let mut app = App::new(FakeGraphics {}, [800.0, 600.0]);
+
+        // Do
+        app.start_drawing();
+        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor([1.0, 0.0]);
+        app.handle_cursor([1.0, 1.0]);
+        app.finish_drawing();
+
+        app.undo();
+
+        // Do
+        app.start_drawing();
+        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor([1.0, 0.0]);
+        app.handle_cursor([1.0, 1.0]);
+        app.finish_drawing();
+
+        // Do
+        app.start_drawing();
+        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor([1.0, 0.0]);
+        app.handle_cursor([1.0, 1.0]);
+        app.finish_drawing();
+
+        app.undo();
+
+        assert_eq!(app.storage().shape_count(), 1);
+    }
+
+    #[test]
+    fn test_do_undo_do_undo_undo() {
+        let mut app = App::new(FakeGraphics {}, [800.0, 600.0]);
+
+        // Do
+        app.start_drawing();
+        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor([1.0, 0.0]);
+        app.handle_cursor([1.0, 1.0]);
+        app.finish_drawing();
+
+        app.undo();
+
+        // Do
+        app.start_drawing();
+        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor([1.0, 0.0]);
+        app.handle_cursor([1.0, 1.0]);
+        app.finish_drawing();
+
+        app.undo();
+        app.undo();
+
+        assert_eq!(app.storage().shape_count(), 0);
     }
 }
