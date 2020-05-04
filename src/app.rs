@@ -17,15 +17,16 @@ use crate::graphics::Graphics;
 /// Describes the possible states of the undo_queue and a pointer that moves
 /// in it
 enum UndoState {
-    /// the last action is effectively the last action of que queue
+    /// the last action is effectively the last action of que queue. This means
+    /// such an action exists.
     InSync,
 
     /// some actions have been undone and thus the pointer of the last action
-    /// is at this location
+    /// is at this (valid) location
     At(usize),
 
-    /// due to excesive undoing the pointer points past the begining of the
-    /// undo_queue but the queue is not empty, some actions can be redone
+    /// Either due to excesive undoing the pointer points past the begining of the
+    /// undo_queue or there are no actions.
     Reset,
 }
 
@@ -140,7 +141,7 @@ impl<G> App<G> {
             dimensions,
             offset: math::mul_scalar(dimensions, 0.5),
 
-            undo_state: UndoState::InSync,
+            undo_state: UndoState::Reset,
             undo_queue: Vec::new(),
 
             selected_color: Color::Green,
@@ -197,9 +198,14 @@ impl<G> App<G> {
         // this means some undos have been applied. Doing something from here
         // means effectively dropping some actions such that we're again in the
         // end of the undo_queue
-        if let UndoState::At(point) = self.undo_state {
-            self.undo_state = UndoState::InSync;
-            self.undo_queue.resize_with(point+1, Default::default);
+        match self.undo_state {
+            UndoState::At(point) => {
+                self.undo_queue.resize_with(point+1, Default::default);
+            },
+            UndoState::Reset => {
+                self.undo_queue.resize_with(0, Default::default);
+            },
+            UndoState::InSync => {},
         }
 
         self.undo_queue.push(action);
@@ -349,14 +355,17 @@ impl<G> App<G> {
             },
 
             UndoState::Reset => {
-                let action_to_redo = mem::replace(&mut self.undo_queue[0], Action::Skip);
+                // there's something to redo
+                if let false = self.undo_queue.is_empty() {
+                    let action_to_redo = mem::replace(&mut self.undo_queue[0], Action::Skip);
 
-                self.undo_queue[0] = self.revert(action_to_redo);
+                    self.undo_queue[0] = self.revert(action_to_redo);
 
-                if self.undo_queue.len() == 1 {
-                    self.undo_state = UndoState::InSync;
-                } else {
-                    self.undo_state = UndoState::At(0);
+                    if self.undo_queue.len() == 1 {
+                        self.undo_state = UndoState::InSync;
+                    } else {
+                        self.undo_state = UndoState::At(0);
+                    }
                 }
             },
         }
