@@ -345,7 +345,7 @@ mod tests {
             (Rectangle::new(Color::Green, [[0.25, -0.5], [0.5, -0.25]], ShapeId::from(3)), Zoom::from(1)), // C
 
             // in red the ones that dont
-            (Rectangle::new(Color::Red, [[-0.03125, -0.03125], [0.03125, 0.03125]], ShapeId::from(2)), Zoom::from(5)),
+            (Rectangle::new(Color::Red, [[20.0, 20.0], [20.0, 20.0]], ShapeId::from(2)), Zoom::from(0)),
         ];
 
         for (shape, zoom) in shapes.into_iter() {
@@ -358,65 +358,28 @@ mod tests {
 
         storage.draw_commands(Zoom::from(0), AABB::from_corners([-1.0, -1.0], [1.0, 1.0]), &mut buffer);
 
-        assert_eq!(buffer, vec![
-            // A
-            DrawCommand::Rectangle {
-                color: Color::Green.to_a(),
-                rect: [-0.55, -0.55, 1.1, 1.1],
-            },
-
-            // B
-            DrawCommand::Rectangle {
-                color: Color::Green.to_a(),
-                rect: [-1.5, 0.5, 1.0, 1.0],
-            },
-
-            // C
-            DrawCommand::Rectangle {
+        assert!(buffer.contains(
+            &DrawCommand::Rectangle {
                 color: Color::Green.to_a(),
                 rect: [0.5, -1.0, 0.5, 0.5],
-            },
-        ]);
-    }
+            }
+        ));
 
-    #[test]
-    fn test_iter_by_zoom() {
-        let mut storage = ShapeStorage::new();
+        assert!(buffer.contains(
+            &DrawCommand::Rectangle {
+                color: Color::Green.to_a(),
+                rect: [-0.55, -0.55, 1.1, 1.1],
+            }
+        ));
 
-        let shapes = vec![
-            // in green the ones that go
-            // this ones because of their zoom level
-            (Rectangle::new(Color::Green, [[-4.0, -4.0], [4.0, 4.0]], ShapeId::from(1)), Zoom::from(-2)),
-            (Rectangle::new(Color::Green, [[-2.0, -2.0], [2.0, 2.0]], ShapeId::from(2)), Zoom::from(-1)),
-            (Rectangle::new(Color::Green, [[-1.0, -1.0], [1.0, 1.0]], ShapeId::from(3)), Zoom::from(0)),
-            (Rectangle::new(Color::Green, [[-0.5, -0.5], [0.5, 0.5]], ShapeId::from(4)), Zoom::from(1)),
-            (Rectangle::new(Color::Green, [[-0.25, -0.25], [0.25, 0.25]], ShapeId::from(5)), Zoom::from(2)),
-            (Rectangle::new(Color::Green, [[-0.125, -0.125], [0.125, 0.125]], ShapeId::from(6)), Zoom::from(3)),
+        assert!(buffer.contains(
+            &DrawCommand::Rectangle {
+                color: Color::Green.to_a(),
+                rect: [-1.5, 0.5, 1.0, 1.0],
+            }
+        ));
 
-            // in red the ones that dont
-            (Rectangle::new(Color::Red, [[-16.0, -16.0], [16.0, 16.0]], ShapeId::from(7)), Zoom::from(-4)),
-            (Rectangle::new(Color::Red, [[-8.0, -8.0], [8.0, 8.0]], ShapeId::from(8)), Zoom::from(-3)),
-            (Rectangle::new(Color::Red, [[-0.625, -0.0625], [0.0625, 0.0625]], ShapeId::from(9)), Zoom::from(4)),
-            (Rectangle::new(Color::Red, [[-0.03125, -0.03125], [0.03125, 0.03125]], ShapeId::from(10)), Zoom::from(5)),
-        ];
-
-        let num_green: usize = shapes.iter().filter(|(shape, _zoom)| shape.color() == Color::Green).count();
-
-        for (shape, zoom) in shapes.into_iter() {
-            storage.add(shape, zoom);
-        }
-
-        storage.flush();
-
-        let mut buffer = Vec::new();
-
-        storage.draw_commands(Zoom::from(0), AABB::from_corners([-1.0, -1.0], [1.0, 1.0]), &mut buffer);
-
-        assert_eq!(buffer.len(), num_green);
-
-        for command in buffer.into_iter() {
-            assert_eq!(command.color(), Color::Green.to_a());
-        }
+        assert_eq!(buffer.len(), 3);
     }
 
     #[test]
@@ -466,12 +429,12 @@ mod tests {
 
         assert_eq!(buffer, vec![
             DrawCommand::Rectangle{
-                color: Color::Red.to_a(),
-                rect: [0.5, 0.5, 1.0, 1.0],
-            },
-            DrawCommand::Rectangle{
                 color: Color::Blue.to_a(),
                 rect: [-1.0, -1.0, 2.0, 2.0],
+            },
+            DrawCommand::Rectangle{
+                color: Color::Red.to_a(),
+                rect: [0.5, 0.5, 1.0, 1.0],
             },
         ]);
     }
