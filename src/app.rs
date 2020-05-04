@@ -163,8 +163,12 @@ impl<G> App<G> {
         math::translate(self.offset)
     }
 
-    pub fn delta_offset(&mut self, delta: Vec2d) {
+    fn handle_offset(&mut self, delta: Vec2d) {
         self.offset = math::add(self.offset, delta);
+    }
+
+    pub fn handle_scroll(&mut self, delta: Vec2d) {
+        self.offset = math::add(self.offset, math::mul_scalar(delta, 8.0));
     }
 
     pub fn resize(&mut self, new_size: Vec2d) {
@@ -173,7 +177,7 @@ impl<G> App<G> {
             new_size
         ), 0.5);
 
-        self.delta_offset(delta);
+        self.handle_offset(delta);
         self.dimensions = new_size;
     }
 
@@ -251,7 +255,7 @@ impl<G> App<G> {
 
     pub fn handle_cursor_relative(&mut self, delta: Vec2d) {
         if self.is_moving {
-            self.delta_offset(delta);
+            self.handle_offset(delta);
         }
     }
 

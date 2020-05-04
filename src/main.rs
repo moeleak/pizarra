@@ -110,7 +110,7 @@ fn main() -> std::io::Result<()> {
             app.handle_cursor_relative(coords);
         });
         event.mouse_scroll(|[dx, dy]| {
-            app.delta_offset([dx, -dy]);
+            app.handle_scroll([dx, -dy]);
         });
         event.resize(|resize_args| {
             app.resize(resize_args.window_size);
