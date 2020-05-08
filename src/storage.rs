@@ -427,16 +427,17 @@ mod tests {
 
         storage.draw_commands(Zoom::from(0), AABB::from_corners([-2.0, -2.0], [4.0, 4.0]), &mut buffer);
 
-        assert_eq!(buffer, vec![
-            DrawCommand::Rectangle{
-                color: Color::Blue.to_a(),
-                rect: [-1.0, -1.0, 2.0, 2.0],
-            },
-            DrawCommand::Rectangle{
-                color: Color::Red.to_a(),
-                rect: [0.5, 0.5, 1.0, 1.0],
-            },
-        ]);
+        assert_eq!(storage.shape_count(), 2);
+
+        assert!(buffer.contains(&DrawCommand::Rectangle{
+            color: Color::Blue.to_a(),
+            rect: [-1.0, -1.0, 2.0, 2.0],
+        }));
+
+        assert!(buffer.contains(&DrawCommand::Rectangle{
+            color: Color::Red.to_a(),
+            rect: [0.5, 0.5, 1.0, 1.0],
+        }));
     }
 
     #[test]
