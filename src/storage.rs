@@ -1,5 +1,6 @@
 use rstar::Envelope;
 use std::collections::HashMap;
+use std::f64;
 
 use rstar::{RTree, RTreeObject, AABB, SelectionFunction};
 
@@ -179,6 +180,28 @@ impl ShapeStorage {
     pub fn iter_layers(&self) -> impl Iterator<Item=(&Zoom, &RTree<Shape>)> {
         self.layers.iter()
     }
+
+    pub fn get_bounds(&self, zoom: Zoom) -> Option<[[f64; 2]; 2]> {
+        self.layers.get(&zoom).map(|tree| {
+            tree.iter().map(|shape| {
+                shape.envelope()
+            }).fold([[f64::MAX, f64::MAX], [f64::MIN, f64::MIN]], |acc, cur| {
+                let lower = cur.lower();
+                let upper = cur.upper();
+
+                [
+                    [
+                        if lower[0] < acc[0][0] { lower[0] } else { acc[0][0] },
+                        if lower[1] < acc[0][1] { lower[1] } else { acc[0][1] },
+                    ],
+                    [
+                        if upper[0] > acc[1][0] { upper[0] } else { acc[1][0] },
+                        if upper[1] > acc[1][1] { upper[1] } else { acc[1][1] },
+                    ],
+                ]
+            })
+        })
+    }
 }
 
 pub struct ShapeIterator<'a> {
@@ -195,12 +218,13 @@ impl <'a> Iterator for ShapeIterator<'a> {
 
 #[cfg(test)]
 mod tests {
+    use rstar::AABB;
+
     use super::{ShapeStorage, Zoom};
+
     use crate::shape::{Shape, ShapeType, ShapeId, Line, Rectangle, Circle};
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;
-
-    use rstar::AABB;
 
     #[test]
     fn test_add_shapes_at_zoom() {
@@ -444,5 +468,17 @@ mod tests {
     #[ignore]
     fn test_scale() {
         assert!(false, "test proper scaling of AABB objects in the four cuadrants and mixed situations");
+    }
+
+    #[test]
+    fn test_get_bounds() {
+        let mut storage = ShapeStorage::new();
+
+        storage.add(Rectangle::new(Color::Blue, [[-5.0, -5.0], [1.0, 1.0]], ShapeId::from(1)), Zoom::from(0));
+        storage.add(Rectangle::new(Color::Blue, [[5.0, 5.0], [1.0, 1.0]], ShapeId::from(1)), Zoom::from(0));
+
+        storage.flush();
+
+        assert_eq!(storage.get_bounds(Zoom::from(0)), Some([[-5.0, -5.0], [5.0, 5.0]]));
     }
 }
