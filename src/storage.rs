@@ -5,7 +5,7 @@ use std::f64;
 use rstar::{RTree, RTreeObject, AABB, SelectionFunction};
 
 use super::shape::{Shape, ShapeId};
-use super::draw_commands::{ColoredDrawCommand, DrawCommand};
+use super::draw_commands::DrawCommand;
 use crate::zoom::Zoom;
 
 struct BBoxIdSelection {
@@ -29,39 +29,6 @@ impl SelectionFunction<Shape> for BBoxIdSelection {
 
     fn should_unpack_leaf(&self, leaf: &Shape) -> bool {
         leaf.id() == self.id
-    }
-}
-
-fn make_map(relative: i32) -> impl Fn(ColoredDrawCommand) -> DrawCommand + 'static {
-    move |cmd| match cmd {
-        ColoredDrawCommand::Rectangle { rect, color } => DrawCommand::Rectangle {
-            color,
-            rect: [
-                rect[0] * 2.0_f64.powi(relative),
-                rect[1] * 2.0_f64.powi(relative),
-                rect[2] * 2.0_f64.powi(relative),
-                rect[3] * 2.0_f64.powi(relative),
-            ],
-        },
-        ColoredDrawCommand::Circle { rect, color } => DrawCommand::Circle {
-            color,
-            rect: [
-                rect[0] * 2.0_f64.powi(relative),
-                rect[1] * 2.0_f64.powi(relative),
-                rect[2] * 2.0_f64.powi(relative),
-                rect[3] * 2.0_f64.powi(relative),
-            ],
-        },
-        ColoredDrawCommand::Line { line, color } => DrawCommand::Line {
-            color,
-            line: [
-                line[0] * 2.0_f64.powi(relative),
-                line[1] * 2.0_f64.powi(relative),
-                line[2] * 2.0_f64.powi(relative),
-                line[3] * 2.0_f64.powi(relative),
-            ],
-            thickness: 2.0 * 2.0_f64.powi(relative),
-        },
     }
 }
 
@@ -159,22 +126,7 @@ impl ShapeStorage {
     }
 
     pub fn draw_commands(&self, zoom: Zoom, bbox: AABB<[f64; 2]>, buffer: &mut Vec<DrawCommand>) {
-        assert_eq!(buffer.len(), 0);
-
-        for (zoom, relative) in self.layers.keys().filter(|z| zoom.can_see(**z)).map(|z| (z, z.relative_to(zoom))) {
-            if let Some(tree) = self.layers.get(&zoom) {
-                for shape in tree.locate_in_envelope_intersecting(&scale(bbox, relative)) {
-                    let mut shape_commands = shape.draw_commands().into_iter().map(make_map(relative)).collect();
-
-                    buffer.append(&mut shape_commands);
-                }
-            }
-        }
-
-        if let Some((shape, _zoom)) = &self.current {
-            let mut commands = shape.draw_commands().into_iter().map(make_map(0)).collect();
-            buffer.append(&mut commands);
-        }
+        unimplemented!()
     }
 
     pub fn iter_layers(&self) -> impl Iterator<Item=(&Zoom, &RTree<Shape>)> {
@@ -222,9 +174,10 @@ mod tests {
 
     use super::{ShapeStorage, Zoom};
 
-    use crate::shape::{Shape, ShapeType, ShapeId, Line, Rectangle, Circle};
+    use crate::shape::{Shape, ShapeType, ShapeId, Line, Rectangle, Ellipse};
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;
+    use crate::point::Point;
 
     #[test]
     fn test_add_shapes_at_zoom() {
@@ -232,7 +185,7 @@ mod tests {
         let shapes: Vec<(Shape, Zoom)> = vec![
             (Line::new(Color::Red, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(1)), Zoom::from(0)),
             (Rectangle::new(Color::Green, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(2)), Zoom::from(1)),
-            (Circle::new(Color::Blue, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(3)), Zoom::from(-1)),
+            (Ellipse::new(Color::Blue, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(3)), Zoom::from(-1)),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|(shape, zoom)| {
             storage.add(shape, zoom)
@@ -260,8 +213,8 @@ mod tests {
 
         assert_eq!(last_shape.shape_type(), ShapeType::Line);
 
-        last_shape.handle([0.0, 0.0]);
-        last_shape.handle([1.0, 0.0]);
+        last_shape.handle(Point::new(0.0, 0.0));
+        last_shape.handle(Point::new(1.0, 0.0));
 
         storage.add(Rectangle::new(Color::Blue, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(2)), Zoom::from(0));
 
@@ -269,17 +222,17 @@ mod tests {
 
         assert_eq!(last_shape.shape_type(), ShapeType::Rectangle);
 
-        last_shape.handle([0.0, 0.0]);
-        last_shape.handle([1.0, 0.0]);
+        last_shape.handle(Point::new(0.0, 0.0));
+        last_shape.handle(Point::new(1.0, 0.0));
 
-        storage.add(Circle::new(Color::Blue, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(2)), Zoom::from(0));
+        storage.add(Ellipse::new(Color::Blue, [[0.0, 0.0], [0.0, 0.0]], ShapeId::from(2)), Zoom::from(0));
 
         let last_shape = storage.last_mut().unwrap();
 
-        assert_eq!(last_shape.shape_type(), ShapeType::Circle);
+        assert_eq!(last_shape.shape_type(), ShapeType::Ellipse);
 
-        last_shape.handle([0.0, 0.0]);
-        last_shape.handle([1.0, 0.0]);
+        last_shape.handle(Point::new(0.0, 0.0));
+        last_shape.handle(Point::new(1.0, 0.0));
     }
 
     #[test]
@@ -384,22 +337,25 @@ mod tests {
 
         assert!(buffer.contains(
             &DrawCommand::Rectangle {
-                color: Color::Green.to_a(),
-                rect: [0.5, -1.0, 0.5, 0.5],
+                color: Color::Green,
+                corner_1: Point::new(0.5, -1.0),
+                corner_2: Point::new(0.5, 0.5),
             }
         ));
 
         assert!(buffer.contains(
             &DrawCommand::Rectangle {
-                color: Color::Green.to_a(),
-                rect: [-0.55, -0.55, 1.1, 1.1],
+                color: Color::Green,
+                corner_1: Point::new(-0.55, -0.55),
+                corner_2: Point::new(1.1, 1.1),
             }
         ));
 
         assert!(buffer.contains(
             &DrawCommand::Rectangle {
-                color: Color::Green.to_a(),
-                rect: [-1.5, 0.5, 1.0, 1.0],
+                color: Color::Green,
+                corner_1: Point::new(-1.5, 0.5),
+                corner_2: Point::new(1.0, 1.0),
             }
         ));
 
@@ -425,12 +381,14 @@ mod tests {
 
         assert_eq!(buffer, vec![
             DrawCommand::Rectangle{
-                color: Color::Red.to_a(),
-                rect: [0.5, 0.5, 1.0, 1.0],
+                color: Color::Red,
+                corner_1: Point::new(0.5, 0.5),
+                corner_2: Point::new(1.0, 1.0),
             },
             DrawCommand::Rectangle{
-                color: Color::Blue.to_a(),
-                rect: [-1.0, -1.0, 2.0, 2.0],
+                color: Color::Blue,
+                corner_1: Point::new(-1.0, -1.0),
+                corner_2: Point::new(2.0, 2.0),
             },
         ]);
     }
@@ -454,13 +412,15 @@ mod tests {
         assert_eq!(storage.shape_count(), 2);
 
         assert!(buffer.contains(&DrawCommand::Rectangle{
-            color: Color::Blue.to_a(),
-            rect: [-1.0, -1.0, 2.0, 2.0],
+            color: Color::Blue,
+            corner_1: Point::new(-1.0, -1.0),
+            corner_2: Point::new(2.0, 2.0),
         }));
 
         assert!(buffer.contains(&DrawCommand::Rectangle{
-            color: Color::Red.to_a(),
-            rect: [0.5, 0.5, 1.0, 1.0],
+            color: Color::Red,
+            corner_1: Point::new(0.5, 0.5),
+            corner_2: Point::new(1.0, 1.0),
         }));
     }
 

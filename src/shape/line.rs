@@ -1,17 +1,17 @@
-use graphics::math::Vec2d;
 use crate::draw_commands::WireDrawCommand;
 use super::{Shape, ShapeTrait, ShapeId};
 use crate::color::Color;
 use crate::ShapeType;
 use crate::serialize::ShapeTraitSerialize;
 use crate::zoom::Zoom;
+use crate::point::Point;
 
 pub struct Line {
-    points: Vec<Vec2d>,
+    points: Vec<Point>,
 }
 
 impl Line {
-    pub fn new(color: Color, initial: [[f64; 2]; 2], id: ShapeId) -> Shape {
+    pub fn new(color: Color, initial: [Point; 2], id: ShapeId) -> Shape {
         let mut init_vec = Vec::with_capacity(1000);
 
         init_vec.push(initial[0]);
@@ -30,7 +30,7 @@ impl Line {
 impl ShapeTraitSerialize for Line {
     fn serialize(&self, id: ShapeId, color: Color, zoom: Zoom) -> String {
         let path_vec: Vec<String> = self.points.iter().map(|p| {
-            format!("{},{}", p[0], p[1])
+            format!("{},{}", p.x, p.y)
         }).collect();
         let path = path_vec.join(" ");
 
@@ -42,16 +42,14 @@ impl ShapeTraitSerialize for Line {
 }
 
 impl ShapeTrait for Line {
-    fn handle(&mut self, val: Vec2d) {
+    fn handle(&mut self, val: Point) {
         self.points.push(val);
     }
 
-    fn draw_commands(&self) -> Vec<WireDrawCommand> {
-        self.points.iter().zip(self.points.iter().skip(1)).map(|([x1, y1], [x2, y2])| {
-            WireDrawCommand::Line {
-                line: [*x1, *y1, *x2, *y2],
-            }
-        }).collect()
+    fn draw_commands(&self) -> WireDrawCommand {
+        WireDrawCommand::Line {
+            line: self.points.iter().map(|p| p.clone()).collect(),
+        }
     }
 
     fn bbox(&self) -> [[f64; 2]; 2] {
@@ -61,12 +59,12 @@ impl ShapeTrait for Line {
         ], |acc, point| {
             [
                 [
-                    if point[0] < acc[0][0] { point[0] } else { acc[0][0] },
-                    if point[1] < acc[0][1] { point[1] } else { acc[0][1] },
+                    if point.x < acc[0][0] { point.x } else { acc[0][0] },
+                    if point.y < acc[0][1] { point.y } else { acc[0][1] },
                 ],
                 [
-                    if point[0] > acc[1][0] { point[0] } else { acc[1][0] },
-                    if point[1] > acc[1][1] { point[1] } else { acc[1][1] },
+                    if point.x > acc[1][0] { point.x } else { acc[1][0] },
+                    if point.y > acc[1][1] { point.y } else { acc[1][1] },
                 ],
             ]
         });
@@ -89,6 +87,7 @@ mod tests {
     use super::Line;
     use crate::shape::{ShapeTrait, ShapeId};
     use crate::color::Color;
+    use crate::point::Point;
 
     #[test]
     fn test_bbox() {
@@ -96,18 +95,18 @@ mod tests {
             points: Vec::new(),
         };
 
-        line.handle([1.0, 0.0]);
-        line.handle([0.0, 1.0]);
+        line.handle(Point::new(1.0, 0.0));
+        line.handle(Point::new(0.0, 1.0));
 
         assert_eq!(line.bbox(), [[0.0, 0.0], [1.0, 1.0]]);
     }
 
     #[test]
     fn test_bbox_twisted_line() {
-        let mut line = Line::new(Color::Green, [[-12.0, -1.0], [-5.0, 0.0]], ShapeId::from(1));
+        let mut line = Line::new(Color::Green, [Point::new(-12.0, -1.0), Point::new(-5.0, 0.0)], ShapeId::from(1));
 
-        line.handle([-2.0, 7.0]);
-        line.handle([2.0, -8.0]);
+        line.handle(Point::new(-2.0, 7.0));
+        line.handle(Point::new(2.0, -8.0));
 
         assert_eq!(line.shape_impl.bbox(), [[-12.0, -8.0], [2.0, 7.0]]);
     }

@@ -1,9 +1,12 @@
 use std::mem;
+use std::f64::consts::PI;
 
-use piston::input::RenderArgs;
-use graphics::math::{self, Vec2d, Matrix2d};
-use graphics::Graphics as PistonGraphics;
 use rstar::AABB;
+use gtk::prelude::*;
+use gtk::DrawingArea;
+use cairo::{Context as CairoContext, LineCap, LineJoin};
+use gdk::EventMotion;
+use gdk::EventButton;
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::ShapeStorage;
@@ -11,7 +14,9 @@ use crate::zoom::Zoom;
 use crate::shape::{ShapeType, ShapeId};
 use crate::color::Color;
 use crate::action::Action;
-use crate::graphics::Graphics;
+use crate::point::Point;
+use crate::math;
+use crate::shape::corners_to_props;
 
 #[derive(Copy,Clone,Debug)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -38,28 +43,27 @@ enum DrawingState {
     Start,
 
     /// Then god added one point
-    OnePoint([f64; 2]),
+    OnePoint(Point),
 
     /// And it was good, so she added nother point, and built a shape
-    TwoPoints([[f64; 2]; 2]),
+    TwoPoints([Point; 2]),
 
     /// From there the shape new what to do with its life
     AndSoOn,
 }
 
-pub struct App<G> {
+pub struct App {
     is_drawing: bool,
     is_moving: bool,
     storage: ShapeStorage,
     selected_tool: ShapeType,
-    gl: G,
 
     /// This value represents a vector from the top left corner of the window to
     /// the center of the drawing
-    offset: Vec2d,
+    offset: Point,
 
     /// The window's dimensions
-    dimensions: Vec2d,
+    dimensions: Point,
     selected_color: Color,
     zoom: Zoom,
 
@@ -75,69 +79,13 @@ pub struct App<G> {
     next_id: ShapeId,
 }
 
-impl<G: Graphics + PistonGraphics> App<G> {
-    pub fn render(&mut self, args: &RenderArgs) {
-        let bgcolor = Color::Black.to_a();
-        let guidecolor = Color::Gray.to_a();
-        let offset_t = self.get_offset_t();
-        let mut commands = Vec::new();
-        let zoom = self.zoom;
-        let selected_color = self.selected_color;
-        let selected_tool = self.selected_tool;
-
-        // the bbox of the visible things
-        let corner_1 = math::mul_scalar(self.offset, -1.0);
-        let corner_2 = math::add(corner_1, self.dimensions);
-
-        self.storage.draw_commands(zoom, AABB::from_corners(corner_1, corner_2), &mut commands);
-
-        self.gl.draw(args.viewport(), |c, g| {
-            let t = math::multiply(c.transform, offset_t);
-
-            graphics::clear(bgcolor, g);
-
-            // content
-            for cmd in commands {
-                match cmd {
-                    DrawCommand::Line{
-                        color, line, thickness,
-                    } => graphics::line(color, thickness, line, t, g),
-                    DrawCommand::Rectangle{
-                        color, rect,
-                    } => graphics::rectangle(color, rect, t, g),
-                    DrawCommand::Circle{
-                        color, rect,
-                    } => graphics::ellipse(color, rect, t, g),
-                }
-            }
-
-            // UI
-            // a cross that marks the center
-            graphics::line(guidecolor, 1.0, [-20.0, 0.0, 20.0, 0.0], t, g);
-            graphics::line(guidecolor, 1.0, [0.0, 20.0, 0.0, -20.0], t, g);
-
-            // a symbol that represents the tool in use
-            match selected_tool {
-                ShapeType::Circle => graphics::ellipse(selected_color.to_a(), [25.0, 25.0, 25.0, 25.0], c.transform, g),
-                ShapeType::Rectangle => graphics::rectangle(selected_color.to_a(), [25.0, 25.0, 25.0, 25.0], c.transform, g),
-                ShapeType::Line => {
-                    graphics::line(selected_color.to_a(), 2.0, [25.0, 25.0, 25.0, 50.0], c.transform, g);
-                    graphics::line(selected_color.to_a(), 2.0, [25.0, 50.0, 50.0, 25.0], c.transform, g);
-                    graphics::line(selected_color.to_a(), 2.0, [50.0, 25.0, 50.0, 50.0], c.transform, g);
-                }
-            }
-        });
-    }
-}
-
-impl<G> App<G> {
-    pub fn new(gl: G, dimensions: Vec2d) -> App<G> {
+impl App {
+    pub fn new(dimensions: Point) -> App {
         App {
             is_drawing: false,
             is_moving: false,
             storage: ShapeStorage::new(),
             selected_tool: ShapeType::Line,
-            gl,
             dimensions,
             offset: math::mul_scalar(dimensions, 0.5),
 
@@ -151,27 +99,96 @@ impl<G> App<G> {
         }
     }
 
-    pub fn get_dimentions(&self) -> Vec2d {
-        self.dimensions
+    fn visible_extent(&self) -> (Point, Point) {
+        unimplemented!()
     }
 
-    fn get_inv_offset(&mut self) -> Matrix2d {
-        math::translate(math::mul_scalar(self.offset, -1.0))
+    fn to_view_coordinates(&self, p: Point) -> Point {
+        unimplemented!()
     }
 
-    fn get_offset_t(&mut self) -> Matrix2d {
-        math::translate(self.offset)
+    pub fn render(&mut self, dw: &DrawingArea, ctx: &CairoContext) -> Inhibit {
+        let bgcolor = Color::Black.to_a();
+        let guidecolor = Color::Gray.to_a();
+        let mut commands = Vec::new();
+        let zoom = self.zoom;
+        let selected_color = self.selected_color;
+
+        // the bbox of the visible things
+        let (corner_1, corner_2) = self.visible_extent();
+
+        self.storage.draw_commands(zoom, AABB::from_corners(corner_1.to_a(), corner_2.to_a()), &mut commands);
+
+        ctx.set_source_rgb(bgcolor[0], bgcolor[1], bgcolor[2]);
+        ctx.paint();
+
+        // content
+        for cmd in commands {
+            match cmd {
+                DrawCommand::Line {
+                    color, line, thickness,
+                } => {
+                    ctx.set_line_width(4.0);
+                    ctx.set_source_rgb(0.89, 0.23, 0.46);
+                    ctx.set_line_cap(LineCap::Round);
+                    ctx.set_line_join(LineJoin::Round);
+
+                    let mut iter_points = line.iter();
+
+                    if let Some(first_point) = iter_points.next() {
+                        ctx.move_to(first_point.x, first_point.y);
+
+                        for point in iter_points {
+                            ctx.line_to(point.x, point.y);
+                        }
+
+                        ctx.stroke();
+                    }
+                },
+                DrawCommand::Rectangle {
+                    color, corner_1, corner_2,
+                } => {
+                    let (x, y, width, height) = corners_to_props(corner_1, corner_2);
+                    ctx.rectangle(x, y, width, height);
+                    let rgb = color.to_a();
+                    ctx.set_source_rgb(rgb[0], rgb[1], rgb[2]);
+                    ctx.fill();
+                },
+                DrawCommand::Ellipse {
+                    color, corner_1, corner_2,
+                } => {
+                    ctx.arc(0.5, 0.5, 0.5, 0.0, 2.0*PI);
+                },
+            }
+        }
+
+        // UI
+        self.render_ui(dw, ctx);
+
+        Inhibit(false)
     }
 
-    fn handle_offset(&mut self, delta: Vec2d) {
+    fn render_ui(&self, _dw: &DrawingArea, ctx: &CairoContext) {
+        // a cross that marks the center
+        // TODO draw a cross that marks 0, 0
+
+        // TODO a symbol that represents the tool in use
+        match self.selected_tool {
+            ShapeType::Ellipse => {},
+            ShapeType::Rectangle => {},
+            ShapeType::Line => {},
+        }
+    }
+
+    fn handle_offset(&mut self, delta: Point) {
         self.offset = math::add(self.offset, delta);
     }
 
-    pub fn handle_scroll(&mut self, delta: Vec2d) {
+    pub fn handle_scroll(&mut self, delta: Point) {
         self.offset = math::add(self.offset, math::mul_scalar(delta, 8.0));
     }
 
-    pub fn resize(&mut self, new_size: Vec2d) {
+    pub fn resize(&mut self, new_size: Point) {
         let delta = math::mul_scalar(math::add(
             math::mul_scalar(self.dimensions, -1.0),
             new_size
@@ -224,17 +241,16 @@ impl<G> App<G> {
         self.is_moving = false;
     }
 
-    pub fn handle_cursor(&mut self, pos: Vec2d) {
+    pub fn handle_cursor(&mut self, pos: Point) {
         if self.is_drawing && !self.is_moving {
-            let inv_offset = self.get_inv_offset();
-            let translated_pos = math::transform_pos(inv_offset, pos);
+            let transformed_point = self.to_view_coordinates(pos);
 
             match self.drawing_state {
                 DrawingState::Start => {
-                    self.drawing_state = DrawingState::OnePoint(translated_pos);
+                    self.drawing_state = DrawingState::OnePoint(transformed_point);
                 },
                 DrawingState::OnePoint(p1) => {
-                    self.drawing_state = DrawingState::TwoPoints([p1, translated_pos]);
+                    self.drawing_state = DrawingState::TwoPoints([p1, transformed_point]);
                 },
                 DrawingState::TwoPoints(points) => {
                     self.storage.add(
@@ -246,14 +262,14 @@ impl<G> App<G> {
                 },
                 DrawingState::AndSoOn => {
                     if let Some(shape) = self.storage.last_mut() {
-                        shape.handle(translated_pos);
+                        shape.handle(transformed_point);
                     }
                 },
             }
         }
     }
 
-    pub fn handle_cursor_relative(&mut self, delta: Vec2d) {
+    pub fn handle_cursor_relative(&mut self, delta: Point) {
         if self.is_moving {
             self.handle_offset(delta);
         }
@@ -378,46 +394,48 @@ impl<G> App<G> {
     pub fn storage(&self) -> &ShapeStorage {
         &self.storage
     }
+
+    pub fn on_button_press(&self, dw: &DrawingArea, event: &EventButton) -> Inhibit {
+        unimplemented!()
+    }
+
+    pub fn on_button_release(&self, dw: &DrawingArea, event: &EventButton) -> Inhibit {
+        unimplemented!()
+    }
+
+    pub fn on_pointer_move(&self, dw: &DrawingArea, event: &EventMotion) -> Inhibit {
+        unimplemented!()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::App;
-    use crate::graphics::Graphics;
-    use graphics::Viewport;
-
-    struct FakeGraphics {
-    }
-
-    impl Graphics for FakeGraphics {
-        fn draw<F, U>(&mut self, _v: Viewport, _f: F) -> U {
-            unimplemented!()
-        }
-    }
+    use crate::point::Point;
 
     #[test]
     fn test_do_do_do_undo_redo_redo_undo() {
-        let mut app = App::new(FakeGraphics {}, [800.0, 600.0]);
+        let mut app = App::new(Point::new(800.0, 600.0));
 
         // Do
         app.start_drawing();
-        app.handle_cursor([0.0, 1.0]);
-        app.handle_cursor([1.0, 0.0]);
-        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor(Point::new(0.0, 1.0));
+        app.handle_cursor(Point::new(1.0, 0.0));
+        app.handle_cursor(Point::new(0.0, 1.0));
         app.finish_drawing();
 
         // Do
         app.start_drawing();
-        app.handle_cursor([0.0, 1.0]);
-        app.handle_cursor([1.0, 0.0]);
-        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor(Point::new(0.0, 1.0));
+        app.handle_cursor(Point::new(1.0, 0.0));
+        app.handle_cursor(Point::new(0.0, 1.0));
         app.finish_drawing();
 
         // Do
         app.start_drawing();
-        app.handle_cursor([0.0, 1.0]);
-        app.handle_cursor([1.0, 0.0]);
-        app.handle_cursor([0.0, 1.0]);
+        app.handle_cursor(Point::new(0.0, 1.0));
+        app.handle_cursor(Point::new(1.0, 0.0));
+        app.handle_cursor(Point::new(0.0, 1.0));
         app.finish_drawing();
 
         app.undo();
@@ -430,13 +448,13 @@ mod tests {
 
     #[test]
     fn test_do_undo_redo_undo() {
-        let mut app = App::new(FakeGraphics {}, [800.0, 600.0]);
+        let mut app = App::new(Point::new(800.0, 600.0));
 
         // Do
         app.start_drawing();
-        app.handle_cursor([0.0, 1.0]);
-        app.handle_cursor([1.0, 0.0]);
-        app.handle_cursor([1.0, 1.0]);
+        app.handle_cursor(Point::new(0.0, 1.0));
+        app.handle_cursor(Point::new(1.0, 0.0));
+        app.handle_cursor(Point::new(1.0, 1.0));
         app.finish_drawing();
 
         app.undo();
@@ -448,29 +466,29 @@ mod tests {
 
     #[test]
     fn test_do_undo_do_do_undo() {
-        let mut app = App::new(FakeGraphics {}, [800.0, 600.0]);
+        let mut app = App::new(Point::new(800.0, 600.0));
 
         // Do
         app.start_drawing();
-        app.handle_cursor([0.0, 1.0]);
-        app.handle_cursor([1.0, 0.0]);
-        app.handle_cursor([1.0, 1.0]);
+        app.handle_cursor(Point::new(0.0, 1.0));
+        app.handle_cursor(Point::new(1.0, 0.0));
+        app.handle_cursor(Point::new(1.0, 1.0));
         app.finish_drawing();
 
         app.undo();
 
         // Do
         app.start_drawing();
-        app.handle_cursor([0.0, 1.0]);
-        app.handle_cursor([1.0, 0.0]);
-        app.handle_cursor([1.0, 1.0]);
+        app.handle_cursor(Point::new(0.0, 1.0));
+        app.handle_cursor(Point::new(1.0, 0.0));
+        app.handle_cursor(Point::new(1.0, 1.0));
         app.finish_drawing();
 
         // Do
         app.start_drawing();
-        app.handle_cursor([0.0, 1.0]);
-        app.handle_cursor([1.0, 0.0]);
-        app.handle_cursor([1.0, 1.0]);
+        app.handle_cursor(Point::new(0.0, 1.0));
+        app.handle_cursor(Point::new(1.0, 0.0));
+        app.handle_cursor(Point::new(1.0, 1.0));
         app.finish_drawing();
 
         app.undo();
@@ -480,22 +498,22 @@ mod tests {
 
     #[test]
     fn test_do_undo_do_undo_undo() {
-        let mut app = App::new(FakeGraphics {}, [800.0, 600.0]);
+        let mut app = App::new(Point::new(800.0, 600.0));
 
         // Do
         app.start_drawing();
-        app.handle_cursor([0.0, 1.0]);
-        app.handle_cursor([1.0, 0.0]);
-        app.handle_cursor([1.0, 1.0]);
+        app.handle_cursor(Point::new(0.0, 1.0));
+        app.handle_cursor(Point::new(1.0, 0.0));
+        app.handle_cursor(Point::new(1.0, 1.0));
         app.finish_drawing();
 
         app.undo();
 
         // Do
         app.start_drawing();
-        app.handle_cursor([0.0, 1.0]);
-        app.handle_cursor([1.0, 0.0]);
-        app.handle_cursor([1.0, 1.0]);
+        app.handle_cursor(Point::new(0.0, 1.0));
+        app.handle_cursor(Point::new(1.0, 0.0));
+        app.handle_cursor(Point::new(1.0, 1.0));
         app.finish_drawing();
 
         app.undo();

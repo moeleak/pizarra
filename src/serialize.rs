@@ -20,7 +20,7 @@ fn bounds_to_size(bounds: [[f64; 2]; 2]) -> (f64, f64) {
     (bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1])
 }
 
-impl<G> Serialize for App<G> {
+impl Serialize for App {
     fn serialize(&self) -> String {
         let layer_string = self.storage().serialize();
         let bounds = self.storage().get_bounds(Zoom::from(0)).unwrap();
@@ -53,16 +53,7 @@ impl<G> Serialize for App<G> {
 
 impl Serialize for ShapeStorage {
     fn serialize(&self) -> String {
-        let layers: Vec<String> = self.iter_layers().map(|(zoom, layer_tree)| {
-            let shape_strings: Vec<String> = layer_tree.iter().map(|shape| {
-                shape.serialize(*zoom)
-            }).collect();
-            let strings = shape_strings.join("\n");
-
-            format!("<g id=\"layer{zoom}\">{strings}</g>", zoom=zoom, strings=strings)
-        }).collect();
-
-        layers.join("\n")
+        unimplemented!()
     }
 }
 

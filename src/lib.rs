@@ -49,7 +49,8 @@ pub mod app;
 pub mod draw_commands;
 pub mod zoom;
 pub mod action;
-pub mod graphics;
+pub mod point;
+pub mod math;
 
 pub use shape::ShapeType;
 pub use app::App;

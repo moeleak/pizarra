@@ -1,46 +1,45 @@
 use std::fmt;
 
-use graphics::math::Vec2d;
+use crate::point::Point;
 use rstar::{RTreeObject, AABB};
 
 pub mod line;
 pub mod rectangle;
-pub mod circle;
+pub mod ellipse;
 
 use super::color::Color;
 use crate::draw_commands::{WireDrawCommand, ColoredDrawCommand};
-use crate::serialize::{ShapeSerialize, ShapeTraitSerialize};
 use crate::zoom::Zoom;
 
 pub use self::line::Line;
 pub use self::rectangle::Rectangle;
-pub use self::circle::Circle;
+pub use self::ellipse::Ellipse;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum ShapeType {
     Line,
     Rectangle,
-    Circle,
+    Ellipse,
 }
 
 impl ShapeType {
-    pub fn make(&self, color: Color, initial: [[f64; 2]; 2], id: ShapeId) -> Shape {
+    pub fn make(&self, color: Color, initial: [Point; 2], id: ShapeId) -> Shape {
         match *self {
             ShapeType::Line => Line::new(color, initial, id),
             ShapeType::Rectangle => Rectangle::new(color, initial, id),
-            ShapeType::Circle => Circle::new(color, initial, id),
+            ShapeType::Ellipse => Ellipse::new(color, initial, id),
         }
     }
 }
 
-pub trait ShapeTrait: ShapeTraitSerialize {
+pub trait ShapeTrait {
     /// Must handle new coordinates given to this shape. If this method is
     /// called it means that the shape is being modified (thus this is the most
     /// recently added shape
-    fn handle(&mut self, val: Vec2d);
+    fn handle(&mut self, val: Point);
 
     /// Must return the necessary commands to display this shape on the screen
-    fn draw_commands(&self) -> Vec<WireDrawCommand>;
+    fn draw_commands(&self) -> WireDrawCommand;
 
     /// Must know its bbox
     fn bbox(&self) -> [[f64; 2]; 2];
@@ -77,18 +76,18 @@ pub struct Shape {
 }
 
 impl Shape {
-    pub fn handle(&mut self, val: Vec2d) {
+    pub fn handle(&mut self, val: Point) {
         self.shape_impl.handle(val);
     }
 
-    pub fn draw_commands(&self) -> Vec<ColoredDrawCommand> {
-        self.shape_impl.draw_commands().into_iter().map(|wire| {
-            match wire {
-                WireDrawCommand::Circle{ rect } => ColoredDrawCommand::Circle{ rect, color: self.color.to_a() },
-                WireDrawCommand::Rectangle{ rect } => ColoredDrawCommand::Rectangle{ rect, color: self.color.to_a() },
-                WireDrawCommand::Line{ line } => ColoredDrawCommand::Line{ line, color: self.color.to_a() },
-            }
-        }).collect()
+    pub fn draw_commands(&self) -> ColoredDrawCommand {
+        let cmd = self.shape_impl.draw_commands();
+
+        match cmd {
+            WireDrawCommand::Ellipse{ corner_1, corner_2 } => ColoredDrawCommand::Ellipse{ corner_1, corner_2, color: self.color },
+            WireDrawCommand::Rectangle{ corner_1, corner_2 } => ColoredDrawCommand::Rectangle{ corner_1, corner_2, color: self.color },
+            WireDrawCommand::Line{ line } => ColoredDrawCommand::Line{ line, color: self.color },
+        }
     }
 
     pub fn shape_type(&self) -> ShapeType {
@@ -114,8 +113,6 @@ impl RTreeObject for Shape {
     }
 }
 
-impl ShapeSerialize for Shape {
-    fn serialize(&self, zoom: Zoom) -> String {
-        self.shape_impl.serialize(self.id, self.color, zoom)
-    }
+pub fn corners_to_props(corner_1: Point, corner_2: Point) -> (f64, f64, f64, f64) {
+    unimplemented!()
 }

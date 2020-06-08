@@ -1,56 +1,65 @@
+use crate::point::Point;
+use crate::color::Color;
+
 /// The most primitive draw command: the one returned by the shape impl
 pub enum WireDrawCommand {
-    Line{
-        line: [f64; 4],
+    Line {
+        line: Vec<Point>,
     },
-    Rectangle{
-        rect: [f64; 4],
+    Rectangle {
+        corner_1: Point,
+        corner_2: Point,
     },
-    Circle{
-        rect: [f64; 4],
+    Ellipse {
+        corner_1: Point,
+        corner_2: Point,
     },
 }
 
 /// The draw command as returned by the shape: adds the color 
 pub enum ColoredDrawCommand {
-    Line{
-        color: [f32; 4],
-        line: [f64; 4],
+    Line {
+        color: Color,
+        line: Vec<Point>,
     },
-    Rectangle{
-        color: [f32; 4],
-        rect: [f64; 4],
+    Rectangle {
+        color: Color,
+        corner_1: Point,
+        corner_2: Point,
     },
-    Circle{
-        color: [f32; 4],
-        rect: [f64; 4],
+    Ellipse {
+        color: Color,
+        corner_1: Point,
+        corner_2: Point,
     },
 }
 
 /// A Full Draw command returned by the storage
 #[derive(Debug, PartialEq)]
 pub enum DrawCommand {
-    Line{
-        color: [f32; 4],
-        line: [f64; 4],
+    Line {
+        color: Color,
+        line: Vec<Point>,
         thickness: f64,
     },
-    Rectangle{
-        color: [f32; 4],
-        rect: [f64; 4],
+    Rectangle {
+        color: Color,
+        corner_1: Point,
+        corner_2: Point,
     },
-    Circle{
-        color: [f32; 4],
-        rect: [f64; 4],
+    Ellipse {
+        color: Color,
+        corner_1: Point,
+        corner_2: Point,
     },
 }
 
 impl DrawCommand {
-    pub fn color(&self) -> [f32; 4] {
+    pub fn color(&self) -> Color {
         match self {
             DrawCommand::Line { color, .. } => *color,
             DrawCommand::Rectangle { color, .. } => *color,
-            DrawCommand::Circle { color, .. } => *color,
+            DrawCommand::Ellipse { color, .. } => *color,
         }
     }
 }

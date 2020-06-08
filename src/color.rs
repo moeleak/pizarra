@@ -1,15 +1,15 @@
 use std::fmt;
 
-fn to_float(color: [u8; 4]) -> [f32; 4] {
+fn to_float(color: [u8; 4]) -> [f64; 4] {
     [
-        color[0] as f32/0xff as f32,
-        color[1] as f32/0xff as f32,
-        color[2] as f32/0xff as f32,
-        color[3] as f32/0xff as f32,
+        color[0] as f64/0xff as f64,
+        color[1] as f64/0xff as f64,
+        color[2] as f64/0xff as f64,
+        color[3] as f64/0xff as f64,
     ]
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Color {
     Red,
     Blue,
@@ -52,7 +52,7 @@ impl Color {
         }
     }
 
-    pub fn to_a(&self) -> [f32; 4] {
+    pub fn to_a(&self) -> [f64; 4] {
         to_float(self.code())
     }
 }
