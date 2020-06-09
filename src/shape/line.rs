@@ -2,8 +2,6 @@ use crate::draw_commands::WireDrawCommand;
 use super::{Shape, ShapeTrait, ShapeId};
 use crate::color::Color;
 use crate::ShapeType;
-use crate::serialize::ShapeTraitSerialize;
-use crate::zoom::Zoom;
 use crate::point::Point;
 
 pub struct Line {
@@ -26,20 +24,6 @@ impl Line {
                 thickness: 4.0,
             }),
         }
-    }
-}
-
-impl ShapeTraitSerialize for Line {
-    fn serialize(&self, id: ShapeId, color: Color, zoom: Zoom) -> String {
-        let path_vec: Vec<String> = self.points.iter().map(|p| {
-            format!("{},{}", p.x, p.y)
-        }).collect();
-        let path = path_vec.join(" ");
-
-        format!("<path
-           style=\"fill:none;stroke:{color};stroke-width:{width}px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1\"
-           d=\"M {path}\"
-           id=\"{id}\" />", id=id, color=color, width=2.0, path=path)
     }
 }
 
@@ -96,6 +80,7 @@ mod tests {
     fn test_bbox() {
         let mut line = Line {
             points: Vec::new(),
+            thickness: 4.0,
         };
 
         line.handle(Point::new(1.0, 0.0));

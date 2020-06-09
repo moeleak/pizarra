@@ -31,22 +31,6 @@ impl SelectionFunction<Shape> for BBoxIdSelection {
     }
 }
 
-fn scale(bbox: AABB<[f64; 2]>, relative: i32) -> AABB<[f64; 2]> {
-    let lower = bbox.lower();
-    let upper = bbox.upper();
-
-    AABB::from_corners(
-        [
-            lower[0] * 2.0_f64.powi(relative*-1),
-            lower[1] * 2.0_f64.powi(relative*-1),
-        ],
-        [
-            upper[0] * 2.0_f64.powi(relative*-1),
-            upper[1] * 2.0_f64.powi(relative*-1),
-        ],
-    )
-}
-
 /// This struct handles storage and fast retrieval of shapes.
 pub struct ShapeStorage {
     shape_count: usize,
@@ -118,7 +102,13 @@ impl ShapeStorage {
     }
 
     pub fn draw_commands(&self, bbox: AABB<[f64; 2]>) -> impl Iterator<Item=ColoredDrawCommand> + '_ {
-        self.shapes.locate_in_envelope(&bbox).map(|shape| shape.draw_commands())
+        let mut current = Vec::new();
+
+        if let Some(shape) = self.current.as_ref() {
+            current.push(shape.draw_commands());
+        }
+
+        self.shapes.locate_in_envelope_intersecting(&bbox).map(|shape| shape.draw_commands()).chain(current)
     }
 
     pub fn get_bounds(&self) -> Option<[[f64; 2]; 2]> {
@@ -311,7 +301,7 @@ mod tests {
             Rectangle::new(Color::Green, [Point::new(0.25, -0.5), Point::new(0.5, -0.25)], ShapeId::from(3)),
 
             // in red the ones that dont
-            Rectangle::new(Color::Red, [Point::new(20.0, 20.0), Point::new(20.0, 20.0)], ShapeId::from(2)),
+            Rectangle::new(Color::Red, [Point::new(20.0, 20.0), Point::new(20.0, 20.0)], ShapeId::from(4)),
         ];
 
         for shape in shapes.into_iter() {
@@ -320,22 +310,14 @@ mod tests {
 
         storage.flush();
 
-        let mut buffer = Vec::new();
+        let buffer: Vec<_> = storage.draw_commands(AABB::from_corners([-1.0, -1.0], [1.0, 1.0])).collect();
 
-        storage.draw_commands(AABB::from_corners([-1.0, -1.0], [1.0, 1.0]));
-
-        assert!(buffer.contains(
-            &ColoredDrawCommand::Rectangle {
-                color: Color::Green,
-                corner_1: Point::new(0.5, -1.0),
-                corner_2: Point::new(0.5, 0.5),
-            }
-        ));
+        assert_eq!(buffer.len(), 3);
 
         assert!(buffer.contains(
             &ColoredDrawCommand::Rectangle {
                 color: Color::Green,
-                corner_1: Point::new(-0.55, -0.55),
+                corner_1: Point::new(-1.1, -1.1),
                 corner_2: Point::new(1.1, 1.1),
             }
         ));
@@ -344,7 +326,15 @@ mod tests {
             &ColoredDrawCommand::Rectangle {
                 color: Color::Green,
                 corner_1: Point::new(-1.5, 0.5),
-                corner_2: Point::new(1.0, 1.0),
+                corner_2: Point::new(-0.5, 1.5),
+            }
+        ));
+
+        assert!(buffer.contains(
+            &ColoredDrawCommand::Rectangle {
+                color: Color::Green,
+                corner_1: Point::new(0.25, -0.5),
+                corner_2: Point::new(0.5, -0.25),
             }
         ));
 
@@ -370,43 +360,12 @@ mod tests {
 
         assert!(buffer.contains(&ColoredDrawCommand::Rectangle{
             color: Color::Red,
-            corner_1: Point::new(0.5, 0.5),
-            corner_2: Point::new(1.0, 1.0),
+            corner_1: Point::new(1.0, 1.0),
+            corner_2: Point::new(3.0, 3.0),
         }));
         assert!(buffer.contains(&ColoredDrawCommand::Rectangle{
             color: Color::Blue,
             corner_1: Point::new(-1.0, -1.0),
-            corner_2: Point::new(2.0, 2.0),
-        }));
-    }
-
-    #[test]
-    fn test_relative_coordinates() {
-        let mut storage = ShapeStorage::new();
-
-        // A rectangle of 2x2 in zoom 0 aournd the oriign
-        storage.add(Rectangle::new(Color::Blue, [Point::new(-1.0, -1.0), Point::new(1.0, 1.0)], ShapeId::from(1)));
-
-        // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
-        storage.add(Rectangle::new(Color::Red, [Point::new(1.0, 1.0), Point::new(3.0, 3.0)], ShapeId::from(2)));
-
-        storage.flush();
-
-        let mut buffer = Vec::new();
-
-        storage.draw_commands(AABB::from_corners([-2.0, -2.0], [4.0, 4.0]));
-
-        assert_eq!(storage.shape_count(), 2);
-
-        assert!(buffer.contains(&ColoredDrawCommand::Rectangle{
-            color: Color::Blue,
-            corner_1: Point::new(-1.0, -1.0),
-            corner_2: Point::new(2.0, 2.0),
-        }));
-
-        assert!(buffer.contains(&ColoredDrawCommand::Rectangle{
-            color: Color::Red,
-            corner_1: Point::new(0.5, 0.5),
             corner_2: Point::new(1.0, 1.0),
         }));
     }
