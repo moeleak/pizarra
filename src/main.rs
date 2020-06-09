@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use gtk::{Application, ApplicationWindow, DrawingArea, Builder};
+use gtk::{Application, ApplicationWindow, DrawingArea, Builder, ColorButton};
 use gdk::EventMask;
 use gtk::prelude::*;
 use gio::prelude::*;
@@ -38,6 +38,13 @@ fn connect_drawing_area(builder: &Builder, controller: Rc<RefCell<App>>) -> Draw
     drawing_area
 }
 
+fn connect_color_chooser(builder: &Builder, controller: Rc<RefCell<App>>) {
+    let color_chooser: ColorButton = builder.get_object("color-chooser").expect("No color chooser");
+
+    let copy = controller.clone();
+    color_chooser.connect_color_set(move |chooser| copy.borrow_mut().on_color_set(chooser));
+}
+
 fn init(app: &Application) {
     // Initialize layout from .glade file
     let layout = include_str!("../res/layout.glade");
@@ -48,6 +55,8 @@ fn init(app: &Application) {
     window.set_application(Some(app));
 
     connect_drawing_area(&builder, controller.clone());
+
+    connect_color_chooser(&builder, controller.clone());
 
     window.show_all();
 }

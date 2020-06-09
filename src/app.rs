@@ -3,7 +3,7 @@ use std::f64::consts::PI;
 
 use rstar::AABB;
 use gtk::prelude::*;
-use gtk::{DrawingArea, Allocation};
+use gtk::{DrawingArea, Allocation, ColorButton};
 use gdk::{EventMotion, EventButton, EventType};
 use cairo::{Context as CairoContext, LineCap, LineJoin};
 
@@ -111,7 +111,7 @@ impl App {
 
             moving_state: MovingState::Start,
 
-            selected_color: Color::Green,
+            selected_color: Color::green(),
             drawing_state: DrawingState::Start,
             next_id: ShapeId::from(1),
         }
@@ -138,14 +138,14 @@ impl App {
     }
 
     pub fn render(&mut self, dw: &DrawingArea, ctx: &CairoContext) -> Inhibit {
-        let bgcolor = Color::Black.to_a();
+        let bgcolor = Color::black();
 
         // the bbox of the visible things
         let (corner_1, corner_2) = self.visible_extent();
 
         let commands = self.storage.draw_commands(AABB::from_corners(corner_1.to_a(), corner_2.to_a()));
 
-        ctx.set_source_rgb(bgcolor[0], bgcolor[1], bgcolor[2]);
+        ctx.set_source_rgb(bgcolor.r, bgcolor.g, bgcolor.b);
         ctx.paint();
 
         // content
@@ -155,8 +155,7 @@ impl App {
                     color, line, thickness,
                 } => {
                     ctx.set_line_width(thickness);
-                    let c = color.to_a();
-                    ctx.set_source_rgb(c[0], c[1], c[2]);
+                    ctx.set_source_rgb(color.r, color.g, color.b);
                     ctx.set_line_cap(LineCap::Round);
                     ctx.set_line_join(LineJoin::Round);
 
@@ -181,15 +180,13 @@ impl App {
                 } => {
                     let (x, y, width, height) = corners_to_props(corner_1, corner_2);
                     ctx.rectangle(x, y, width, height);
-                    let rgb = color.to_a();
-                    ctx.set_source_rgb(rgb[0], rgb[1], rgb[2]);
+                    ctx.set_source_rgb(color.r, color.g, color.b);
                     ctx.fill();
                 },
                 ColoredDrawCommand::Ellipse {
                     color, corner_1, corner_2,
                 } => {
-                    let c = color.to_a();
-                    ctx.set_source_rgb(c[0], c[1], c[2]);
+                    ctx.set_source_rgb(color.r, color.g, color.b);
                     ctx.move_to(corner_1.x, corner_2.y);
                     ctx.arc(0.5, 0.5, 0.5, 0.0, 2.0*PI);
                     ctx.scale(corner_2.x - corner_1.x, corner_2.y - corner_1.y);
@@ -338,10 +335,6 @@ impl App {
         self.selected_color = color;
     }
 
-    pub fn cycle_color(&mut self) {
-        self.selected_color = self.selected_color.cycle();
-    }
-
     fn revert(&mut self, action: Action) -> Action {
         match action {
             Action::Skip => Action::Skip,
@@ -467,6 +460,10 @@ impl App {
 
     pub fn on_size_allocate(&mut self, _dw: &DrawingArea, allocation: Allocation) {
         self.resize(Point::new(allocation.width as f64, allocation.height as f64));
+    }
+
+    pub fn on_color_set(&mut self, chooser: &ColorButton) {
+        self.set_color(Color::from(chooser.get_rgba()));
     }
 }
 

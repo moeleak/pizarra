@@ -22,32 +22,7 @@ fn bounds_to_size(bounds: [[f64; 2]; 2]) -> (f64, f64) {
 
 impl Serialize for App {
     fn serialize(&self) -> String {
-        let layer_string = self.storage().serialize();
-        let bounds = self.storage().get_bounds().unwrap();
-
-        let (bboardwith, bboardheight) = bounds_to_size(bounds);
-        let blackboard = format!("<rect
-    style=\"fill:{color};fill-opacity:1;stroke:none;\"
-    id=\"blackboard\"
-    width=\"{bboardwith}\"
-    height=\"{bboardheight}\"
-    x=\"0\"
-    y=\"0\" />", color=Color::Black, bboardwith=bboardwith+20.0, bboardheight=bboardheight+20.0);
-
-        format!("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>
-<!-- Created with Pizarra (https://github.com/categulario/pizarra) -->
-
-<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">
-<svg
-  xmlns=\"http://www.w3.org/2000/svg\"
-  width=\"{width}\"
-  height=\"{height}\"
-  viewBox=\"0 0 {width} {height}\"
-  version=\"1.1\"
->
-  {blackboard}
-  {layers}
-</svg>", width=bboardwith, height=bboardheight, layers=layer_string, blackboard=blackboard)
+        String::new()
     }
 }
 
