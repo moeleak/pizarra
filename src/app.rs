@@ -84,6 +84,9 @@ impl App {
             storage: ShapeStorage::new(),
             selected_tool: ShapeType::Line,
             dimensions,
+
+            /// a vector from the top-left corner of the screen to the origin
+            /// of coordinates in the storage
             offset: dimensions * 0.5,
 
             undo_state: UndoState::Reset,
@@ -101,8 +104,11 @@ impl App {
         (Point::new(0.0, 0.0), Point::new(800.0, 600.0))
     }
 
-    fn to_view_coordinates(&self, p: Point) -> Point {
-        unimplemented!()
+    /// p is a point build from an event triggered in the canvas, this function
+    /// converts p's coordinates to storage coordinates given the current zoom
+    /// and offset.
+    fn to_storage_coordinates(&self, p: Point) -> Point {
+        p + (self.offset * -1.0)
     }
 
     pub fn render(&mut self, dw: &DrawingArea, ctx: &CairoContext) -> Inhibit {
@@ -122,7 +128,7 @@ impl App {
                 ColoredDrawCommand::Line {
                     color, line, thickness,
                 } => {
-                    ctx.set_line_width(4.0);
+                    ctx.set_line_width(thickness);
                     let c = color.to_a();
                     ctx.set_source_rgb(c[0], c[1], c[2]);
                     ctx.set_line_cap(LineCap::Round);
@@ -152,7 +158,12 @@ impl App {
                 ColoredDrawCommand::Ellipse {
                     color, corner_1, corner_2,
                 } => {
+                    let c = color.to_a();
+                    ctx.set_source_rgb(c[0], c[1], c[2]);
+                    ctx.move_to(corner_1.x, corner_2.y);
                     ctx.arc(0.5, 0.5, 0.5, 0.0, 2.0*PI);
+                    ctx.scale(corner_2.x - corner_1.x, corner_2.y - corner_1.y);
+                    ctx.fill();
                 },
             }
         }
@@ -235,7 +246,7 @@ impl App {
 
     pub fn handle_cursor(&mut self, pos: Point) {
         if self.is_drawing && !self.is_moving {
-            let transformed_point = self.to_view_coordinates(pos);
+            let transformed_point = self.to_storage_coordinates(pos);
 
             match self.drawing_state {
                 DrawingState::Start => {
