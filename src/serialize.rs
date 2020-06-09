@@ -23,7 +23,7 @@ fn bounds_to_size(bounds: [[f64; 2]; 2]) -> (f64, f64) {
 impl Serialize for App {
     fn serialize(&self) -> String {
         let layer_string = self.storage().serialize();
-        let bounds = self.storage().get_bounds(Zoom::from(0)).unwrap();
+        let bounds = self.storage().get_bounds().unwrap();
 
         let (bboardwith, bboardheight) = bounds_to_size(bounds);
         let blackboard = format!("<rect

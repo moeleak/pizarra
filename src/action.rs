@@ -1,10 +1,9 @@
-use crate::zoom::Zoom;
 use crate::shape::{Shape, ShapeId};
 
 pub enum Action {
     Skip,
     Draw(ShapeId),
-    Delete((Shape, Zoom)),
+    Delete(Shape),
 }
 
 impl Default for Action {

@@ -1,3 +1,5 @@
+use std::ops::{Mul, Add};
+
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Point {
     pub x: f64,
@@ -13,5 +15,27 @@ impl Point {
 
     pub fn to_a(self) -> [f64; 2] {
         [self.x, self.y]
+    }
+}
+
+impl Mul<f64> for Point {
+    type Output = Point;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Point {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
+    }
+}
+
+impl Add for Point {
+    type Output = Point;
+
+    fn add(self, rhs: Point) -> Point {
+        Point {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
     }
 }

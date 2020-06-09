@@ -8,6 +8,7 @@ use crate::point::Point;
 
 pub struct Line {
     points: Vec<Point>,
+    thickness: f64,
 }
 
 impl Line {
@@ -22,6 +23,7 @@ impl Line {
             color,
             shape_impl: Box::new(Line {
                 points: init_vec,
+                thickness: 4.0,
             }),
         }
     }
@@ -49,6 +51,7 @@ impl ShapeTrait for Line {
     fn draw_commands(&self) -> WireDrawCommand {
         WireDrawCommand::Line {
             line: self.points.iter().map(|p| p.clone()).collect(),
+            thickness: self.thickness,
         }
     }
 

@@ -9,7 +9,6 @@ pub mod ellipse;
 
 use super::color::Color;
 use crate::draw_commands::{WireDrawCommand, ColoredDrawCommand};
-use crate::zoom::Zoom;
 
 pub use self::line::Line;
 pub use self::rectangle::Rectangle;
@@ -86,7 +85,7 @@ impl Shape {
         match cmd {
             WireDrawCommand::Ellipse{ corner_1, corner_2 } => ColoredDrawCommand::Ellipse{ corner_1, corner_2, color: self.color },
             WireDrawCommand::Rectangle{ corner_1, corner_2 } => ColoredDrawCommand::Rectangle{ corner_1, corner_2, color: self.color },
-            WireDrawCommand::Line{ line } => ColoredDrawCommand::Line{ line, color: self.color },
+            WireDrawCommand::Line{ line, thickness } => ColoredDrawCommand::Line{ line, color: self.color, thickness },
         }
     }
 

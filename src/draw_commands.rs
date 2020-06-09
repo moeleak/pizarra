@@ -5,6 +5,7 @@ use crate::color::Color;
 pub enum WireDrawCommand {
     Line {
         line: Vec<Point>,
+        thickness: f64,
     },
     Rectangle {
         corner_1: Point,
@@ -17,10 +18,12 @@ pub enum WireDrawCommand {
 }
 
 /// The draw command as returned by the shape: adds the color 
+#[derive(Debug, PartialEq)]
 pub enum ColoredDrawCommand {
     Line {
         color: Color,
         line: Vec<Point>,
+        thickness: f64,
     },
     Rectangle {
         color: Color,

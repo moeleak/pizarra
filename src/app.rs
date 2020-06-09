@@ -8,14 +8,12 @@ use cairo::{Context as CairoContext, LineCap, LineJoin};
 use gdk::EventMotion;
 use gdk::EventButton;
 
-use crate::draw_commands::DrawCommand;
+use crate::draw_commands::ColoredDrawCommand;
 use crate::storage::ShapeStorage;
-use crate::zoom::Zoom;
 use crate::shape::{ShapeType, ShapeId};
 use crate::color::Color;
 use crate::action::Action;
 use crate::point::Point;
-use crate::math;
 use crate::shape::corners_to_props;
 
 #[derive(Copy,Clone,Debug)]
@@ -65,7 +63,6 @@ pub struct App {
     /// The window's dimensions
     dimensions: Point,
     selected_color: Color,
-    zoom: Zoom,
 
     /// Undo
     undo_state: UndoState,
@@ -87,20 +84,21 @@ impl App {
             storage: ShapeStorage::new(),
             selected_tool: ShapeType::Line,
             dimensions,
-            offset: math::mul_scalar(dimensions, 0.5),
+            offset: dimensions * 0.5,
 
             undo_state: UndoState::Reset,
             undo_queue: Vec::new(),
 
             selected_color: Color::Green,
-            zoom: Zoom::from(0),
             drawing_state: DrawingState::Start,
             next_id: ShapeId::from(1),
         }
     }
 
+    /// Compute the bounds of that is visible in the board according to current
+    /// offset and zoom level
     fn visible_extent(&self) -> (Point, Point) {
-        unimplemented!()
+        (Point::new(0.0, 0.0), Point::new(800.0, 600.0))
     }
 
     fn to_view_coordinates(&self, p: Point) -> Point {
@@ -109,15 +107,11 @@ impl App {
 
     pub fn render(&mut self, dw: &DrawingArea, ctx: &CairoContext) -> Inhibit {
         let bgcolor = Color::Black.to_a();
-        let guidecolor = Color::Gray.to_a();
-        let mut commands = Vec::new();
-        let zoom = self.zoom;
-        let selected_color = self.selected_color;
 
         // the bbox of the visible things
         let (corner_1, corner_2) = self.visible_extent();
 
-        self.storage.draw_commands(zoom, AABB::from_corners(corner_1.to_a(), corner_2.to_a()), &mut commands);
+        let commands = self.storage.draw_commands(AABB::from_corners(corner_1.to_a(), corner_2.to_a()));
 
         ctx.set_source_rgb(bgcolor[0], bgcolor[1], bgcolor[2]);
         ctx.paint();
@@ -125,11 +119,12 @@ impl App {
         // content
         for cmd in commands {
             match cmd {
-                DrawCommand::Line {
+                ColoredDrawCommand::Line {
                     color, line, thickness,
                 } => {
                     ctx.set_line_width(4.0);
-                    ctx.set_source_rgb(0.89, 0.23, 0.46);
+                    let c = color.to_a();
+                    ctx.set_source_rgb(c[0], c[1], c[2]);
                     ctx.set_line_cap(LineCap::Round);
                     ctx.set_line_join(LineJoin::Round);
 
@@ -145,7 +140,7 @@ impl App {
                         ctx.stroke();
                     }
                 },
-                DrawCommand::Rectangle {
+                ColoredDrawCommand::Rectangle {
                     color, corner_1, corner_2,
                 } => {
                     let (x, y, width, height) = corners_to_props(corner_1, corner_2);
@@ -154,7 +149,7 @@ impl App {
                     ctx.set_source_rgb(rgb[0], rgb[1], rgb[2]);
                     ctx.fill();
                 },
-                DrawCommand::Ellipse {
+                ColoredDrawCommand::Ellipse {
                     color, corner_1, corner_2,
                 } => {
                     ctx.arc(0.5, 0.5, 0.5, 0.0, 2.0*PI);
@@ -181,18 +176,15 @@ impl App {
     }
 
     fn handle_offset(&mut self, delta: Point) {
-        self.offset = math::add(self.offset, delta);
+        self.offset = self.offset + delta;
     }
 
     pub fn handle_scroll(&mut self, delta: Point) {
-        self.offset = math::add(self.offset, math::mul_scalar(delta, 8.0));
+        self.offset = self.offset + delta * 8.0;
     }
 
     pub fn resize(&mut self, new_size: Point) {
-        let delta = math::mul_scalar(math::add(
-            math::mul_scalar(self.dimensions, -1.0),
-            new_size
-        ), 0.5);
+        let delta = (self.dimensions * -1.0 + new_size) * 0.5;
 
         self.handle_offset(delta);
         self.dimensions = new_size;
@@ -255,7 +247,6 @@ impl App {
                 DrawingState::TwoPoints(points) => {
                     self.storage.add(
                         self.selected_tool.make(self.selected_color, points, self.next_id),
-                        self.zoom
                     );
                     self.next_id.incr();
                     self.drawing_state = DrawingState::AndSoOn;
@@ -276,26 +267,15 @@ impl App {
     }
 
     pub fn zoom_in(&mut self) {
-        self.offset = math::mul_scalar(math::add(
-            self.offset,
-            math::mul_scalar(self.dimensions, -0.25),
-        ), 2.0);
-
-        self.zoom.decrease();
+        unimplemented!()
     }
 
     pub fn zoom_out(&mut self) {
-        self.offset = math::mul_scalar(math::add(
-            self.offset,
-            math::mul_scalar(self.dimensions, 0.5),
-        ), 0.5);
-
-        self.zoom.increase();
+        unimplemented!()
     }
 
     pub fn go_home(&mut self) {
-        self.offset = math::mul_scalar(self.dimensions, 0.5);
-        self.zoom.reset();
+        self.offset = self.dimensions * 0.5;
     }
 
     pub fn set_color(&mut self, color: Color) {
@@ -312,8 +292,8 @@ impl App {
 
             Action::Draw(id) => Action::Delete(self.storage.remove(id).unwrap()),
 
-            Action::Delete((shape, zoom)) => {
-                let id = self.storage.add(shape, zoom);
+            Action::Delete(shape) => {
+                let id = self.storage.add(shape);
 
                 self.storage.flush();
 
