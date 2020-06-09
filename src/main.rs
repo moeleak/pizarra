@@ -40,7 +40,8 @@ fn connect_drawing_area(builder: &Builder, controller: Rc<RefCell<App>>) -> Draw
 
 fn init(app: &Application) {
     // Initialize layout from .glade file
-    let builder = Builder::new_from_file("res/layout.glade");
+    let layout = include_str!("../res/layout.glade");
+    let builder = Builder::new_from_string(layout);
     let controller = Rc::new(RefCell::new(App::new(Point::new(1.0, 1.0))));
     let window: ApplicationWindow = builder.get_object("main-window").expect("Couldn't get window");
 
