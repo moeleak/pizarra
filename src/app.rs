@@ -49,9 +49,17 @@ enum DrawingState {
     AndSoOn,
 }
 
+enum MovingState {
+    Start,
+    From(Point),
+}
+
 /// Indicates wether or not an action should trigger redraw of the canvas
 pub enum ShouldRedraw {
+    /// Something has changed and we should redraw
     Yes,
+
+    /// Nothing has changed, don't queue a draw event
     No,
 }
 
@@ -77,6 +85,10 @@ pub struct App {
     /// track of some intermediate states like Start, OnePoint and TwoPoints
     drawing_state: DrawingState,
 
+    /// Since gtk doesn't offer a cursor offset event we sould compute it by hand,
+    /// this enum handles the evolution of such state.
+    moving_state: MovingState,
+
     /// Next available id for a shape
     next_id: ShapeId,
 }
@@ -96,6 +108,8 @@ impl App {
 
             undo_state: UndoState::Reset,
             undo_queue: Vec::new(),
+
+            moving_state: MovingState::Start,
 
             selected_color: Color::Green,
             drawing_state: DrawingState::Start,
@@ -203,7 +217,7 @@ impl App {
     }
 
     fn handle_offset(&mut self, delta: Point) {
-        self.offset = self.offset + delta;
+        self.offset += delta;
     }
 
     pub fn handle_scroll(&mut self, delta: Point) {
@@ -258,14 +272,12 @@ impl App {
 
     pub fn end_moving(&mut self) {
         self.is_moving = false;
+        self.moving_state = MovingState::Start;
     }
 
     pub fn handle_cursor(&mut self, pos: Point) -> ShouldRedraw {
         if self.is_drawing && !self.is_moving {
             let transformed_point = self.to_storage_coordinates(pos);
-
-            println!("{:?}", pos);
-            println!("{:?}", transformed_point);
 
             match self.drawing_state {
                 DrawingState::Start => {
@@ -291,14 +303,22 @@ impl App {
                     ShouldRedraw::Yes
                 },
             }
+        } else if self.is_moving {
+            match self.moving_state {
+                MovingState::Start => {
+                    self.moving_state = MovingState::From(pos);
+
+                    ShouldRedraw::No
+                },
+                MovingState::From(point) => {
+                    self.moving_state = MovingState::From(pos);
+                    self.handle_offset(pos - point);
+
+                    ShouldRedraw::Yes
+                },
+            }
         } else {
             ShouldRedraw::No
-        }
-    }
-
-    pub fn handle_cursor_relative(&mut self, delta: Point) {
-        if self.is_moving {
-            self.handle_offset(delta);
         }
     }
 
