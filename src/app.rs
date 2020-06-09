@@ -119,8 +119,8 @@ impl App {
 
     /// applyes a transform to the given cairo context that scales a shape from
     /// the storage to screen coordinates
-    fn scale_to_screen_coordinates(&self, ctx: &CairoContext) {
-        ctx.translate(self.offset.x * 0.5, self.offset.y * 0.5);
+    fn to_screen_coordinates(&self, point: Point) -> Point {
+        point + self.offset
     }
 
     pub fn render(&mut self, dw: &DrawingArea, ctx: &CairoContext) -> Inhibit {
@@ -133,8 +133,6 @@ impl App {
 
         ctx.set_source_rgb(bgcolor[0], bgcolor[1], bgcolor[2]);
         ctx.paint();
-
-        self.scale_to_screen_coordinates(ctx);
 
         // content
         for cmd in commands {
@@ -151,13 +149,13 @@ impl App {
                     let mut iter_points = line.iter();
 
                     if let Some(first_point) = iter_points.next() {
-                        let (x, y) = ctx.user_to_device(first_point.x, first_point.y);
+                        let p = self.to_screen_coordinates(*first_point);
 
-                        ctx.move_to(x, y);
+                        ctx.move_to(p.x, p.y);
 
                         for point in iter_points {
-                            let (x, y) = ctx.user_to_device(point.x, point.y);
-                            ctx.line_to(x, y);
+                            let p = self.to_screen_coordinates(*point);
+                            ctx.line_to(p.x, p.y);
                         }
 
                         ctx.stroke();
