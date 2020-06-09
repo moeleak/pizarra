@@ -3,10 +3,9 @@ use std::f64::consts::PI;
 
 use rstar::AABB;
 use gtk::prelude::*;
-use gtk::DrawingArea;
+use gtk::{DrawingArea, Allocation};
+use gdk::{EventMotion, EventButton, EventType};
 use cairo::{Context as CairoContext, LineCap, LineJoin};
-use gdk::EventMotion;
-use gdk::EventButton;
 
 use crate::draw_commands::ColoredDrawCommand;
 use crate::storage::ShapeStorage;
@@ -48,6 +47,12 @@ enum DrawingState {
 
     /// From there the shape new what to do with its life
     AndSoOn,
+}
+
+/// Indicates wether or not an action should trigger redraw of the canvas
+pub enum ShouldRedraw {
+    Yes,
+    No,
 }
 
 pub struct App {
@@ -101,7 +106,8 @@ impl App {
     /// Compute the bounds of that is visible in the board according to current
     /// offset and zoom level
     fn visible_extent(&self) -> (Point, Point) {
-        (Point::new(0.0, 0.0), Point::new(800.0, 600.0))
+        let inv_offset = self.offset * -1.0;
+        (inv_offset, inv_offset + self.dimensions)
     }
 
     /// p is a point build from an event triggered in the canvas, this function
@@ -109,6 +115,12 @@ impl App {
     /// and offset.
     fn to_storage_coordinates(&self, p: Point) -> Point {
         p + (self.offset * -1.0)
+    }
+
+    /// applyes a transform to the given cairo context that scales a shape from
+    /// the storage to screen coordinates
+    fn scale_to_screen_coordinates(&self, ctx: &CairoContext) {
+        ctx.translate(self.offset.x * 0.5, self.offset.y * 0.5);
     }
 
     pub fn render(&mut self, dw: &DrawingArea, ctx: &CairoContext) -> Inhibit {
@@ -121,6 +133,8 @@ impl App {
 
         ctx.set_source_rgb(bgcolor[0], bgcolor[1], bgcolor[2]);
         ctx.paint();
+
+        self.scale_to_screen_coordinates(ctx);
 
         // content
         for cmd in commands {
@@ -137,13 +151,17 @@ impl App {
                     let mut iter_points = line.iter();
 
                     if let Some(first_point) = iter_points.next() {
-                        ctx.move_to(first_point.x, first_point.y);
+                        let (x, y) = ctx.user_to_device(first_point.x, first_point.y);
+
+                        ctx.move_to(x, y);
 
                         for point in iter_points {
-                            ctx.line_to(point.x, point.y);
+                            let (x, y) = ctx.user_to_device(point.x, point.y);
+                            ctx.line_to(x, y);
                         }
 
                         ctx.stroke();
+
                     }
                 },
                 ColoredDrawCommand::Rectangle {
@@ -174,7 +192,7 @@ impl App {
         Inhibit(false)
     }
 
-    fn render_ui(&self, _dw: &DrawingArea, ctx: &CairoContext) {
+    fn render_ui(&self, _dw: &DrawingArea, _ctx: &CairoContext) {
         // a cross that marks the center
         // TODO draw a cross that marks 0, 0
 
@@ -209,7 +227,7 @@ impl App {
         self.is_drawing = true;
     }
 
-    pub fn finish_drawing(&mut self) {
+    pub fn end_drawing(&mut self) {
         self.is_drawing = false;
         self.drawing_state = DrawingState::Start;
 
@@ -244,16 +262,21 @@ impl App {
         self.is_moving = false;
     }
 
-    pub fn handle_cursor(&mut self, pos: Point) {
+    pub fn handle_cursor(&mut self, pos: Point) -> ShouldRedraw {
         if self.is_drawing && !self.is_moving {
             let transformed_point = self.to_storage_coordinates(pos);
+
+            println!("{:?}", pos);
+            println!("{:?}", transformed_point);
 
             match self.drawing_state {
                 DrawingState::Start => {
                     self.drawing_state = DrawingState::OnePoint(transformed_point);
+                    ShouldRedraw::No
                 },
                 DrawingState::OnePoint(p1) => {
                     self.drawing_state = DrawingState::TwoPoints([p1, transformed_point]);
+                    ShouldRedraw::No
                 },
                 DrawingState::TwoPoints(points) => {
                     self.storage.add(
@@ -261,13 +284,17 @@ impl App {
                     );
                     self.next_id.incr();
                     self.drawing_state = DrawingState::AndSoOn;
+                    ShouldRedraw::Yes
                 },
                 DrawingState::AndSoOn => {
                     if let Some(shape) = self.storage.last_mut() {
                         shape.handle(transformed_point);
                     }
+                    ShouldRedraw::Yes
                 },
             }
+        } else {
+            ShouldRedraw::No
         }
     }
 
@@ -386,16 +413,42 @@ impl App {
         &self.storage
     }
 
-    pub fn on_button_press(&self, dw: &DrawingArea, event: &EventButton) -> Inhibit {
-        unimplemented!()
+    pub fn on_button_press(&mut self, _dw: &DrawingArea, event: &EventButton) -> Inhibit {
+        if let EventType::ButtonPress = event.get_event_type() {
+            match event.get_button() {
+                1 => self.start_drawing(),
+                2 => self.start_moving(),
+                _ => {},
+            }
+        }
+
+        Inhibit(false)
     }
 
-    pub fn on_button_release(&self, dw: &DrawingArea, event: &EventButton) -> Inhibit {
-        unimplemented!()
+    pub fn on_button_release(&mut self, _dw: &DrawingArea, event: &EventButton) -> Inhibit {
+        if let EventType::ButtonRelease = event.get_event_type() {
+            match event.get_button() {
+                1 => self.end_drawing(),
+                2 => self.end_moving(),
+                _ => {},
+            }
+        }
+
+        Inhibit(false)
     }
 
-    pub fn on_pointer_move(&self, dw: &DrawingArea, event: &EventMotion) -> Inhibit {
-        unimplemented!()
+    pub fn on_pointer_move(&mut self, dw: &DrawingArea, event: &EventMotion) -> Inhibit {
+        let (x, y) = event.get_position();
+
+        if let ShouldRedraw::Yes = self.handle_cursor(Point::new(x, y)) {
+            dw.queue_draw();
+        }
+
+        Inhibit(false)
+    }
+
+    pub fn on_size_allocate(&mut self, _dw: &DrawingArea, allocation: Allocation) {
+        self.resize(Point::new(allocation.width as f64, allocation.height as f64));
     }
 }
 
@@ -413,21 +466,21 @@ mod tests {
         app.handle_cursor(Point::new(0.0, 1.0));
         app.handle_cursor(Point::new(1.0, 0.0));
         app.handle_cursor(Point::new(0.0, 1.0));
-        app.finish_drawing();
+        app.end_drawing();
 
         // Do
         app.start_drawing();
         app.handle_cursor(Point::new(0.0, 1.0));
         app.handle_cursor(Point::new(1.0, 0.0));
         app.handle_cursor(Point::new(0.0, 1.0));
-        app.finish_drawing();
+        app.end_drawing();
 
         // Do
         app.start_drawing();
         app.handle_cursor(Point::new(0.0, 1.0));
         app.handle_cursor(Point::new(1.0, 0.0));
         app.handle_cursor(Point::new(0.0, 1.0));
-        app.finish_drawing();
+        app.end_drawing();
 
         app.undo();
 
@@ -446,7 +499,7 @@ mod tests {
         app.handle_cursor(Point::new(0.0, 1.0));
         app.handle_cursor(Point::new(1.0, 0.0));
         app.handle_cursor(Point::new(1.0, 1.0));
-        app.finish_drawing();
+        app.end_drawing();
 
         app.undo();
 
@@ -464,7 +517,7 @@ mod tests {
         app.handle_cursor(Point::new(0.0, 1.0));
         app.handle_cursor(Point::new(1.0, 0.0));
         app.handle_cursor(Point::new(1.0, 1.0));
-        app.finish_drawing();
+        app.end_drawing();
 
         app.undo();
 
@@ -473,14 +526,14 @@ mod tests {
         app.handle_cursor(Point::new(0.0, 1.0));
         app.handle_cursor(Point::new(1.0, 0.0));
         app.handle_cursor(Point::new(1.0, 1.0));
-        app.finish_drawing();
+        app.end_drawing();
 
         // Do
         app.start_drawing();
         app.handle_cursor(Point::new(0.0, 1.0));
         app.handle_cursor(Point::new(1.0, 0.0));
         app.handle_cursor(Point::new(1.0, 1.0));
-        app.finish_drawing();
+        app.end_drawing();
 
         app.undo();
 
@@ -496,7 +549,7 @@ mod tests {
         app.handle_cursor(Point::new(0.0, 1.0));
         app.handle_cursor(Point::new(1.0, 0.0));
         app.handle_cursor(Point::new(1.0, 1.0));
-        app.finish_drawing();
+        app.end_drawing();
 
         app.undo();
 
@@ -505,7 +558,7 @@ mod tests {
         app.handle_cursor(Point::new(0.0, 1.0));
         app.handle_cursor(Point::new(1.0, 0.0));
         app.handle_cursor(Point::new(1.0, 1.0));
-        app.finish_drawing();
+        app.end_drawing();
 
         app.undo();
         app.undo();

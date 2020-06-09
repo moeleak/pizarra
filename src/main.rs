@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use gtk::{Application, ApplicationWindow, DrawingArea};
+use gtk::{Application, ApplicationWindow, DrawingArea, Builder};
 use gdk::EventMask;
 use gtk::prelude::*;
 use gio::prelude::*;
@@ -9,14 +9,13 @@ use gio::prelude::*;
 use pizarra::App;
 use pizarra::point::Point;
 
-fn build_drawing_area() -> DrawingArea {
-    let drawing_area = DrawingArea::new();
+fn connect_drawing_area(builder: &Builder, controller: Rc<RefCell<App>>) -> DrawingArea {
+    let drawing_area: DrawingArea = builder.get_object("drawing-area").expect("No drawing_area");
+
     let event_mask = EventMask::POINTER_MOTION_MASK
         | EventMask::BUTTON_PRESS_MASK | EventMask::BUTTON_RELEASE_MASK
         | EventMask::KEY_PRESS_MASK | EventMask::KEY_RELEASE_MASK
         | EventMask::POINTER_MOTION_MASK | EventMask::TABLET_PAD_MASK;
-
-    let controller = Rc::new(RefCell::new(App::new(Point::new(800.0, 600.0))));
 
     drawing_area.set_can_focus(true);
     drawing_area.add_events(event_mask);
@@ -33,18 +32,21 @@ fn build_drawing_area() -> DrawingArea {
     let copy = controller.clone();
     drawing_area.connect_motion_notify_event(move |dw, event| copy.borrow_mut().on_pointer_move(dw, event));
 
+    let copy = controller.clone();
+    drawing_area.connect_size_allocate(move |dw, allocation| copy.borrow_mut().on_size_allocate(dw, *allocation));
+
     drawing_area
 }
 
 fn init(app: &Application) {
-    let window = ApplicationWindow::new(app);
+    // Initialize layout from .glade file
+    let builder = Builder::new_from_file("res/layout.glade");
+    let controller = Rc::new(RefCell::new(App::new(Point::new(1.0, 1.0))));
+    let window: ApplicationWindow = builder.get_object("main-window").expect("Couldn't get window");
 
-    window.set_title("Pizarra");
-    window.set_default_size(800, 600);
+    window.set_application(Some(app));
 
-    let drawing_area = build_drawing_area();
-
-    window.add(&drawing_area);
+    connect_drawing_area(&builder, controller.clone());
 
     window.show_all();
 }
