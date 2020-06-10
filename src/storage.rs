@@ -163,9 +163,9 @@ mod tests {
     fn test_add_shapes_at_zoom() {
         let mut storage = ShapeStorage::new();
         let shapes: Vec<Shape> = vec![
-            Line::new(Color::Red, [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(2)),
-            Ellipse::new(Color::Blue, [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(3)),
+            Line::new(Color::red(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(2)),
+            Ellipse::new(Color::blue(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(3)),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|shape| {
             storage.add(shape)
@@ -186,7 +186,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Line::new(Color::Blue, [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1)));
+        storage.add(Line::new(Color::blue(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1)));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -195,7 +195,7 @@ mod tests {
         last_shape.handle(Point::new(0.0, 0.0));
         last_shape.handle(Point::new(1.0, 0.0));
 
-        storage.add(Rectangle::new(Color::Blue, [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(2)));
+        storage.add(Rectangle::new(Color::blue(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(2)));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -204,7 +204,7 @@ mod tests {
         last_shape.handle(Point::new(0.0, 0.0));
         last_shape.handle(Point::new(1.0, 0.0));
 
-        storage.add(Ellipse::new(Color::Blue, [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(2)));
+        storage.add(Ellipse::new(Color::blue(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(2)));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -220,7 +220,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Line::new(Color::Blue, [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1)));
+        storage.add(Line::new(Color::blue(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1)));
 
         assert!(storage.last_mut().is_some());
 
@@ -247,8 +247,8 @@ mod tests {
         let id_to_remove = ShapeId::from(1);
         let id_to_interfere = ShapeId::from(2);
 
-        let obj_to_remove = Line::new(Color::Green, [Point::new(0.0, 0.0), Point::new(1.0, 1.0)], id_to_remove);
-        let obj_to_interfere = Line::new(Color::Blue, [Point::new(1.0, 0.0), Point::new(0.0, 1.0)], id_to_interfere);
+        let obj_to_remove = Line::new(Color::green(), [Point::new(0.0, 0.0), Point::new(1.0, 1.0)], id_to_remove);
+        let obj_to_interfere = Line::new(Color::blue(), [Point::new(1.0, 0.0), Point::new(0.0, 1.0)], id_to_interfere);
 
         let id = storage.add(obj_to_remove);
         storage.add(obj_to_interfere);
@@ -273,8 +273,8 @@ mod tests {
         let id_to_remove = ShapeId::from(1);
         let id_to_interfere = ShapeId::from(2);
 
-        let obj_to_remove = Line::new(Color::Green, [Point::new(0.0, 0.0), Point::new(1.0, 1.0)], id_to_remove);
-        let obj_to_interfere = Line::new(Color::Blue, [Point::new(1.0, 0.0), Point::new(0.0, 1.0)], id_to_interfere);
+        let obj_to_remove = Line::new(Color::green(), [Point::new(0.0, 0.0), Point::new(1.0, 1.0)], id_to_remove);
+        let obj_to_interfere = Line::new(Color::blue(), [Point::new(1.0, 0.0), Point::new(0.0, 1.0)], id_to_interfere);
 
         storage.add(obj_to_interfere);
         let id = storage.add(obj_to_remove);
@@ -296,12 +296,12 @@ mod tests {
 
         let shapes = vec![
             // in green the ones that go
-            Rectangle::new(Color::Green, [Point::new(-1.1, -1.1), Point::new(1.1, 1.1)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(-1.5, 0.5), Point::new(-0.5, 1.5)], ShapeId::from(2)),
-            Rectangle::new(Color::Green, [Point::new(0.25, -0.5), Point::new(0.5, -0.25)], ShapeId::from(3)),
+            Rectangle::new(Color::green(), [Point::new(-1.1, -1.1), Point::new(1.1, 1.1)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(-1.5, 0.5), Point::new(-0.5, 1.5)], ShapeId::from(2)),
+            Rectangle::new(Color::green(), [Point::new(0.25, -0.5), Point::new(0.5, -0.25)], ShapeId::from(3)),
 
             // in red the ones that dont
-            Rectangle::new(Color::Red, [Point::new(20.0, 20.0), Point::new(20.0, 20.0)], ShapeId::from(4)),
+            Rectangle::new(Color::red(), [Point::new(20.0, 20.0), Point::new(20.0, 20.0)], ShapeId::from(4)),
         ];
 
         for shape in shapes.into_iter() {
@@ -316,7 +316,7 @@ mod tests {
 
         assert!(buffer.contains(
             &ColoredDrawCommand::Rectangle {
-                color: Color::Green,
+                color: Color::green(),
                 corner_1: Point::new(-1.1, -1.1),
                 corner_2: Point::new(1.1, 1.1),
             }
@@ -324,7 +324,7 @@ mod tests {
 
         assert!(buffer.contains(
             &ColoredDrawCommand::Rectangle {
-                color: Color::Green,
+                color: Color::green(),
                 corner_1: Point::new(-1.5, 0.5),
                 corner_2: Point::new(-0.5, 1.5),
             }
@@ -332,7 +332,7 @@ mod tests {
 
         assert!(buffer.contains(
             &ColoredDrawCommand::Rectangle {
-                color: Color::Green,
+                color: Color::green(),
                 corner_1: Point::new(0.25, -0.5),
                 corner_2: Point::new(0.5, -0.25),
             }
@@ -346,25 +346,25 @@ mod tests {
         let mut storage = ShapeStorage::new();
 
         // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
-        storage.add(Rectangle::new(Color::Red, [Point::new(1.0, 1.0), Point::new(3.0, 3.0)], ShapeId::from(2)));
+        storage.add(Rectangle::new(Color::red(), [Point::new(1.0, 1.0), Point::new(3.0, 3.0)], ShapeId::from(2)));
 
         // only the previous shape is in permanent storage
         storage.flush();
 
         // A rectangle of 2x2 in zoom 0 aournd the oriign
-        storage.add(Rectangle::new(Color::Blue, [Point::new(-1.0, -1.0), Point::new(1.0, 1.0)], ShapeId::from(1)));
+        storage.add(Rectangle::new(Color::blue(), [Point::new(-1.0, -1.0), Point::new(1.0, 1.0)], ShapeId::from(1)));
 
         let buffer: Vec<_> = storage.draw_commands(AABB::from_corners([-2.0, -2.0], [4.0, 4.0])).collect();
 
         assert_eq!(buffer.len(), 2);
 
         assert!(buffer.contains(&ColoredDrawCommand::Rectangle{
-            color: Color::Red,
+            color: Color::red(),
             corner_1: Point::new(1.0, 1.0),
             corner_2: Point::new(3.0, 3.0),
         }));
         assert!(buffer.contains(&ColoredDrawCommand::Rectangle{
-            color: Color::Blue,
+            color: Color::blue(),
             corner_1: Point::new(-1.0, -1.0),
             corner_2: Point::new(1.0, 1.0),
         }));
@@ -380,8 +380,8 @@ mod tests {
     fn test_get_bounds() {
         let mut storage = ShapeStorage::new();
 
-        storage.add(Rectangle::new(Color::Blue, [Point::new(-5.0, -5.0), Point::new(1.0, 1.0)], ShapeId::from(1)));
-        storage.add(Rectangle::new(Color::Blue, [Point::new(5.0, 5.0), Point::new(1.0, 1.0)], ShapeId::from(1)));
+        storage.add(Rectangle::new(Color::blue(), [Point::new(-5.0, -5.0), Point::new(1.0, 1.0)], ShapeId::from(1)));
+        storage.add(Rectangle::new(Color::blue(), [Point::new(5.0, 5.0), Point::new(1.0, 1.0)], ShapeId::from(1)));
 
         storage.flush();
 

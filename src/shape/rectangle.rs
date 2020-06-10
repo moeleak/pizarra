@@ -64,8 +64,8 @@ mod tests {
 
     #[test]
     fn test_bbox() {
-        let shape1 = Rectangle::new(Color::Green, [Point::new(-1.0, -2.0), Point::new(5.0, 2.0)], ShapeId::from(1));
-        let shape2 = Rectangle::new(Color::Green, [Point::new(-1.0, 2.0), Point::new(5.0, -2.0)], ShapeId::from(1));
+        let shape1 = Rectangle::new(Color::green(), [Point::new(-1.0, -2.0), Point::new(5.0, 2.0)], ShapeId::from(1));
+        let shape2 = Rectangle::new(Color::green(), [Point::new(-1.0, 2.0), Point::new(5.0, -2.0)], ShapeId::from(1));
 
         assert_eq!(shape1.shape_impl.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
         assert_eq!(shape2.shape_impl.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
@@ -74,10 +74,10 @@ mod tests {
     #[test]
     fn test_bbox_extended() {
         let rectangles = vec![
-            Rectangle::new(Color::Green, [Point::new(15.0, -48.0), Point::new(37.0, -27.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(15.0, -27.0), Point::new(37.0, -48.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(37.0, -48.0), Point::new(15.0, -27.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(37.0, -27.0), Point::new(15.0, -48.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(15.0, -48.0), Point::new(37.0, -27.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(15.0, -27.0), Point::new(37.0, -48.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(37.0, -48.0), Point::new(15.0, -27.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(37.0, -27.0), Point::new(15.0, -48.0)], ShapeId::from(1)),
         ];
 
         for rectangle in rectangles.into_iter() {
@@ -85,10 +85,10 @@ mod tests {
         }
 
         let rectangles = vec![
-            Rectangle::new(Color::Green, [Point::new(15.0, -24.0), Point::new(60.0, 6.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(15.0, 6.0), Point::new(60.0, -24.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(60.0, -24.0), Point::new(15.0, 6.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(60.0, 6.0), Point::new(15.0, -24.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(15.0, -24.0), Point::new(60.0, 6.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(15.0, 6.0), Point::new(60.0, -24.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(60.0, -24.0), Point::new(15.0, 6.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(60.0, 6.0), Point::new(15.0, -24.0)], ShapeId::from(1)),
         ];
 
         for rectangle in rectangles.into_iter() {
@@ -96,10 +96,10 @@ mod tests {
         }
 
         let rectangles = vec![
-            Rectangle::new(Color::Green, [Point::new(-8.0, -32.0), Point::new(16.0, 0.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(-8.0, 0.0), Point::new(16.0, -32.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(16.0, -32.0), Point::new(-8.0, 0.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(16.0, 0.0), Point::new(-8.0, -32.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(-8.0, -32.0), Point::new(16.0, 0.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(-8.0, 0.0), Point::new(16.0, -32.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(16.0, -32.0), Point::new(-8.0, 0.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(16.0, 0.0), Point::new(-8.0, -32.0)], ShapeId::from(1)),
         ];
 
         for rectangle in rectangles.into_iter() {
@@ -107,10 +107,10 @@ mod tests {
         }
 
         let rectangles = vec![
-            Rectangle::new(Color::Green, [Point::new(48.0, -19.0), Point::new(78.0, 22.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(48.0, 22.0), Point::new(78.0, -19.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(78.0, -19.0), Point::new(48.0, 22.0)], ShapeId::from(1)),
-            Rectangle::new(Color::Green, [Point::new(78.0, 22.0), Point::new(48.0, -19.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(48.0, -19.0), Point::new(78.0, 22.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(48.0, 22.0), Point::new(78.0, -19.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(78.0, -19.0), Point::new(48.0, 22.0)], ShapeId::from(1)),
+            Rectangle::new(Color::green(), [Point::new(78.0, 22.0), Point::new(48.0, -19.0)], ShapeId::from(1)),
         ];
 
         for rectangle in rectangles.into_iter() {
