@@ -3,8 +3,7 @@ use std::f64::consts::PI;
 
 use rstar::AABB;
 use gtk::prelude::*;
-use gtk::{DrawingArea, Allocation, ColorButton};
-use gdk::{EventMotion, EventButton, EventType};
+use gtk::DrawingArea;
 use cairo::{Context as CairoContext, LineCap, LineJoin};
 
 use crate::draw_commands::ColoredDrawCommand;
@@ -422,48 +421,6 @@ impl App {
 
     pub fn storage(&self) -> &ShapeStorage {
         &self.storage
-    }
-
-    pub fn on_button_press(&mut self, _dw: &DrawingArea, event: &EventButton) -> Inhibit {
-        if let EventType::ButtonPress = event.get_event_type() {
-            match event.get_button() {
-                1 => self.start_drawing(),
-                2 => self.start_moving(),
-                _ => {},
-            }
-        }
-
-        Inhibit(false)
-    }
-
-    pub fn on_button_release(&mut self, _dw: &DrawingArea, event: &EventButton) -> Inhibit {
-        if let EventType::ButtonRelease = event.get_event_type() {
-            match event.get_button() {
-                1 => self.end_drawing(),
-                2 => self.end_moving(),
-                _ => {},
-            }
-        }
-
-        Inhibit(false)
-    }
-
-    pub fn on_pointer_move(&mut self, dw: &DrawingArea, event: &EventMotion) -> Inhibit {
-        let (x, y) = event.get_position();
-
-        if let ShouldRedraw::Yes = self.handle_cursor(Point::new(x, y)) {
-            dw.queue_draw();
-        }
-
-        Inhibit(false)
-    }
-
-    pub fn on_size_allocate(&mut self, _dw: &DrawingArea, allocation: Allocation) {
-        self.resize(Point::new(allocation.width as f64, allocation.height as f64));
-    }
-
-    pub fn on_color_set(&mut self, chooser: &ColorButton) {
-        self.set_color(Color::from(chooser.get_rgba()));
     }
 }
 
