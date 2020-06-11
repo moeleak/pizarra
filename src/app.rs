@@ -1,10 +1,6 @@
 use std::mem;
-use std::f64::consts::PI;
 
 use rstar::AABB;
-use gtk::prelude::*;
-use gtk::DrawingArea;
-use cairo::{Context as CairoContext, LineCap, LineJoin};
 
 use crate::draw_commands::ColoredDrawCommand;
 use crate::storage::ShapeStorage;
@@ -12,7 +8,6 @@ use crate::shape::{ShapeType, ShapeId};
 use crate::color::Color;
 use crate::action::Action;
 use crate::point::Point;
-use crate::shape::corners_to_props;
 
 #[derive(Copy,Clone,Debug)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -118,9 +113,13 @@ impl App {
 
     /// Compute the bounds of that is visible in the board according to current
     /// offset and zoom level
-    fn visible_extent(&self) -> (Point, Point) {
+    pub fn visible_extent(&self) -> (Point, Point) {
         let inv_offset = self.offset * -1.0;
         (inv_offset, inv_offset + self.dimensions)
+    }
+
+    pub fn draw_commands(&self, bbox: AABB<[f64; 2]>) -> impl Iterator<Item=ColoredDrawCommand> + '_ {
+        self.storage.draw_commands(bbox)
     }
 
     /// p is a point build from an event triggered in the canvas, this function
@@ -132,84 +131,8 @@ impl App {
 
     /// applyes a transform to the given cairo context that scales a shape from
     /// the storage to screen coordinates
-    fn to_screen_coordinates(&self, point: Point) -> Point {
+    pub fn to_screen_coordinates(&self, point: Point) -> Point {
         point + self.offset
-    }
-
-    pub fn render(&mut self, dw: &DrawingArea, ctx: &CairoContext) -> Inhibit {
-        let bgcolor = Color::black();
-
-        // the bbox of the visible things
-        let (corner_1, corner_2) = self.visible_extent();
-
-        let commands = self.storage.draw_commands(AABB::from_corners(corner_1.to_a(), corner_2.to_a()));
-
-        ctx.set_source_rgb(bgcolor.r, bgcolor.g, bgcolor.b);
-        ctx.paint();
-
-        // content
-        for cmd in commands {
-            match cmd {
-                ColoredDrawCommand::Line {
-                    color, line, thickness,
-                } => {
-                    ctx.set_line_width(thickness);
-                    ctx.set_source_rgb(color.r, color.g, color.b);
-                    ctx.set_line_cap(LineCap::Round);
-                    ctx.set_line_join(LineJoin::Round);
-
-                    let mut iter_points = line.iter();
-
-                    if let Some(first_point) = iter_points.next() {
-                        let p = self.to_screen_coordinates(*first_point);
-
-                        ctx.move_to(p.x, p.y);
-
-                        for point in iter_points {
-                            let p = self.to_screen_coordinates(*point);
-                            ctx.line_to(p.x, p.y);
-                        }
-
-                        ctx.stroke();
-
-                    }
-                },
-                ColoredDrawCommand::Rectangle {
-                    color, corner_1, corner_2,
-                } => {
-                    let (x, y, width, height) = corners_to_props(corner_1, corner_2);
-                    ctx.rectangle(x, y, width, height);
-                    ctx.set_source_rgb(color.r, color.g, color.b);
-                    ctx.fill();
-                },
-                ColoredDrawCommand::Ellipse {
-                    color, corner_1, corner_2,
-                } => {
-                    ctx.set_source_rgb(color.r, color.g, color.b);
-                    ctx.move_to(corner_1.x, corner_2.y);
-                    ctx.arc(0.5, 0.5, 0.5, 0.0, 2.0*PI);
-                    ctx.scale(corner_2.x - corner_1.x, corner_2.y - corner_1.y);
-                    ctx.fill();
-                },
-            }
-        }
-
-        // UI
-        self.render_ui(dw, ctx);
-
-        Inhibit(false)
-    }
-
-    fn render_ui(&self, _dw: &DrawingArea, _ctx: &CairoContext) {
-        // a cross that marks the center
-        // TODO draw a cross that marks 0, 0
-
-        // TODO a symbol that represents the tool in use
-        match self.selected_tool {
-            ShapeType::Ellipse => {},
-            ShapeType::Rectangle => {},
-            ShapeType::Line => {},
-        }
     }
 
     fn handle_offset(&mut self, delta: Point) {

@@ -1,5 +1,6 @@
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::f64::consts::PI;
 
 use gtk::{
     Application, ApplicationWindow, DrawingArea, Builder, ColorButton,
@@ -8,8 +9,13 @@ use gtk::{
 use gdk::{EventMask, EventType};
 use gtk::prelude::*;
 use gio::prelude::*;
+use rstar::AABB;
+use cairo::{LineCap, LineJoin};
 
-use pizarra::{App, app::ShouldRedraw, color::Color};
+use pizarra::{
+    App, app::ShouldRedraw, color::Color, draw_commands::ColoredDrawCommand,
+    shape::corners_to_props,
+};
 use pizarra::point::Point;
 
 fn init(app: &Application) {
@@ -33,7 +39,67 @@ fn init(app: &Application) {
     drawing_area.add_events(event_mask);
 
     let copy = controller.clone();
-    drawing_area.connect_draw(move |dw, ctx| copy.borrow_mut().render(dw, ctx));
+    drawing_area.connect_draw(move |_dw, ctx| {
+        let controller = copy.borrow();
+        let bgcolor = Color::black();
+
+        // the bbox of the visible things
+        let (corner_1, corner_2) = controller.visible_extent();
+
+        let commands = controller.draw_commands(AABB::from_corners(corner_1.to_a(), corner_2.to_a()));
+
+        ctx.set_source_rgb(bgcolor.r, bgcolor.g, bgcolor.b);
+        ctx.paint();
+
+        // content
+        for cmd in commands {
+            match cmd {
+                ColoredDrawCommand::Line {
+                    color, line, thickness,
+                } => {
+                    ctx.set_line_width(thickness);
+                    ctx.set_source_rgb(color.r, color.g, color.b);
+                    ctx.set_line_cap(LineCap::Round);
+                    ctx.set_line_join(LineJoin::Round);
+
+                    let mut iter_points = line.iter();
+
+                    if let Some(first_point) = iter_points.next() {
+                        let p = controller.to_screen_coordinates(*first_point);
+
+                        ctx.move_to(p.x, p.y);
+
+                        for point in iter_points {
+                            let p = controller.to_screen_coordinates(*point);
+                            ctx.line_to(p.x, p.y);
+                        }
+
+                        ctx.stroke();
+
+                    }
+                },
+                ColoredDrawCommand::Rectangle {
+                    color, corner_1, corner_2,
+                } => {
+                    let (x, y, width, height) = corners_to_props(corner_1, corner_2);
+                    ctx.rectangle(x, y, width, height);
+                    ctx.set_source_rgb(color.r, color.g, color.b);
+                    ctx.fill();
+                },
+                ColoredDrawCommand::Ellipse {
+                    color, corner_1, corner_2,
+                } => {
+                    ctx.set_source_rgb(color.r, color.g, color.b);
+                    ctx.move_to(corner_1.x, corner_2.y);
+                    ctx.arc(0.5, 0.5, 0.5, 0.0, 2.0*PI);
+                    ctx.scale(corner_2.x - corner_1.x, corner_2.y - corner_1.y);
+                    ctx.fill();
+                },
+            }
+        }
+
+        Inhibit(false)
+    });
 
     let copy = controller.clone();
     drawing_area.connect_button_press_event(move |_dw, event| {
