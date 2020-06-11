@@ -66,6 +66,7 @@ pub struct App {
     /// This value represents a vector from the top left corner of the window to
     /// the center of the drawing
     offset: Point,
+    zoom: f64,
 
     /// The window's dimensions
     dimensions: Point,
@@ -99,6 +100,7 @@ impl App {
             /// a vector from the top-left corner of the screen to the origin
             /// of coordinates in the storage
             offset: dimensions * 0.5,
+            zoom: 1.0,
 
             undo_state: UndoState::Reset,
             undo_queue: Vec::new(),
@@ -242,7 +244,8 @@ impl App {
     }
 
     pub fn zoom_in(&mut self) {
-        unimplemented!()
+        self.offset = (self.offset + self.dimensions * -0.25) * 2.0;
+        self.zoom /= 2.0;
     }
 
     pub fn zoom_out(&mut self) {

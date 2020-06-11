@@ -112,6 +112,6 @@ impl RTreeObject for Shape {
     }
 }
 
-pub fn corners_to_props(corner_1: Point, corner_2: Point) -> (f64, f64, f64, f64) {
+pub fn corners_to_props(_corner_1: Point, _corner_2: Point) -> (f64, f64, f64, f64) {
     unimplemented!()
 }
