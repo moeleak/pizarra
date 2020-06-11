@@ -57,7 +57,7 @@ fn init(app: &Application) {
                 ColoredDrawCommand::Line {
                     color, line, thickness,
                 } => {
-                    ctx.set_line_width(thickness);
+                    ctx.set_line_width(thickness * controller.scale_factor());
                     ctx.set_source_rgb(color.r, color.g, color.b);
                     ctx.set_line_cap(LineCap::Round);
                     ctx.set_line_join(LineJoin::Round);
@@ -75,7 +75,6 @@ fn init(app: &Application) {
                         }
 
                         ctx.stroke();
-
                     }
                 },
                 ColoredDrawCommand::Rectangle {
