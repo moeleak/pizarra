@@ -32,33 +32,33 @@
             <property name="can_focus">False</property>
             <child>
               <object class="GtkMenuItem">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
                 <property name="label">gtk-new</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
                 <property name="use_underline">True</property>
               </object>
             </child>
             <child>
               <object class="GtkMenuItem">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
                 <property name="label">gtk-open</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
                 <property name="use_underline">True</property>
               </object>
             </child>
             <child>
               <object class="GtkMenuItem">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
                 <property name="label">gtk-save</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
                 <property name="use_underline">True</property>
               </object>
             </child>
             <child>
               <object class="GtkMenuItem">
-                <property name="label">gtk-save-as</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="label">gtk-save-as</property>
                 <property name="use_underline">True</property>
               </object>
             </child>
@@ -70,9 +70,9 @@
             </child>
             <child>
               <object class="GtkMenuItem">
-                <property name="label">gtk-quit</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="label">gtk-quit</property>
                 <property name="use_underline">True</property>
               </object>
             </child>
@@ -91,35 +91,12 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
-              <object class="GtkMenuItem">
-                <property name="label">gtk-cut</property>
+              <object class="GtkMenuItem" id="undo-btn">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="label">Deshacer</property>
                 <property name="use_underline">True</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkMenuItem">
-                <property name="label">gtk-copy</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="use_underline">True</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkMenuItem">
-                <property name="label">gtk-paste</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="use_underline">True</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkMenuItem">
-                <property name="label">gtk-delete</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="use_underline">True</property>
+                <accelerator key="z" signal="activate" modifiers="GDK_CONTROL_MASK"/>
               </object>
             </child>
           </object>
@@ -146,9 +123,9 @@
             <property name="can_focus">False</property>
             <child>
               <object class="GtkMenuItem">
-                <property name="label">gtk-about</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="label">gtk-about</property>
                 <property name="use_underline">True</property>
               </object>
             </child>

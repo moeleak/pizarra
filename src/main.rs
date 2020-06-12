@@ -4,7 +4,7 @@ use std::f64::consts::PI;
 
 use gtk::{
     Application, ApplicationWindow, DrawingArea, Builder, ColorButton,
-    Button,
+    Button, MenuItem,
 };
 use gdk::{EventMask, EventType};
 use gtk::prelude::*;
