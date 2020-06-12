@@ -5,7 +5,7 @@ use std::f64;
 use rstar::{RTree, RTreeObject, AABB, SelectionFunction};
 
 use super::shape::{Shape, ShapeId};
-use super::draw_commands::ColoredDrawCommand;
+use super::draw_commands::DrawCommand;
 
 struct BBoxIdSelection {
     bbox: AABB<[f64; 2]>,
@@ -101,7 +101,7 @@ impl ShapeStorage {
         self.shape_count
     }
 
-    pub fn draw_commands(&self, bbox: AABB<[f64; 2]>) -> impl Iterator<Item=ColoredDrawCommand> + '_ {
+    pub fn draw_commands(&self, bbox: AABB<[f64; 2]>) -> impl Iterator<Item=DrawCommand> + '_ {
         let mut current = Vec::new();
 
         if let Some(shape) = self.current.as_ref() {
@@ -156,7 +156,7 @@ mod tests {
 
     use crate::shape::{Shape, ShapeType, ShapeId, Line, Rectangle, Ellipse};
     use crate::color::Color;
-    use crate::draw_commands::ColoredDrawCommand;
+    use crate::draw_commands::DrawCommand;
     use crate::point::Point;
 
     #[test]
@@ -315,7 +315,7 @@ mod tests {
         assert_eq!(buffer.len(), 3);
 
         assert!(buffer.contains(
-            &ColoredDrawCommand::Rectangle {
+            &DrawCommand::Rectangle {
                 color: Color::green(),
                 corner_1: Point::new(-1.1, -1.1),
                 corner_2: Point::new(1.1, 1.1),
@@ -323,7 +323,7 @@ mod tests {
         ));
 
         assert!(buffer.contains(
-            &ColoredDrawCommand::Rectangle {
+            &DrawCommand::Rectangle {
                 color: Color::green(),
                 corner_1: Point::new(-1.5, 0.5),
                 corner_2: Point::new(-0.5, 1.5),
@@ -331,7 +331,7 @@ mod tests {
         ));
 
         assert!(buffer.contains(
-            &ColoredDrawCommand::Rectangle {
+            &DrawCommand::Rectangle {
                 color: Color::green(),
                 corner_1: Point::new(0.25, -0.5),
                 corner_2: Point::new(0.5, -0.25),
@@ -358,12 +358,12 @@ mod tests {
 
         assert_eq!(buffer.len(), 2);
 
-        assert!(buffer.contains(&ColoredDrawCommand::Rectangle{
+        assert!(buffer.contains(&DrawCommand::Rectangle{
             color: Color::red(),
             corner_1: Point::new(1.0, 1.0),
             corner_2: Point::new(3.0, 3.0),
         }));
-        assert!(buffer.contains(&ColoredDrawCommand::Rectangle{
+        assert!(buffer.contains(&DrawCommand::Rectangle{
             color: Color::blue(),
             corner_1: Point::new(-1.0, -1.0),
             corner_2: Point::new(1.0, 1.0),

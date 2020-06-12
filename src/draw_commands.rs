@@ -19,26 +19,6 @@ pub enum WireDrawCommand {
 
 /// The draw command as returned by the shape: adds the color 
 #[derive(Debug, PartialEq)]
-pub enum ColoredDrawCommand {
-    Line {
-        color: Color,
-        line: Vec<Point>,
-        thickness: f64,
-    },
-    Rectangle {
-        color: Color,
-        corner_1: Point,
-        corner_2: Point,
-    },
-    Ellipse {
-        color: Color,
-        corner_1: Point,
-        corner_2: Point,
-    },
-}
-
-/// A Full Draw command returned by the storage
-#[derive(Debug, PartialEq)]
 pub enum DrawCommand {
     Line {
         color: Color,
@@ -55,14 +35,4 @@ pub enum DrawCommand {
         corner_1: Point,
         corner_2: Point,
     },
-}
-
-impl DrawCommand {
-    pub fn color(&self) -> Color {
-        match self {
-            DrawCommand::Line { color, .. } => *color,
-            DrawCommand::Rectangle { color, .. } => *color,
-            DrawCommand::Ellipse { color, .. } => *color,
-        }
-    }
 }

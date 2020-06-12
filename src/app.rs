@@ -2,7 +2,7 @@ use std::mem;
 
 use rstar::AABB;
 
-use crate::draw_commands::ColoredDrawCommand;
+use crate::draw_commands::DrawCommand;
 use crate::storage::ShapeStorage;
 use crate::shape::{ShapeType, ShapeId};
 use crate::color::Color;
@@ -120,7 +120,7 @@ impl App {
         (inv_offset, inv_offset + self.dimensions)
     }
 
-    pub fn draw_commands(&self, bbox: AABB<[f64; 2]>) -> impl Iterator<Item=ColoredDrawCommand> + '_ {
+    pub fn draw_commands(&self, bbox: AABB<[f64; 2]>) -> impl Iterator<Item=DrawCommand> + '_ {
         self.storage.draw_commands(bbox)
     }
 

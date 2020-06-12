@@ -8,7 +8,7 @@ pub mod rectangle;
 pub mod ellipse;
 
 use super::color::Color;
-use crate::draw_commands::{WireDrawCommand, ColoredDrawCommand};
+use crate::draw_commands::{WireDrawCommand, DrawCommand};
 
 pub use self::line::Line;
 pub use self::rectangle::Rectangle;
@@ -79,13 +79,13 @@ impl Shape {
         self.shape_impl.handle(val);
     }
 
-    pub fn draw_commands(&self) -> ColoredDrawCommand {
+    pub fn draw_commands(&self) -> DrawCommand {
         let cmd = self.shape_impl.draw_commands();
 
         match cmd {
-            WireDrawCommand::Ellipse{ corner_1, corner_2 } => ColoredDrawCommand::Ellipse{ corner_1, corner_2, color: self.color },
-            WireDrawCommand::Rectangle{ corner_1, corner_2 } => ColoredDrawCommand::Rectangle{ corner_1, corner_2, color: self.color },
-            WireDrawCommand::Line{ line, thickness } => ColoredDrawCommand::Line{ line, color: self.color, thickness },
+            WireDrawCommand::Ellipse{ corner_1, corner_2 } => DrawCommand::Ellipse{ corner_1, corner_2, color: self.color },
+            WireDrawCommand::Rectangle{ corner_1, corner_2 } => DrawCommand::Rectangle{ corner_1, corner_2, color: self.color },
+            WireDrawCommand::Line{ line, thickness } => DrawCommand::Line{ line, color: self.color, thickness },
         }
     }
 

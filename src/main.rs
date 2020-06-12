@@ -14,7 +14,7 @@ use cairo::{LineCap, LineJoin};
 use glib::clone;
 
 use pizarra::{
-    App, app::ShouldRedraw, color::Color, draw_commands::ColoredDrawCommand,
+    App, app::ShouldRedraw, color::Color, draw_commands::DrawCommand,
     shape::corners_to_props,
 };
 use pizarra::point::Point;
@@ -54,7 +54,7 @@ fn init(app: &Application) {
         // content
         for cmd in commands {
             match cmd {
-                ColoredDrawCommand::Line {
+                DrawCommand::Line {
                     color, line, thickness,
                 } => {
                     ctx.set_line_width(thickness * controller.scale_factor());
@@ -77,7 +77,7 @@ fn init(app: &Application) {
                         ctx.stroke();
                     }
                 },
-                ColoredDrawCommand::Rectangle {
+                DrawCommand::Rectangle {
                     color, corner_1, corner_2,
                 } => {
                     let (x, y, width, height) = corners_to_props(
@@ -88,7 +88,7 @@ fn init(app: &Application) {
                     ctx.set_source_rgb(color.r, color.g, color.b);
                     ctx.fill();
                 },
-                ColoredDrawCommand::Ellipse {
+                DrawCommand::Ellipse {
                     color, corner_1, corner_2,
                 } => {
                     ctx.set_source_rgb(color.r, color.g, color.b);
