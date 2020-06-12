@@ -11,6 +11,7 @@ use gtk::prelude::*;
 use gio::prelude::*;
 use rstar::AABB;
 use cairo::{LineCap, LineJoin};
+use glib::clone;
 
 use pizarra::{
     App, app::ShouldRedraw, color::Color, draw_commands::ColoredDrawCommand,
@@ -38,9 +39,8 @@ fn init(app: &Application) {
     drawing_area.set_can_focus(true);
     drawing_area.add_events(event_mask);
 
-    let copy = controller.clone();
-    drawing_area.connect_draw(move |_dw, ctx| {
-        let controller = copy.borrow();
+    drawing_area.connect_draw(clone!(@strong controller => move |_dw, ctx| {
+        let controller = controller.borrow();
         let bgcolor = Color::black();
 
         // the bbox of the visible things
@@ -80,7 +80,10 @@ fn init(app: &Application) {
                 ColoredDrawCommand::Rectangle {
                     color, corner_1, corner_2,
                 } => {
-                    let (x, y, width, height) = corners_to_props(corner_1, corner_2);
+                    let (x, y, width, height) = corners_to_props(
+                        controller.to_screen_coordinates(corner_1),
+                        controller.to_screen_coordinates(corner_2)
+                    );
                     ctx.rectangle(x, y, width, height);
                     ctx.set_source_rgb(color.r, color.g, color.b);
                     ctx.fill();
@@ -98,86 +101,81 @@ fn init(app: &Application) {
         }
 
         Inhibit(false)
-    });
+    }));
 
-    let copy = controller.clone();
-    drawing_area.connect_button_press_event(move |_dw, event| {
+    drawing_area.connect_button_press_event(clone!(@strong controller => move |_dw, event| {
         if let EventType::ButtonPress = event.get_event_type() {
             match event.get_button() {
-                1 => copy.borrow_mut().start_drawing(),
-                2 => copy.borrow_mut().start_moving(),
+                1 => controller.borrow_mut().start_drawing(),
+                2 => controller.borrow_mut().start_moving(),
                 _ => {},
             }
         }
 
         Inhibit(false)
-    });
+    }));
 
-    let copy = controller.clone();
-    drawing_area.connect_button_release_event(move |_dw, event| {
+    drawing_area.connect_button_release_event(clone!(@strong controller => move |_dw, event| {
         if let EventType::ButtonRelease = event.get_event_type() {
             match event.get_button() {
-                1 => copy.borrow_mut().end_drawing(),
-                2 => copy.borrow_mut().end_moving(),
+                1 => controller.borrow_mut().end_drawing(),
+                2 => controller.borrow_mut().end_moving(),
                 _ => {},
             }
         }
 
         Inhibit(false)
-    });
+    }));
 
-    let copy = controller.clone();
-    drawing_area.connect_motion_notify_event(move |dw, event| {
+    drawing_area.connect_motion_notify_event(clone!(@strong controller => move |dw, event| {
         let (x, y) = event.get_position();
 
-        if let ShouldRedraw::Yes = copy.borrow_mut().handle_cursor(Point::new(x, y)) {
+        if let ShouldRedraw::Yes = controller.borrow_mut().handle_cursor(Point::new(x, y)) {
             dw.queue_draw();
         }
 
         Inhibit(false)
-    });
+    }));
 
-    let copy = controller.clone();
-    drawing_area.connect_size_allocate(move |_dw, allocation| {
-        copy.borrow_mut().resize(Point::new(allocation.width as f64, allocation.height as f64))
-    });
+    drawing_area.connect_size_allocate(clone!(@strong controller => move |_dw, allocation| {
+        controller.borrow_mut().resize(Point::new(allocation.width as f64, allocation.height as f64))
+    }));
 
-    let boxed_dw = Rc::new(RefCell::new(drawing_area));
+    let dwb = Rc::new(RefCell::new(drawing_area));
 
     // Color chooser
     let color_chooser: ColorButton = builder.get_object("color-chooser").expect("No color chooser");
 
-    let copy = controller.clone();
-    let dwb = boxed_dw.clone();
-    color_chooser.connect_color_set(move |chooser| {
-        copy.borrow_mut().set_color(Color::from(chooser.get_rgba()));
+    color_chooser.connect_color_set(clone!(@strong controller, @strong dwb => move |chooser| {
+        controller.borrow_mut().set_color(Color::from(chooser.get_rgba()));
         dwb.borrow().queue_draw();
-    });
+    }));
 
     // Zoom buttons
     let zoom_in_btn: Button = builder.get_object("zoom-in-btn").expect("No zoom in btn");
-    let copy = controller.clone();
-    let dwb = boxed_dw.clone();
-    zoom_in_btn.connect_clicked(move |_btn| {
-        copy.borrow_mut().zoom_in();
+    zoom_in_btn.connect_clicked(clone!(@strong controller, @strong dwb => move |_btn| {
+        controller.borrow_mut().zoom_in();
         dwb.borrow().queue_draw();
-    });
+    }));
 
     let zoom_out_btn: Button = builder.get_object("zoom-out-btn").expect("No zoom out btn");
-    let copy = controller.clone();
-    let dwb = boxed_dw.clone();
-    zoom_out_btn.connect_clicked(move |_btn| {
-        copy.borrow_mut().zoom_out();
+    zoom_out_btn.connect_clicked(clone!(@strong controller, @strong dwb => move |_btn| {
+        controller.borrow_mut().zoom_out();
         dwb.borrow().queue_draw();
-    });
+    }));
 
     let zoom_home_btn: Button = builder.get_object("zoom-home-btn").expect("No zoom home btn");
-    let copy = controller.clone();
-    let dwb = boxed_dw.clone();
-    zoom_home_btn.connect_clicked(move |_btn| {
-        copy.borrow_mut().go_home();
+    zoom_home_btn.connect_clicked(clone!(@strong controller, @strong dwb => move |_btn| {
+        controller.borrow_mut().go_home();
         dwb.borrow().queue_draw();
-    });
+    }));
+
+    // Undo/Redo
+    let undo_menu: MenuItem = builder.get_object("undo-btn").expect("No undo btn");
+    undo_menu.connect_activate(clone!(@strong controller, @strong dwb => move |_menu| {
+        controller.borrow_mut().undo();
+        dwb.borrow().queue_draw();
+    }));
 
     // Show
     window.show_all();
