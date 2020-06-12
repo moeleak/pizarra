@@ -259,6 +259,7 @@ impl App {
 
     pub fn go_home(&mut self) {
         self.offset = self.dimensions * 0.5;
+        self.scale_factor = 1.0;
     }
 
     pub fn set_color(&mut self, color: Color) {
@@ -467,5 +468,10 @@ mod tests {
         app.undo();
 
         assert_eq!(app.storage().shape_count(), 0);
+    }
+
+    #[test]
+    fn test_undo_still_broken() {
+        assert!(false, "yep, still broken");
     }
 }
