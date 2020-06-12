@@ -99,6 +99,15 @@
                 <accelerator key="z" signal="activate" modifiers="GDK_CONTROL_MASK"/>
               </object>
             </child>
+            <child>
+              <object class="GtkMenuItem" id="redo-btn">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label">Rehacer</property>
+                <property name="use_underline">True</property>
+                <accelerator key="z" signal="activate" modifiers="GDK_SHIFT_MASK | GDK_CONTROL_MASK"/>
+              </object>
+            </child>
           </object>
         </child>
       </object>

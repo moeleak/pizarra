@@ -177,6 +177,12 @@ fn init(app: &Application) {
         dwb.borrow().queue_draw();
     }));
 
+    let redo_menu: MenuItem = builder.get_object("redo-btn").expect("No reundo btn");
+    redo_menu.connect_activate(clone!(@strong controller, @strong dwb => move |_menu| {
+        controller.borrow_mut().redo();
+        dwb.borrow().queue_draw();
+    }));
+
     // Show
     window.show_all();
 }
