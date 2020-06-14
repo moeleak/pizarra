@@ -195,6 +195,7 @@
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="image">image-zoom-in</property>
+                <accelerator key="plus" signal="clicked"/>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -221,6 +222,7 @@
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="image">image-zoom-home</property>
+                <accelerator key="minus" signal="clicked"/>
               </object>
               <packing>
                 <property name="expand">True</property>
