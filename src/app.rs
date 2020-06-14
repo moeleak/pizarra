@@ -63,8 +63,8 @@ pub struct App {
     storage: ShapeStorage,
     selected_tool: ShapeType,
 
-    /// This value represents a vector from the top left corner of the window to
-    /// the center of the drawing
+    /// This value represents the coordinate of the drwing space that is currently
+    /// at the top-left corner of the screen.
     offset: Point,
     scale_factor: f64,
 
@@ -99,7 +99,7 @@ impl App {
 
             /// a vector from the top-left corner of the screen to the origin
             /// of coordinates in the storage
-            offset: dimensions * 0.5,
+            offset: dimensions * -0.5,
             scale_factor: 1.0,
 
             undo_state: UndoState::Reset,
@@ -113,11 +113,13 @@ impl App {
         }
     }
 
-    /// Compute the bounds of that is visible in the board according to current
+    /// Compute the bounds of what is visible in the board according to current
     /// offset and zoom level
     pub fn visible_extent(&self) -> (Point, Point) {
-        let inv_offset = self.offset * -1.0;
-        (inv_offset, inv_offset + self.dimensions)
+        (
+            self.offset,
+            self.offset + self.dimensions / self.scale_factor
+        )
     }
 
     pub fn draw_commands(&self, bbox: AABB<[f64; 2]>) -> impl Iterator<Item=DrawCommand> + '_ {
@@ -128,25 +130,21 @@ impl App {
         self.scale_factor
     }
 
-    /// p is a point build from an event triggered in the canvas, this function
+    /// p is a point in the coordinate space of the drawing area. This function
     /// converts p's coordinates to storage coordinates given the current zoom
     /// and offset.
     fn to_storage_coordinates(&self, p: Point) -> Point {
-        p + (self.offset * -1.0)
+        p / self.scale_factor + self.offset
     }
 
-    /// applyes a transform to the given cairo context that scales a shape from
-    /// the storage to screen coordinates
-    pub fn to_screen_coordinates(&self, point: Point) -> Point {
-        point + self.offset
+    /// p is a point in the coordinate space of the shape storage, and this function
+    /// translates it to drawing area's coordinate system.
+    pub fn to_screen_coordinates(&self, p: Point) -> Point {
+        (p - self.offset) * self.scale_factor
     }
 
     fn handle_offset(&mut self, delta: Point) {
-        self.offset += delta;
-    }
-
-    pub fn handle_scroll(&mut self, delta: Point) {
-        self.offset = self.offset + delta * 8.0;
+        self.offset -= delta / self.scale_factor;
     }
 
     pub fn resize(&mut self, new_size: Point) {
@@ -248,17 +246,17 @@ impl App {
     }
 
     pub fn zoom_in(&mut self) {
-        self.offset = (self.offset + self.dimensions * -0.25) * 2.0;
+        self.offset += (self.dimensions / self.scale_factor) * 0.25;
         self.scale_factor *= 2.0;
     }
 
     pub fn zoom_out(&mut self) {
-        self.offset = (self.offset + self.dimensions * 0.5) * 0.5;
+        self.offset -= (self.dimensions / self.scale_factor) * 0.5;
         self.scale_factor /= 2.0;
     }
 
     pub fn go_home(&mut self) {
-        self.offset = self.dimensions * 0.5;
+        self.offset = self.dimensions * -0.5;
         self.scale_factor = 1.0;
     }
 
@@ -473,5 +471,38 @@ mod tests {
     #[test]
     fn test_undo_still_broken() {
         assert!(false, "yep, still broken");
+    }
+
+    #[test]
+    fn move_while_in_zoom_is_coherent() {
+        let mut app = App::new(Point::new(80.0, 60.0));
+
+        assert_eq!(app.visible_extent(), (Point::new(-40.0, -30.0), Point::new(40.0, 30.0)));
+
+        app.zoom_in();
+
+        assert_eq!(app.visible_extent(), (Point::new(-20.0, -15.0), Point::new(20.0, 15.0)));
+
+        app.start_moving();
+        app.handle_cursor(Point::new(0.0, 0.0));
+        app.handle_cursor(Point::new(-1.0, 0.0)); // moves one screen pixel to the right
+        app.end_moving();
+
+        assert_eq!(app.visible_extent(), (Point::new(-19.5, -15.0), Point::new(20.5, 15.0)));
+    }
+
+    #[test]
+    fn test_zoom_must_be_idempotent() {
+        let mut app = App::new(Point::new(80.0, 60.0));
+
+        assert_eq!(app.visible_extent(), (Point::new(-40.0, -30.0), Point::new(40.0, 30.0)));
+
+        app.zoom_in();
+
+        assert_eq!(app.visible_extent(), (Point::new(-20.0, -15.0), Point::new(20.0, 15.0)));
+
+        app.zoom_in();
+
+        assert_eq!(app.visible_extent(), (Point::new(-10.0, -7.5), Point::new(10.0, 7.5)));
     }
 }
