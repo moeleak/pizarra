@@ -334,7 +334,7 @@ impl App {
 
             UndoState::Reset => {
                 // there's something to redo
-                if let false = self.undo_queue.is_empty() {
+                if !self.undo_queue.is_empty() {
                     let action_to_redo = mem::replace(&mut self.undo_queue[0], Action::Skip);
 
                     self.undo_queue[0] = self.revert(action_to_redo);
