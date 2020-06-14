@@ -10,7 +10,7 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn new(color: Color, initial: [Point; 2], id: ShapeId) -> Shape {
+    pub fn new(color: Color, initial: [Point; 2], id: ShapeId, thickness: f64) -> Shape {
         let mut init_vec = Vec::with_capacity(1000);
 
         init_vec.push(initial[0]);
@@ -21,7 +21,7 @@ impl Line {
             color,
             shape_impl: Box::new(Line {
                 points: init_vec,
-                thickness: 4.0,
+                thickness: thickness,
             }),
         }
     }

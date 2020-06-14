@@ -22,9 +22,9 @@ pub enum ShapeType {
 }
 
 impl ShapeType {
-    pub fn make(&self, color: Color, initial: [Point; 2], id: ShapeId) -> Shape {
+    pub fn make(&self, color: Color, initial: [Point; 2], id: ShapeId, scale_factor: f64) -> Shape {
         match *self {
-            ShapeType::Line => Line::new(color, initial, id),
+            ShapeType::Line => Line::new(color, initial, id, 4.0 / scale_factor),
             ShapeType::Rectangle => Rectangle::new(color, initial, id),
             ShapeType::Ellipse => Ellipse::new(color, initial, id),
         }

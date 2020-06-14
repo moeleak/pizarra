@@ -213,7 +213,7 @@ impl App {
                 },
                 DrawingState::TwoPoints(points) => {
                     self.storage.add(
-                        self.selected_tool.make(self.selected_color, points, self.next_id),
+                        self.selected_tool.make(self.selected_color, points, self.next_id, self.scale_factor),
                     );
                     self.next_id.incr();
                     self.drawing_state = DrawingState::AndSoOn;
