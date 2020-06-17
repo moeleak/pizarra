@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_bbox_twisted_line() {
-        let mut line = Line::new(Color::green(), [Point::new(-12.0, -1.0), Point::new(-5.0, 0.0)], ShapeId::from(1));
+        let mut line = Line::new(Color::green(), [Point::new(-12.0, -1.0), Point::new(-5.0, 0.0)], ShapeId::from(1), 1.0);
 
         line.handle(Point::new(-2.0, 7.0));
         line.handle(Point::new(2.0, -8.0));

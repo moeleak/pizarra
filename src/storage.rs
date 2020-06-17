@@ -163,7 +163,7 @@ mod tests {
     fn test_add_shapes_at_zoom() {
         let mut storage = ShapeStorage::new();
         let shapes: Vec<Shape> = vec![
-            Line::new(Color::red(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1)),
+            Line::new(Color::red(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1), 1.0),
             Rectangle::new(Color::green(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(2)),
             Ellipse::new(Color::blue(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(3)),
         ];
@@ -186,7 +186,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Line::new(Color::blue(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1)));
+        storage.add(Line::new(Color::blue(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1), 1.0));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -220,7 +220,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Line::new(Color::blue(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1)));
+        storage.add(Line::new(Color::blue(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1), 1.0));
 
         assert!(storage.last_mut().is_some());
 
@@ -247,8 +247,8 @@ mod tests {
         let id_to_remove = ShapeId::from(1);
         let id_to_interfere = ShapeId::from(2);
 
-        let obj_to_remove = Line::new(Color::green(), [Point::new(0.0, 0.0), Point::new(1.0, 1.0)], id_to_remove);
-        let obj_to_interfere = Line::new(Color::blue(), [Point::new(1.0, 0.0), Point::new(0.0, 1.0)], id_to_interfere);
+        let obj_to_remove = Line::new(Color::green(), [Point::new(0.0, 0.0), Point::new(1.0, 1.0)], id_to_remove, 1.0);
+        let obj_to_interfere = Line::new(Color::blue(), [Point::new(1.0, 0.0), Point::new(0.0, 1.0)], id_to_interfere, 1.0);
 
         let id = storage.add(obj_to_remove);
         storage.add(obj_to_interfere);
@@ -273,8 +273,8 @@ mod tests {
         let id_to_remove = ShapeId::from(1);
         let id_to_interfere = ShapeId::from(2);
 
-        let obj_to_remove = Line::new(Color::green(), [Point::new(0.0, 0.0), Point::new(1.0, 1.0)], id_to_remove);
-        let obj_to_interfere = Line::new(Color::blue(), [Point::new(1.0, 0.0), Point::new(0.0, 1.0)], id_to_interfere);
+        let obj_to_remove = Line::new(Color::green(), [Point::new(0.0, 0.0), Point::new(1.0, 1.0)], id_to_remove, 1.0);
+        let obj_to_interfere = Line::new(Color::blue(), [Point::new(1.0, 0.0), Point::new(0.0, 1.0)], id_to_interfere, 1.0);
 
         storage.add(obj_to_interfere);
         let id = storage.add(obj_to_remove);

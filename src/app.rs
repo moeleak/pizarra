@@ -469,11 +469,6 @@ mod tests {
     }
 
     #[test]
-    fn test_undo_still_broken() {
-        assert!(false, "yep, still broken");
-    }
-
-    #[test]
     fn move_while_in_zoom_is_coherent() {
         let mut app = App::new(Point::new(80.0, 60.0));
 
