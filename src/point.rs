@@ -75,3 +75,9 @@ impl SubAssign for Point {
         self.y -= rhs.y;
     }
 }
+
+impl From<[f64; 2]> for Point {
+    fn from(other: [f64; 2]) -> Point {
+        Point::new(other[0], other[1])
+    }
+}

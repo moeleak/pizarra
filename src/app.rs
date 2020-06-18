@@ -349,8 +349,8 @@ impl App {
         }
     }
 
-    pub fn storage(&self) -> &ShapeStorage {
-        &self.storage
+    pub fn shape_count(&self) -> usize {
+        self.storage.shape_count()
     }
 }
 
@@ -439,7 +439,7 @@ mod tests {
 
         app.undo();
 
-        assert_eq!(app.storage().shape_count(), 1);
+        assert_eq!(app.shape_count(), 1);
     }
 
     #[test]
@@ -465,7 +465,7 @@ mod tests {
         app.undo();
         app.undo();
 
-        assert_eq!(app.storage().shape_count(), 0);
+        assert_eq!(app.shape_count(), 0);
     }
 
     #[test]

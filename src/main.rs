@@ -28,9 +28,14 @@ fn init(app: &Application) {
 
     window.set_application(Some(app));
 
-    let drawing_area: DrawingArea = builder.get_object("drawing-area").expect("No drawing_area");
+    // save on exit
+    window.connect_delete_event(clone!(@strong controller => move |_window, _event| {
+        Inhibit(false)
+    }));
 
     // Drawing area
+    let drawing_area: DrawingArea = builder.get_object("drawing-area").expect("No drawing_area");
+
     let event_mask = EventMask::POINTER_MOTION_MASK
         | EventMask::BUTTON_PRESS_MASK | EventMask::BUTTON_RELEASE_MASK
         | EventMask::KEY_PRESS_MASK | EventMask::KEY_RELEASE_MASK

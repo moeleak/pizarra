@@ -6,6 +6,7 @@ use rstar::{RTree, RTreeObject, AABB, SelectionFunction};
 
 use super::shape::{Shape, ShapeId};
 use super::draw_commands::DrawCommand;
+use crate::point::Point;
 
 struct BBoxIdSelection {
     bbox: AABB<[f64; 2]>,
@@ -111,26 +112,26 @@ impl ShapeStorage {
         self.shapes.locate_in_envelope_intersecting(&bbox).map(|shape| shape.draw_commands()).chain(current)
     }
 
-    pub fn get_bounds(&self) -> Option<[[f64; 2]; 2]> {
+    pub fn get_bounds(&self) -> Option<[Point; 2]> {
         if self.shape_count() == 0 {
             return None;
         }
 
         Some(self.shapes.iter().map(|shape| {
             shape.envelope()
-        }).fold([[f64::MAX, f64::MAX], [f64::MIN, f64::MIN]], |acc, cur| {
-            let lower = cur.lower();
-            let upper = cur.upper();
+        }).fold([Point::new(f64::MAX, f64::MAX), Point::new(f64::MIN, f64::MIN)], |acc, cur| {
+            let lower = Point::from(cur.lower());
+            let upper = Point::from(cur.upper());
 
             [
-                [
-                    if lower[0] < acc[0][0] { lower[0] } else { acc[0][0] },
-                    if lower[1] < acc[0][1] { lower[1] } else { acc[0][1] },
-                ],
-                [
-                    if upper[0] > acc[1][0] { upper[0] } else { acc[1][0] },
-                    if upper[1] > acc[1][1] { upper[1] } else { acc[1][1] },
-                ],
+                Point::new(
+                    if lower.x < acc[0].x { lower.x } else { acc[0].x },
+                    if lower.y < acc[0].y { lower.y } else { acc[0].y },
+                ),
+                Point::new(
+                    if upper.x > acc[1].x { upper.x } else { acc[1].x },
+                    if upper.y > acc[1].y { upper.y } else { acc[1].y },
+                ),
             ]
         }))
     }
@@ -385,6 +386,6 @@ mod tests {
 
         storage.flush();
 
-        assert_eq!(storage.get_bounds(), Some([[-5.0, -5.0], [5.0, 5.0]]));
+        assert_eq!(storage.get_bounds(), Some([Point::new(-5.0, -5.0), Point::new(5.0, 5.0)]));
     }
 }
