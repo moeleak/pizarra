@@ -1,7 +1,6 @@
 use std::fmt;
 
 use crate::point::Point;
-use rstar::{RTreeObject, AABB};
 
 pub mod line;
 pub mod rectangle;
@@ -100,15 +99,9 @@ impl Shape {
     pub fn color(&self) -> Color {
         self.color
     }
-}
 
-impl RTreeObject for Shape {
-    type Envelope = AABB<[f64; 2]>;
-
-    fn envelope(&self) -> Self::Envelope {
-        let [p1, p2] = self.shape_impl.bbox();
-
-        AABB::from_corners(p1, p2)
+    pub fn bbox(&self) -> [[f64; 2]; 2] {
+        self.shape_impl.bbox()
     }
 }
 

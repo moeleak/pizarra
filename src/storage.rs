@@ -8,6 +8,16 @@ use super::shape::{Shape, ShapeId};
 use super::draw_commands::DrawCommand;
 use crate::point::Point;
 
+impl RTreeObject for Shape {
+    type Envelope = AABB<[f64; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        let [p1, p2] = self.bbox();
+
+        AABB::from_corners(p1, p2)
+    }
+}
+
 struct BBoxIdSelection {
     bbox: AABB<[f64; 2]>,
     id: ShapeId,
@@ -33,7 +43,7 @@ impl SelectionFunction<Shape> for BBoxIdSelection {
 }
 
 /// This struct handles storage and fast retrieval of shapes.
-pub struct ShapeStorage {
+pub struct Storage {
     shape_count: usize,
     ids: HashMap<ShapeId, AABB<[f64; 2]>>,
     shapes: RTree<Shape>,
@@ -42,9 +52,9 @@ pub struct ShapeStorage {
 
 /// A storage struct that organizes shapes by their zoom level and allows for
 /// fast queries given a zoom and a bbox.
-impl ShapeStorage {
-    pub fn new() -> ShapeStorage {
-        ShapeStorage {
+impl Storage {
+    pub fn new() -> Storage {
+        Storage {
             shape_count: 0,
             shapes: RTree::new(),
             ids: HashMap::new(),
@@ -102,16 +112,20 @@ impl ShapeStorage {
         self.shape_count
     }
 
-    pub fn draw_commands(&self, bbox: AABB<[f64; 2]>) -> impl Iterator<Item=DrawCommand> + '_ {
+    pub fn draw_commands(&self, bbox: [Point; 2]) -> impl Iterator<Item=DrawCommand> + '_ {
         let mut current = Vec::new();
 
         if let Some(shape) = self.current.as_ref() {
             current.push(shape.draw_commands());
         }
 
+        let bbox = AABB::from_corners(bbox[0].to_a(), bbox[1].to_a());
+
         self.shapes.locate_in_envelope_intersecting(&bbox).map(|shape| shape.draw_commands()).chain(current)
     }
 
+    /// Gets the bounding box that surrounds every shape drawn or returns None
+    /// if there are no shapes
     pub fn get_bounds(&self) -> Option<[Point; 2]> {
         if self.shape_count() == 0 {
             return None;
@@ -151,9 +165,7 @@ impl <'a> Iterator for ShapeIterator<'a> {
 
 #[cfg(test)]
 mod tests {
-    use rstar::AABB;
-
-    use super::ShapeStorage;
+    use super::Storage;
 
     use crate::shape::{Shape, ShapeType, ShapeId, Line, Rectangle, Ellipse};
     use crate::color::Color;
@@ -162,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_add_shapes_at_zoom() {
-        let mut storage = ShapeStorage::new();
+        let mut storage = Storage::new();
         let shapes: Vec<Shape> = vec![
             Line::new(Color::red(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(1), 1.0),
             Rectangle::new(Color::green(), [Point::new(0.0, 0.0), Point::new(0.0, 0.0)], ShapeId::from(2)),
@@ -183,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_last_mut() {
-        let mut storage = ShapeStorage::new();
+        let mut storage = Storage::new();
 
         assert!(storage.last_mut().is_none());
 
@@ -217,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_flush() {
-        let mut storage = ShapeStorage::new();
+        let mut storage = Storage::new();
 
         assert!(storage.last_mut().is_none());
 
@@ -241,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_remove_by_id() {
-        let mut storage = ShapeStorage::new();
+        let mut storage = Storage::new();
 
         assert_eq!(storage.shape_count(), 0);
 
@@ -267,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_remove_by_id_2() {
-        let mut storage = ShapeStorage::new();
+        let mut storage = Storage::new();
 
         assert_eq!(storage.shape_count(), 0);
 
@@ -293,7 +305,7 @@ mod tests {
 
     #[test]
     fn test_iter_by_bounds() {
-        let mut storage = ShapeStorage::new();
+        let mut storage = Storage::new();
 
         let shapes = vec![
             // in green the ones that go
@@ -311,7 +323,7 @@ mod tests {
 
         storage.flush();
 
-        let buffer: Vec<_> = storage.draw_commands(AABB::from_corners([-1.0, -1.0], [1.0, 1.0])).collect();
+        let buffer: Vec<_> = storage.draw_commands([Point::new(-1.0, -1.0), Point::new(1.0, 1.0)]).collect();
 
         assert_eq!(buffer.len(), 3);
 
@@ -344,7 +356,7 @@ mod tests {
 
     #[test]
     fn test_last_shape() {
-        let mut storage = ShapeStorage::new();
+        let mut storage = Storage::new();
 
         // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
         storage.add(Rectangle::new(Color::red(), [Point::new(1.0, 1.0), Point::new(3.0, 3.0)], ShapeId::from(2)));
@@ -355,7 +367,7 @@ mod tests {
         // A rectangle of 2x2 in zoom 0 aournd the oriign
         storage.add(Rectangle::new(Color::blue(), [Point::new(-1.0, -1.0), Point::new(1.0, 1.0)], ShapeId::from(1)));
 
-        let buffer: Vec<_> = storage.draw_commands(AABB::from_corners([-2.0, -2.0], [4.0, 4.0])).collect();
+        let buffer: Vec<_> = storage.draw_commands([Point::new(-2.0, -2.0), Point::new(4.0, 4.0)]).collect();
 
         assert_eq!(buffer.len(), 2);
 
@@ -379,7 +391,7 @@ mod tests {
 
     #[test]
     fn test_get_bounds() {
-        let mut storage = ShapeStorage::new();
+        let mut storage = Storage::new();
 
         storage.add(Rectangle::new(Color::blue(), [Point::new(-5.0, -5.0), Point::new(1.0, 1.0)], ShapeId::from(1)));
         storage.add(Rectangle::new(Color::blue(), [Point::new(5.0, 5.0), Point::new(1.0, 1.0)], ShapeId::from(1)));

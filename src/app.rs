@@ -1,9 +1,7 @@
 use std::mem;
 
-use rstar::AABB;
-
 use crate::draw_commands::DrawCommand;
-use crate::storage::ShapeStorage;
+use crate::storage::Storage;
 use crate::shape::{ShapeType, ShapeId};
 use crate::color::Color;
 use crate::action::Action;
@@ -60,7 +58,7 @@ pub enum ShouldRedraw {
 pub struct App {
     is_drawing: bool,
     is_moving: bool,
-    storage: ShapeStorage,
+    storage: Storage,
     selected_tool: ShapeType,
 
     /// This value represents the coordinate of the drwing space that is currently
@@ -93,7 +91,7 @@ impl App {
         App {
             is_drawing: false,
             is_moving: false,
-            storage: ShapeStorage::new(),
+            storage: Storage::new(),
             selected_tool: ShapeType::Line,
             dimensions,
 
@@ -122,7 +120,7 @@ impl App {
         )
     }
 
-    pub fn draw_commands(&self, bbox: AABB<[f64; 2]>) -> impl Iterator<Item=DrawCommand> + '_ {
+    pub fn draw_commands(&self, bbox: [Point; 2]) -> impl Iterator<Item=DrawCommand> + '_ {
         self.storage.draw_commands(bbox)
     }
 
@@ -351,6 +349,10 @@ impl App {
 
     pub fn shape_count(&self) -> usize {
         self.storage.shape_count()
+    }
+
+    pub fn get_bounds(&self) -> Option<[Point; 2]> {
+        self.storage.get_bounds()
     }
 }
 

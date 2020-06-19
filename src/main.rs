@@ -9,7 +9,6 @@ use gtk::{
 use gdk::{EventMask, EventType};
 use gtk::prelude::*;
 use gio::prelude::*;
-use rstar::AABB;
 use cairo::{LineCap, LineJoin};
 use glib::clone;
 
@@ -30,6 +29,11 @@ fn init(app: &Application) {
 
     // save on exit
     window.connect_delete_event(clone!(@strong controller => move |_window, _event| {
+        if let Some([topleft, bottomright]) = controller.borrow().get_bounds() {
+            for cmd in controller.borrow().draw_commands([topleft, bottomright]) {
+            }
+        }
+
         Inhibit(false)
     }));
 
@@ -51,7 +55,7 @@ fn init(app: &Application) {
         // the bbox of the visible things
         let (corner_1, corner_2) = controller.visible_extent();
 
-        let commands = controller.draw_commands(AABB::from_corners(corner_1.to_a(), corner_2.to_a()));
+        let commands = controller.draw_commands([corner_1, corner_2]);
 
         ctx.set_source_rgb(bgcolor.r, bgcolor.g, bgcolor.b);
         ctx.paint();
