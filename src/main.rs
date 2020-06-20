@@ -29,13 +29,16 @@ fn init(app: &Application) {
     // save on exit
     window.connect_delete_event(clone!(@strong controller => move |_window, _event| {
         if let Some([topleft, bottomright]) = controller.borrow().get_bounds() {
-            let width = (bottomright.x - topleft.x).abs();
-            let height = (bottomright.y - topleft.y).abs();
+            let width = (bottomright.x - topleft.x).abs() + 20.0;
+            let height = (bottomright.y - topleft.y).abs() + 20.0;
             let filename = Local::now().format("pizarra_%Y-%m-%d %H-%M-%S.svg").to_string();
-
+            let bgcolor = Color::black();
             let surface = cairo::SvgSurface::for_stream(width, height, File::create(filename).unwrap()).unwrap();
             let ctx = cairo::Context::new(&surface);
-            let t = Transform::new(topleft, 1.0);
+            let t = Transform::new(topleft - Point::new(10.0, 10.0), 1.0);
+
+            ctx.set_source_rgb(bgcolor.r, bgcolor.g, bgcolor.b);
+            ctx.paint();
 
             for cmd in controller.borrow().draw_commands([topleft, bottomright]) {
                 cmd.draw(&ctx, t);
