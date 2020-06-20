@@ -1,5 +1,6 @@
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::fs::File;
 
 use gtk::{
     Application, ApplicationWindow, DrawingArea, Builder, ColorButton,
@@ -31,7 +32,8 @@ fn init(app: &Application) {
             let width = (bottomright.x - topleft.x).abs();
             let height = (bottomright.y - topleft.y).abs();
             let filename = Local::now().format("pizarra_%Y-%m-%d %H-%M-%S.svg").to_string();
-            let surface = cairo::SvgSurface::new(width, height, Some(filename)).unwrap();
+
+            let surface = cairo::SvgSurface::for_stream(width, height, File::create(filename).unwrap()).unwrap();
             let ctx = cairo::Context::new(&surface);
             let t = Transform::new(topleft, 1.0);
 
