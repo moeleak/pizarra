@@ -9,8 +9,11 @@ edition = "2018"
 chrono = "0.4.11"
 rstar = "0.7.1"
 gdk = "0.12.0"
-cairo-rs = "0.8.1"
 glib = "0.9.3"
+
+[dependencies.cairo-rs]
+version = "0.8.1"
+features = ["svg"]
 
 [dependencies.gtk]
 version = "0.8.1"

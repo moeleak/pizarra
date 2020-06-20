@@ -1,6 +1,5 @@
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::f64::consts::PI;
 
 use gtk::{
     Application, ApplicationWindow, DrawingArea, Builder, ColorButton,
@@ -9,12 +8,11 @@ use gtk::{
 use gdk::{EventMask, EventType};
 use gtk::prelude::*;
 use gio::prelude::*;
-use cairo::{LineCap, LineJoin};
 use glib::clone;
+use chrono::Local;
 
 use pizarra::{
-    App, app::ShouldRedraw, color::Color, draw_commands::DrawCommand,
-    shape::corners_to_props,
+    App, app::ShouldRedraw, color::Color, graphics::Transform,
 };
 use pizarra::point::Point;
 
@@ -30,8 +28,18 @@ fn init(app: &Application) {
     // save on exit
     window.connect_delete_event(clone!(@strong controller => move |_window, _event| {
         if let Some([topleft, bottomright]) = controller.borrow().get_bounds() {
+            let width = (bottomright.x - topleft.x).abs();
+            let height = (bottomright.y - topleft.y).abs();
+            let filename = Local::now().format("pizarra_%Y-%m-%d %H-%M-%S.svg").to_string();
+            let surface = cairo::SvgSurface::new(width, height, Some(filename)).unwrap();
+            let ctx = cairo::Context::new(&surface);
+            let t = Transform::new(topleft, 1.0);
+
             for cmd in controller.borrow().draw_commands([topleft, bottomright]) {
+                cmd.draw(&ctx, t);
             }
+
+            surface.finish_output_stream().unwrap();
         }
 
         Inhibit(false)
@@ -50,6 +58,7 @@ fn init(app: &Application) {
 
     drawing_area.connect_draw(clone!(@strong controller => move |_dw, ctx| {
         let controller = controller.borrow();
+        let t = controller.get_transform();
         let bgcolor = Color::black();
 
         // the bbox of the visible things
@@ -62,51 +71,7 @@ fn init(app: &Application) {
 
         // content
         for cmd in commands {
-            match cmd {
-                DrawCommand::Line {
-                    color, line, thickness,
-                } => {
-                    ctx.set_line_width(thickness * controller.scale_factor());
-                    ctx.set_source_rgb(color.r, color.g, color.b);
-                    ctx.set_line_cap(LineCap::Round);
-                    ctx.set_line_join(LineJoin::Round);
-
-                    let mut iter_points = line.iter();
-
-                    if let Some(first_point) = iter_points.next() {
-                        let p = controller.to_screen_coordinates(*first_point);
-
-                        ctx.move_to(p.x, p.y);
-
-                        for point in iter_points {
-                            let p = controller.to_screen_coordinates(*point);
-                            ctx.line_to(p.x, p.y);
-                        }
-
-                        ctx.stroke();
-                    }
-                },
-                DrawCommand::Rectangle {
-                    color, corner_1, corner_2,
-                } => {
-                    let (x, y, width, height) = corners_to_props(
-                        controller.to_screen_coordinates(corner_1),
-                        controller.to_screen_coordinates(corner_2)
-                    );
-                    ctx.rectangle(x, y, width, height);
-                    ctx.set_source_rgb(color.r, color.g, color.b);
-                    ctx.fill();
-                },
-                DrawCommand::Ellipse {
-                    color, corner_1, corner_2,
-                } => {
-                    ctx.set_source_rgb(color.r, color.g, color.b);
-                    ctx.move_to(corner_1.x, corner_2.y);
-                    ctx.arc(0.5, 0.5, 0.5, 0.0, 2.0*PI);
-                    ctx.scale(corner_2.x - corner_1.x, corner_2.y - corner_1.y);
-                    ctx.fill();
-                },
-            }
+            cmd.draw(ctx, t);
         }
 
         Inhibit(false)

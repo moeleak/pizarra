@@ -6,6 +6,7 @@ use crate::shape::{ShapeType, ShapeId};
 use crate::color::Color;
 use crate::action::Action;
 use crate::point::Point;
+use crate::graphics::Transform;
 
 #[derive(Copy,Clone,Debug)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -60,15 +61,13 @@ pub struct App {
     is_moving: bool,
     storage: Storage,
     selected_tool: ShapeType,
+    selected_color: Color,
 
     /// This value represents the coordinate of the drwing space that is currently
     /// at the top-left corner of the screen.
     offset: Point,
     scale_factor: f64,
-
-    /// The window's dimensions
     dimensions: Point,
-    selected_color: Color,
 
     /// Undo
     undo_state: UndoState,
@@ -93,12 +92,12 @@ impl App {
             is_moving: false,
             storage: Storage::new(),
             selected_tool: ShapeType::Line,
-            dimensions,
 
             /// a vector from the top-left corner of the screen to the origin
             /// of coordinates in the storage
             offset: dimensions * -0.5,
             scale_factor: 1.0,
+            dimensions,
 
             undo_state: UndoState::Reset,
             undo_queue: Vec::new(),
@@ -109,6 +108,10 @@ impl App {
             drawing_state: DrawingState::Start,
             next_id: ShapeId::from(1),
         }
+    }
+
+    pub fn get_transform(&self) -> Transform {
+        Transform::new(self.offset, self.scale_factor)
     }
 
     /// Compute the bounds of what is visible in the board according to current
@@ -122,10 +125,6 @@ impl App {
 
     pub fn draw_commands(&self, bbox: [Point; 2]) -> impl Iterator<Item=DrawCommand> + '_ {
         self.storage.draw_commands(bbox)
-    }
-
-    pub fn scale_factor(&self) -> f64 {
-        self.scale_factor
     }
 
     /// p is a point in the coordinate space of the drawing area. This function
