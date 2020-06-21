@@ -1,4 +1,5 @@
 use std::mem;
+use std::path::PathBuf;
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::Storage;
@@ -56,6 +57,15 @@ pub enum ShouldRedraw {
     No,
 }
 
+/// Possible statuses of file save
+#[derive(Clone)]
+pub enum SaveStatus {
+    NewAndEmpty,
+    NewAndChanged,
+    Saved(PathBuf),
+    Unsaved(PathBuf),
+}
+
 pub struct App {
     is_drawing: bool,
     is_moving: bool,
@@ -83,6 +93,9 @@ pub struct App {
 
     /// Next available id for a shape
     next_id: ShapeId,
+
+    /// File management
+    save_status: SaveStatus,
 }
 
 impl App {
@@ -107,6 +120,8 @@ impl App {
             selected_color: Color::green(),
             drawing_state: DrawingState::Start,
             next_id: ShapeId::from(1),
+
+            save_status: SaveStatus::NewAndEmpty,
         }
     }
 
@@ -184,6 +199,13 @@ impl App {
 
         self.undo_queue.push(action);
         self.undo_state = UndoState::InSync;
+
+        self.save_status = match self.save_status.clone() {
+            SaveStatus::NewAndEmpty => SaveStatus::NewAndChanged,
+            SaveStatus::NewAndChanged => SaveStatus::NewAndChanged,
+            SaveStatus::Saved(path) => SaveStatus::Unsaved(path),
+            SaveStatus::Unsaved(path) => SaveStatus::Unsaved(path),
+        };
     }
 
     pub fn start_moving(&mut self) {
@@ -352,6 +374,14 @@ impl App {
 
     pub fn get_bounds(&self) -> Option<[Point; 2]> {
         self.storage.get_bounds()
+    }
+
+    pub fn get_save_status(&self) -> &SaveStatus {
+        &self.save_status
+    }
+
+    pub fn set_saved(&mut self, path: PathBuf) {
+        self.save_status = SaveStatus::Saved(path);
     }
 }
 
