@@ -20,10 +20,22 @@ use pizarra::point::Point;
 
 fn set_subtitle(header_bar: &HeaderBar, save_status: &SaveStatus) {
     match save_status {
-        SaveStatus::NewAndEmpty => header_bar.set_subtitle(Some("Dibujo vacío")),
-        SaveStatus::NewAndChanged => header_bar.set_subtitle(Some("*Dibujo sin guardar")),
-        SaveStatus::Unsaved(path) => header_bar.set_subtitle(Some(&format!("*{:?}", path))),
-        SaveStatus::Saved(path) => header_bar.set_subtitle(Some(&(format!("{:?}", path)))),
+        SaveStatus::NewAndEmpty => {
+            header_bar.set_title(Some("Pizarra"));
+            header_bar.set_subtitle(None);
+        },
+        SaveStatus::NewAndChanged => {
+            header_bar.set_title(Some("*Dibujo sin guardar"));
+            header_bar.set_subtitle(None);
+        },
+        SaveStatus::Unsaved(path) => {
+            header_bar.set_title(Some(&format!("*{}", path.file_name().unwrap().to_string_lossy())));
+            header_bar.set_subtitle(Some(&format!("{}", path.parent().unwrap().display())));
+        },
+        SaveStatus::Saved(path) => {
+            header_bar.set_title(Some(&format!("{}", path.file_name().unwrap().to_string_lossy())));
+            header_bar.set_subtitle(Some(&format!("{}", path.parent().unwrap().display())));
+        },
     }
 }
 
