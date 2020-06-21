@@ -175,7 +175,7 @@
       </object>
     </child>
     <child type="titlebar">
-      <object class="GtkHeaderBar">
+      <object class="GtkHeaderBar" id="header-bar">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="title" translatable="yes">Pizarra</property>
@@ -249,10 +249,15 @@
             <property name="popup">menu</property>
             <property name="use_popover">False</property>
             <child>
-              <placeholder/>
+              <object class="GtkImage">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="icon_name">open-menu-symbolic</property>
+              </object>
             </child>
           </object>
           <packing>
+            <property name="pack_type">end</property>
             <property name="position">2</property>
           </packing>
         </child>

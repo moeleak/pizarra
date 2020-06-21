@@ -17,7 +17,7 @@ features = ["svg"]
 
 [dependencies.gtk]
 version = "0.8.1"
-features = ["v3_16"]
+features = ["v3_22"]
 
 [dependencies.gio]
 version = ""

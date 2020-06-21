@@ -4,7 +4,7 @@ use std::fs::File;
 
 use gtk::{
     Application, ApplicationWindow, DrawingArea, Builder, ColorButton,
-    Button, MenuItem,
+    Button, MenuItem, FileChooserNative, FileChooserAction, ResponseType,
 };
 use gdk::{EventMask, EventType};
 use gtk::prelude::*;
@@ -161,6 +161,23 @@ fn init(app: &Application) {
         controller.borrow_mut().redo();
         dwb.borrow().queue_draw();
     }));
+
+    // File management
+    let save_menu: MenuItem = builder.get_object("save-btn").expect("no save menu");
+    let w = window.clone();
+    save_menu.connect_activate(move |_menu| {
+        let save_file_chooser = FileChooserNative::new(Some("Guardar"), Some(&w), FileChooserAction::Save, Some("Guardar"), Some("Cancelar"));
+        let res = save_file_chooser.run();
+
+        match res {
+            ResponseType::Accept => {
+                if let Some(filename) = save_file_chooser.get_filename() {
+                    println!("{:?}", filename);
+                }
+            },
+            x => { println!("{:?}", x); },
+        }
+    });
 
     // Show
     window.show_all();
