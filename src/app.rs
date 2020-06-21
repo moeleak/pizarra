@@ -200,11 +200,11 @@ impl App {
         self.undo_queue.push(action);
         self.undo_state = UndoState::InSync;
 
-        self.save_status = match self.save_status.clone() {
+        self.save_status = match &self.save_status {
             SaveStatus::NewAndEmpty => SaveStatus::NewAndChanged,
             SaveStatus::NewAndChanged => SaveStatus::NewAndChanged,
-            SaveStatus::Saved(path) => SaveStatus::Unsaved(path),
-            SaveStatus::Unsaved(path) => SaveStatus::Unsaved(path),
+            SaveStatus::Saved(path) => SaveStatus::Unsaved(path.clone()),
+            SaveStatus::Unsaved(path) => SaveStatus::Unsaved(path.clone()),
         };
     }
 

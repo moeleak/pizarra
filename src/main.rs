@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::Path;
 
 use gtk::{
     Application, ApplicationWindow, DrawingArea, Builder, ColorButton,
@@ -27,7 +27,7 @@ fn set_subtitle(header_bar: &HeaderBar, save_status: &SaveStatus) {
     }
 }
 
-fn save_drawing(controller: &App, filename: PathBuf) {
+fn save_drawing(controller: &App, filename: &Path) {
     if let Some([topleft, bottomright]) = controller.get_bounds() {
         let width = (bottomright.x - topleft.x).abs() + 20.0;
         let height = (bottomright.y - topleft.y).abs() + 20.0;
@@ -84,10 +84,10 @@ fn init(app: &Application) {
                         match res {
                             ResponseType::Accept => {
                                 if let Some(filename) = save_file_chooser.get_filename() {
-                                    save_drawing(&controller.borrow(), filename);
+                                    save_drawing(&controller.borrow(), &filename);
                                 }
                             },
-                            x => { println!("{:?}", x); },
+                            _ => {},
                         }
 
                         Inhibit(false)
@@ -96,7 +96,33 @@ fn init(app: &Application) {
                     _response => Inhibit(false), // "No" and everything else
                 }
             },
-            _ => Inhibit(false), // in this cases no further saving is required
+            SaveStatus::NewAndEmpty => Inhibit(false),
+            SaveStatus::Saved(_path) => Inhibit(false),
+            SaveStatus::Unsaved(path) => {
+                let message_dialog = MessageDialog::new(
+                    Some(&window),
+                    DialogFlags::DESTROY_WITH_PARENT,
+                    MessageType::Question,
+                    ButtonsType::None,
+                    "Hay cambios desde la última vez que guardaste\n\n¿Quieres guardarlos?",
+                );
+                message_dialog.add_button("Sí", ResponseType::Yes);
+                message_dialog.add_button("No", ResponseType::No);
+                message_dialog.add_button("Cancelar", ResponseType::Cancel);
+
+                let response = message_dialog.run();
+
+                message_dialog.hide();
+
+                match response {
+                    ResponseType::Yes => {
+                        save_drawing(&controller.borrow(), path);
+                        Inhibit(false)
+                    },
+                    ResponseType::Cancel | ResponseType::DeleteEvent => Inhibit(true),
+                    _response => Inhibit(false),
+                }
+            },
         }
     }));
 
@@ -219,18 +245,42 @@ fn init(app: &Application) {
     // File management
     let save_menu: MenuItem = builder.get_object("save-btn").expect("no save menu");
     save_menu.connect_activate(clone!(@strong controller, @strong header_bar, @strong window => move |_menu| {
-        let save_file_chooser = FileChooserNative::new(Some("Guardar"), Some(&window), FileChooserAction::Save, Some("Guardar"), Some("Cancelar"));
-        let res = save_file_chooser.run();
+        let save_status = controller.borrow().get_save_status().clone();
 
-        match res {
-            ResponseType::Accept => {
-                if let Some(filename) = save_file_chooser.get_filename() {
-                    println!("{:?}", filename);
-                    controller.borrow_mut().set_saved(filename);
-                    set_subtitle(&header_bar, controller.borrow().get_save_status());
+        match save_status {
+            SaveStatus::NewAndEmpty => {}, // nothing to save actually
+            SaveStatus::NewAndChanged => {
+                let save_file_chooser = FileChooserNative::new(Some("Guardar"), Some(&window), FileChooserAction::Save, Some("Guardar"), Some("Cancelar"));
+                let res = save_file_chooser.run();
+
+                match res {
+                    ResponseType::Accept => {
+                        if let Some(filename) = save_file_chooser.get_filename() {
+                            save_drawing(&controller.borrow(), &filename);
+                            controller.borrow_mut().set_saved(filename);
+                            set_subtitle(&header_bar, controller.borrow().get_save_status());
+                        }
+                    },
+                    _ => {},
                 }
             },
-            x => { println!("{:?}", x); },
+            SaveStatus::Unsaved(path) => {
+                save_drawing(&controller.borrow(), &path);
+                controller.borrow_mut().set_saved(path.clone());
+                set_subtitle(&header_bar, controller.borrow().get_save_status());
+            },
+            SaveStatus::Saved(_path) => {},
+        }
+    }));
+
+    // File management
+    let save_as_menu: MenuItem = builder.get_object("save-as-btn").expect("no save as menu");
+    save_as_menu.connect_activate(clone!(@strong controller, @strong header_bar, @strong window => move |_menu| {
+        match controller.borrow().get_save_status() {
+            SaveStatus::NewAndEmpty => {},
+            SaveStatus::NewAndChanged => {},
+            SaveStatus::Unsaved(path) => {},
+            SaveStatus::Saved(path) => {},
         }
     }));
 
