@@ -18,6 +18,7 @@ impl RTreeObject for Shape {
     }
 }
 
+/// Handles delete from the storage by Id
 struct BBoxIdSelection {
     bbox: AABB<[f64; 2]>,
     id: ShapeId,
@@ -39,6 +40,35 @@ impl SelectionFunction<Shape> for BBoxIdSelection {
 
     fn should_unpack_leaf(&self, leaf: &Shape) -> bool {
         leaf.id() == self.id
+    }
+}
+
+/// Handles delete from the storage by center and radius
+struct CenterAndRadiusSelection {
+    center: Point,
+    radius: f64,
+}
+
+impl CenterAndRadiusSelection {
+    fn new(center: Point, radius: f64) -> CenterAndRadiusSelection {
+        CenterAndRadiusSelection {
+            center, radius,
+        }
+    }
+}
+
+impl SelectionFunction<Shape> for CenterAndRadiusSelection {
+    fn should_unpack_parent(&self, envelope: &<Shape as RTreeObject>::Envelope) -> bool {
+        let bbox = AABB::from_corners(
+            [self.center.x - self.radius, self.center.y - self.radius],
+            [self.center.x + self.radius, self.center.y + self.radius],
+        );
+
+        envelope.intersects(&bbox)
+    }
+
+    fn should_unpack_leaf(&self, leaf: &Shape) -> bool {
+        leaf.intersects_circle(self.center, self.radius)
     }
 }
 
@@ -102,6 +132,10 @@ impl Storage {
         } else {
             None
         }
+    }
+
+    pub fn erase(&mut self, center: Point, radius: f64) -> Option<Shape> {
+        self.shapes.remove_with_selection_function(CenterAndRadiusSelection::new(center, radius))
     }
 
     pub fn last_mut(&mut self) -> Option<&mut Shape> {
@@ -243,12 +277,25 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn test_remove_by_coordinate_radius_and_zoom() {
-        assert!(false, "returns enough data to put the shapes again in their places");
-        assert!(false, "the data is for restoring the shape in case of a ctrl-z");
-        assert!(false, "only visible shapes given the zoom should be deleted.");
-        assert!(false, "if there are shapes behind other shapes only delete the one in the front");
+    fn test_remove_line() {
+        let mut storage = Storage::new();
+
+        let mut line = Line::new(Color::green(), [Point::new(1.0, -1.0), Point::new(0.0, -1.0)], ShapeId::from(1), 1.0);
+
+        line.handle(Point::new(0.0, 0.0));
+        line.handle(Point::new(1.0, 0.0));
+        line.handle(Point::new(1.0, 1.0));
+        line.handle(Point::new(0.0, 1.0));
+
+        storage.add(line);
+        storage.flush();
+
+        assert!(storage.erase(Point::new(0.5, -0.5), 0.5).is_none());
+        assert!(storage.erase(Point::new(0.5, 0.5), 0.5).is_none());
+
+        let shape = storage.erase(Point::new(-0.25, -1.25), 0.5).unwrap();
+
+        assert_eq!(shape.id(), ShapeId::from(1));
     }
 
     #[test]
@@ -381,12 +428,6 @@ mod tests {
             corner_1: Point::new(-1.0, -1.0),
             corner_2: Point::new(1.0, 1.0),
         }));
-    }
-
-    #[test]
-    #[ignore]
-    fn test_scale() {
-        assert!(false, "test proper scaling of AABB objects in the four cuadrants and mixed situations");
     }
 
     #[test]

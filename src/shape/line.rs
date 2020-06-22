@@ -21,7 +21,7 @@ impl Line {
             color,
             shape_impl: Box::new(Line {
                 points: init_vec,
-                thickness: thickness,
+                thickness,
             }),
         }
     }
@@ -66,6 +66,16 @@ impl ShapeTrait for Line {
 
     fn shape_type(&self) -> ShapeType {
         ShapeType::Line
+    }
+
+    fn intersects_circle(&self, center: Point, radius: f64) -> bool {
+        for p in self.points.iter() {
+            if p.distance(center) <= radius {
+                return true;
+            }
+        }
+
+        false
     }
 }
 

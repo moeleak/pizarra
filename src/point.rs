@@ -16,6 +16,10 @@ impl Point {
     pub fn to_a(self) -> [f64; 2] {
         [self.x, self.y]
     }
+
+    pub fn distance(&self, other: Point) -> f64 {
+        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()
+    }
 }
 
 impl Mul<f64> for Point {
@@ -79,5 +83,18 @@ impl SubAssign for Point {
 impl From<[f64; 2]> for Point {
     fn from(other: [f64; 2]) -> Point {
         Point::new(other[0], other[1])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Point;
+
+    #[test]
+    fn distance() {
+        let p1 = Point::new(0.0, 0.0);
+        let p2 = Point::new(3.0, 4.0);
+
+        assert_eq!(p1.distance(p2), 5.0);
     }
 }

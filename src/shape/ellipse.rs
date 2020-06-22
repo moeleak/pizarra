@@ -52,6 +52,10 @@ impl ShapeTrait for Ellipse {
     fn shape_type(&self) -> ShapeType {
         ShapeType::Ellipse
     }
+
+    fn intersects_circle(&self, center: Point, radius: f64) -> bool {
+        unimplemented!()
+    }
 }
 
 #[cfg(test)]

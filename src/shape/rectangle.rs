@@ -53,6 +53,10 @@ impl ShapeTrait for Rectangle {
     fn shape_type(&self) -> ShapeType {
         ShapeType::Rectangle
     }
+
+    fn intersects_circle(&self, center: Point, radius: f64) -> bool {
+        unimplemented!()
+    }
 }
 
 #[cfg(test)]

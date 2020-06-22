@@ -44,6 +44,9 @@ pub trait ShapeTrait {
 
     /// Returns the current shape type
     fn shape_type(&self) -> ShapeType;
+
+    /// does this circle intersect this shape? Used by the eraser
+    fn intersects_circle(&self, center: Point, radius: f64) -> bool;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -102,6 +105,10 @@ impl Shape {
 
     pub fn bbox(&self) -> [[f64; 2]; 2] {
         self.shape_impl.bbox()
+    }
+
+    pub fn intersects_circle(&self, center: Point, radius: f64) -> bool {
+        self.shape_impl.intersects_circle(center, radius)
     }
 }
 
