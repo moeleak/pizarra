@@ -383,6 +383,22 @@ impl App {
     pub fn set_saved(&mut self, path: PathBuf) {
         self.save_status = SaveStatus::Saved(path);
     }
+
+    pub fn reset(&mut self) {
+        self.is_drawing = false;
+        self.is_moving = false;
+        self.storage = Storage::new();
+        self.selected_tool = ShapeType::Line;
+        self.offset = self.dimensions * -0.5;
+        self.scale_factor = 1.0;
+        self.undo_state = UndoState::Reset;
+        self.undo_queue = Vec::new();
+        self.moving_state = MovingState::Start;
+        self.selected_color = Color::green();
+        self.drawing_state = DrawingState::Start;
+        self.next_id = ShapeId::from(1);
+        self.save_status = SaveStatus::NewAndEmpty;
+    }
 }
 
 #[cfg(test)]

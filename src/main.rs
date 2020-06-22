@@ -75,6 +75,25 @@ fn save_file_logic<P: IsA<Window>>(window: &P, header_bar: &HeaderBar, controlle
     }
 }
 
+fn yes_no_cancel_dialog(window: &ApplicationWindow, message: &str) -> ResponseType {
+    let message_dialog = MessageDialog::new(
+        Some(window),
+        DialogFlags::DESTROY_WITH_PARENT,
+        MessageType::Question,
+        ButtonsType::None,
+        message,
+    );
+    message_dialog.add_button("Sí", ResponseType::Yes);
+    message_dialog.add_button("No", ResponseType::No);
+    message_dialog.add_button("Cancelar", ResponseType::Cancel);
+
+    let response = message_dialog.run();
+
+    message_dialog.hide();
+
+    response
+}
+
 fn init(app: &Application) {
     // Initialize layout from .glade file
     let layout = include_str!("../res/layout.glade");
@@ -89,20 +108,7 @@ fn init(app: &Application) {
     window.connect_delete_event(clone!(@strong controller, @strong window => move |_window, _event| {
         match controller.borrow().get_save_status() {
             SaveStatus::NewAndChanged => {
-                let message_dialog = MessageDialog::new(
-                    Some(&window),
-                    DialogFlags::DESTROY_WITH_PARENT,
-                    MessageType::Question,
-                    ButtonsType::None,
-                    "Ya hiciste algunos dibujos\n\n¿Deseas guardar?",
-                );
-                message_dialog.add_button("Sí", ResponseType::Yes);
-                message_dialog.add_button("No", ResponseType::No);
-                message_dialog.add_button("Cancelar", ResponseType::Cancel);
-
-                let response = message_dialog.run();
-
-                message_dialog.hide();
+                let response = yes_no_cancel_dialog(&window, "Ya hiciste algunos dibujos\n\n¿Deseas guardar?");
 
                 match response {
                     ResponseType::Yes => {
@@ -127,20 +133,7 @@ fn init(app: &Application) {
             SaveStatus::NewAndEmpty => Inhibit(false),
             SaveStatus::Saved(_path) => Inhibit(false),
             SaveStatus::Unsaved(path) => {
-                let message_dialog = MessageDialog::new(
-                    Some(&window),
-                    DialogFlags::DESTROY_WITH_PARENT,
-                    MessageType::Question,
-                    ButtonsType::None,
-                    "Hay cambios desde la última vez que guardaste\n\n¿Quieres guardarlos?",
-                );
-                message_dialog.add_button("Sí", ResponseType::Yes);
-                message_dialog.add_button("No", ResponseType::No);
-                message_dialog.add_button("Cancelar", ResponseType::Cancel);
-
-                let response = message_dialog.run();
-
-                message_dialog.hide();
+                let response = yes_no_cancel_dialog(&window, "Hay cambios desde la última vez que guardaste\n\n¿Quieres guardarlos?");
 
                 match response {
                     ResponseType::Yes => {
@@ -271,6 +264,53 @@ fn init(app: &Application) {
     }));
 
     // File management
+    let new_menu: MenuItem = builder.get_object("new-btn").expect("no new menu");
+    new_menu.connect_activate(clone!(@strong controller, @strong header_bar, @strong window => move |_menu| {
+        let save_status = controller.borrow().get_save_status().clone();
+
+        match save_status {
+            SaveStatus::NewAndEmpty => {},
+            SaveStatus::NewAndChanged => {
+                let response = yes_no_cancel_dialog(&window, "Hay algunos trazos aquí\n\n¿Los quieres guardar?");
+
+                match response {
+                    ResponseType::Yes => {
+                        save_file_logic(&window, &header_bar, controller.clone());
+                    },
+                    ResponseType::Cancel | ResponseType::DeleteEvent => {},
+                    _ => {
+                        controller.borrow_mut().reset();
+                        dwb.borrow().queue_draw();
+                        set_subtitle(&header_bar, controller.borrow().get_save_status());
+                    },
+                }
+            },
+            SaveStatus::Unsaved(path) => {
+                let response = yes_no_cancel_dialog(&window, "Hiciste algunos trazos desde la última vez\n\n¿Los quieres guardar?");
+
+                match response {
+                    ResponseType::Yes => {
+                        save_drawing(&controller.borrow(), &path);
+                        controller.borrow_mut().reset();
+                        dwb.borrow().queue_draw();
+                        set_subtitle(&header_bar, controller.borrow().get_save_status());
+                    },
+                    ResponseType::Cancel | ResponseType::DeleteEvent => {},
+                    _ => {
+                        controller.borrow_mut().reset();
+                        dwb.borrow().queue_draw();
+                        set_subtitle(&header_bar, controller.borrow().get_save_status());
+                    },
+                }
+            },
+            SaveStatus::Saved(_path) => {
+                controller.borrow_mut().reset();
+                dwb.borrow().queue_draw();
+                set_subtitle(&header_bar, controller.borrow().get_save_status());
+            },
+        }
+    }));
+
     let save_menu: MenuItem = builder.get_object("save-btn").expect("no save menu");
     save_menu.connect_activate(clone!(@strong controller, @strong header_bar, @strong window => move |_menu| {
         let save_status = controller.borrow().get_save_status().clone();
@@ -289,7 +329,6 @@ fn init(app: &Application) {
         }
     }));
 
-    // File management
     let save_as_menu: MenuItem = builder.get_object("save-as-btn").expect("no save as menu");
     save_as_menu.connect_activate(clone!(@strong controller, @strong header_bar, @strong window => move |_menu| {
         let save_status = controller.borrow().get_save_status().clone();
