@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::Storage;
-use crate::shape::{ShapeType, ShapeId};
+use crate::shape::{ShapeType, ShapeId, ShapeFinished};
 use crate::color::Color;
 use crate::action::Action;
 use crate::point::Point;
@@ -26,26 +26,20 @@ enum UndoState {
     Reset,
 }
 
-/// In order to add a shape to the storage it is necessary that it is fully constructed.
-/// Most shapes need at least two points to be valid so this enum handles the states before
-/// all the needed points have been collected.
-enum DrawingState {
-    /// In the begining there were no points
-    Start,
-
-    /// Then god added one point
-    OnePoint(Point),
-
-    /// And it was good, so she added nother point, and built a shape
-    TwoPoints([Point; 2]),
-
-    /// From there the shape new what to do with its life
-    AndSoOn,
-}
-
+/// Needed to handle pointer offset during canvas moving
+#[derive(Copy, Clone)]
 enum MovingState {
     Start,
     From(Point),
+}
+
+/// Manages what is happening with the board
+#[derive(Copy, Clone)]
+enum BoardState {
+    Idle,
+    UsingTool,
+    Moving(MovingState),
+    MovingWhileUsingTool(MovingState),
 }
 
 /// Indicates wether or not an action should trigger redraw of the canvas
@@ -57,6 +51,11 @@ pub enum ShouldRedraw {
     No,
 }
 
+pub enum SelectedTool {
+    Shape(ShapeType),
+    Eraser,
+}
+
 /// Possible statuses of file save
 #[derive(Clone)]
 pub enum SaveStatus {
@@ -66,11 +65,18 @@ pub enum SaveStatus {
     Unsaved(PathBuf),
 }
 
+/// Mouse input management
+pub enum MouseButton {
+    Left,
+    Middle,
+    Right,
+    Unknown,
+}
+
 pub struct App {
-    is_drawing: bool,
-    is_moving: bool,
     storage: Storage,
-    selected_tool: ShapeType,
+
+    selected_tool: SelectedTool,
     selected_color: Color,
 
     /// This value represents the coordinate of the drwing space that is currently
@@ -83,13 +89,8 @@ pub struct App {
     undo_state: UndoState,
     undo_queue: Vec<Action>,
 
-    /// Since at least two points are needed to create a shape this enum keeps
-    /// track of some intermediate states like Start, OnePoint and TwoPoints
-    drawing_state: DrawingState,
-
-    /// Since gtk doesn't offer a cursor offset event we sould compute it by hand,
-    /// this enum handles the evolution of such state.
-    moving_state: MovingState,
+    /// What is happening with the board right now?
+    board_state: BoardState,
 
     /// Next available id for a shape
     next_id: ShapeId,
@@ -101,10 +102,8 @@ pub struct App {
 impl App {
     pub fn new(dimensions: Point) -> App {
         App {
-            is_drawing: false,
-            is_moving: false,
             storage: Storage::new(),
-            selected_tool: ShapeType::Line,
+            selected_tool: SelectedTool::Shape(ShapeType::Line),
 
             /// a vector from the top-left corner of the screen to the origin
             /// of coordinates in the storage
@@ -112,17 +111,22 @@ impl App {
             scale_factor: 1.0,
             dimensions,
 
+            board_state: BoardState::Idle,
+
             undo_state: UndoState::Reset,
             undo_queue: Vec::new(),
 
-            moving_state: MovingState::Start,
-
             selected_color: Color::green(),
-            drawing_state: DrawingState::Start,
             next_id: ShapeId::from(1),
 
             save_status: SaveStatus::NewAndEmpty,
         }
+    }
+
+    fn next_id(&mut self) -> ShapeId {
+        let id = self.next_id;
+        self.next_id = self.next_id.next();
+        id
     }
 
     pub fn get_transform(&self) -> Transform {
@@ -155,6 +159,8 @@ impl App {
         (p - self.offset) * self.scale_factor
     }
 
+    /// This function is in charge of changing the position of the canvas with respect to the
+    /// window.
     fn handle_offset(&mut self, delta: Point) {
         self.offset -= delta / self.scale_factor;
     }
@@ -166,24 +172,11 @@ impl App {
         self.dimensions = new_size;
     }
 
-    pub fn set_tool(&mut self, shape_type: ShapeType) {
-        self.selected_tool = shape_type;
+    pub fn set_tool(&mut self, selected_tool: SelectedTool) {
+        self.selected_tool = selected_tool;
     }
 
-    pub fn start_drawing(&mut self) {
-        self.is_drawing = true;
-    }
-
-    pub fn end_drawing(&mut self) {
-        self.is_drawing = false;
-        self.drawing_state = DrawingState::Start;
-
-        if let Some(inserted_id) = self.storage.flush() {
-            self.conclude_action(Action::Draw(inserted_id));
-        }
-    }
-
-    pub fn conclude_action(&mut self, action: Action) {
+    fn conclude_action(&mut self, action: Action) {
         // this means some undos have been applied. Doing something from here
         // means effectively dropping some actions such that we're again in the
         // end of the undo_queue
@@ -208,59 +201,129 @@ impl App {
         };
     }
 
-    pub fn start_moving(&mut self) {
-        self.is_moving = true;
+    fn handle_tool_button_pressed(&mut self, point: Point) {
+        match self.selected_tool {
+            SelectedTool::Shape(shape) => {
+                if let Some(shape) = self.storage.last_mut() {
+                    shape.handle_button_pressed(point);
+                }
+            },
+            SelectedTool::Eraser => unimplemented!(),
+        }
     }
 
-    pub fn end_moving(&mut self) {
-        self.is_moving = false;
-        self.moving_state = MovingState::Start;
+    fn handle_tool_button_released(&mut self, point: Point) -> Option<ShapeId> {
+        match self.selected_tool {
+            SelectedTool::Shape(shape) => {
+                let finished = if let Some(shape) = self.storage.last_mut() {
+                    shape.handle_button_released(point)
+                } else {
+                    ShapeFinished::No
+                };
+
+                if let ShapeFinished::Yes = finished {
+                    self.storage.flush()
+                } else {
+                    None
+                }
+            },
+            SelectedTool::Eraser => unimplemented!(),
+        }
     }
 
-    pub fn handle_cursor(&mut self, pos: Point) -> ShouldRedraw {
-        if self.is_drawing && !self.is_moving {
-            let transformed_point = self.to_storage_coordinates(pos);
+    fn handle_tool_mouse_move(&mut self, point: Point) -> ShouldRedraw {
+        let transformed_point = self.to_storage_coordinates(point);
 
-            match self.drawing_state {
-                DrawingState::Start => {
-                    self.drawing_state = DrawingState::OnePoint(transformed_point);
-                    ShouldRedraw::No
-                },
-                DrawingState::OnePoint(p1) => {
-                    self.drawing_state = DrawingState::TwoPoints([p1, transformed_point]);
-                    ShouldRedraw::No
-                },
-                DrawingState::TwoPoints(points) => {
-                    self.storage.add(
-                        self.selected_tool.make(self.selected_color, points, self.next_id, self.scale_factor),
-                    );
-                    self.next_id.incr();
-                    self.drawing_state = DrawingState::AndSoOn;
+        match self.selected_tool {
+            SelectedTool::Shape(_shape_type) => {
+                if let Some(shape) = self.storage.last_mut() {
+                    shape.handle_mouse_moved(transformed_point);
                     ShouldRedraw::Yes
+                } else {
+                    ShouldRedraw::No
+                }
+            },
+            SelectedTool::Eraser => unimplemented!(),
+        }
+    }
+
+    /// Public method that the UI must call whenever a button of the mouse or pen
+    /// is pressed.
+    pub fn handle_mouse_button_pressed(&mut self, button: MouseButton, point: Point) -> ShouldRedraw {
+        let (new_board_state, should_redraw) = match self.board_state {
+            BoardState::Idle => match button {
+                MouseButton::Left => {
+                    self.handle_tool_button_pressed(point);
+
+                    (BoardState::UsingTool, ShouldRedraw::Yes)
                 },
-                DrawingState::AndSoOn => {
-                    if let Some(shape) = self.storage.last_mut() {
-                        shape.handle(transformed_point);
+                MouseButton::Middle => unimplemented!(),
+                MouseButton::Right => unimplemented!(),
+                MouseButton::Unknown => (BoardState::Idle, ShouldRedraw::No),
+            },
+            BoardState::UsingTool => unimplemented!(),
+            BoardState::Moving(_) => unimplemented!(),
+            BoardState::MovingWhileUsingTool(_) => unimplemented!(),
+        };
+
+        self.board_state = new_board_state;
+
+        should_redraw
+    }
+
+    /// Public method that the UI must call whenever a button of the mouse or pen
+    /// is released.
+    pub fn handle_mouse_button_released(&mut self, button: MouseButton, point: Point) -> ShouldRedraw {
+        let (new_board_state, should_redraw) = match self.board_state {
+            BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
+            BoardState::UsingTool => match button {
+                MouseButton::Left => {
+                    if let Some(shape_id) = self.handle_tool_button_released(point) {
+                        self.conclude_action(Action::Draw(shape_id));
+
+                        (BoardState::Idle, ShouldRedraw::Yes)
+                    } else {
+                        (BoardState::UsingTool, ShouldRedraw::Yes)
                     }
-                    ShouldRedraw::Yes
                 },
-            }
-        } else if self.is_moving {
-            match self.moving_state {
-                MovingState::Start => {
-                    self.moving_state = MovingState::From(pos);
+                MouseButton::Middle => unimplemented!(),
+                MouseButton::Right => unimplemented!(),
+                MouseButton::Unknown => (BoardState::UsingTool, ShouldRedraw::No),
+            },
+            BoardState::Moving(_) => unimplemented!(),
+            BoardState::MovingWhileUsingTool(_) => unimplemented!(),
+        };
 
-                    ShouldRedraw::No
-                },
-                MovingState::From(point) => {
-                    self.moving_state = MovingState::From(pos);
-                    self.handle_offset(pos - point);
+        self.board_state = new_board_state;
 
-                    ShouldRedraw::Yes
-                },
-            }
-        } else {
-            ShouldRedraw::No
+        should_redraw
+    }
+
+    /// Public methid that the UI must call with updates on the cursor position
+    pub fn handle_mouse_move(&mut self, pos: Point) -> ShouldRedraw {
+        match self.board_state {
+            BoardState::Idle => ShouldRedraw::No,
+            BoardState::UsingTool => self.handle_tool_mouse_move(pos),
+            BoardState::Moving(moving_state) => {
+                match moving_state {
+                    MovingState::Start => ShouldRedraw::No,
+                    MovingState::From(point) => {
+                        self.handle_offset(pos - point);
+
+                        ShouldRedraw::Yes
+                    },
+                }
+            },
+            BoardState::MovingWhileUsingTool(moving_state) => {
+                match moving_state {
+                    MovingState::Start => ShouldRedraw::No,
+                    MovingState::From(point) => {
+                        self.handle_offset(pos - point);
+
+                        ShouldRedraw::Yes
+                    },
+                }
+            },
         }
     }
 
@@ -385,17 +448,13 @@ impl App {
     }
 
     pub fn reset(&mut self) {
-        self.is_drawing = false;
-        self.is_moving = false;
         self.storage = Storage::new();
-        self.selected_tool = ShapeType::Line;
+        self.selected_tool = SelectedTool::Shape(ShapeType::Line);
         self.offset = self.dimensions * -0.5;
         self.scale_factor = 1.0;
         self.undo_state = UndoState::Reset;
         self.undo_queue = Vec::new();
-        self.moving_state = MovingState::Start;
         self.selected_color = Color::green();
-        self.drawing_state = DrawingState::Start;
         self.next_id = ShapeId::from(1);
         self.save_status = SaveStatus::NewAndEmpty;
     }
@@ -403,33 +462,61 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    use super::App;
-    use crate::point::Point;
+    use super::{App, MouseButton};
+    use crate::{draw_commands::DrawCommand, point::Point, color::Color};
+
+    #[test]
+    fn test_draw_a_line() {
+        let mut app = App::new(Point::new(800.0, 600.0));
+
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 0.0));
+        app.handle_mouse_move(Point::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(2.0, 0.0));
+
+        assert_eq!(app.shape_count(), 1);
+
+        let commands: Vec<_> = app.draw_commands([Point::new(-1.0, -1.0), Point::new(3.0, 1.0)]).collect();
+
+        assert_eq!(commands[0], DrawCommand::Line {
+            color: Color::green(),
+            line: vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0), Point::new(2.0, 0.0)],
+            thickness: 4.0,
+        });
+    }
+
+    #[test]
+    fn test_move_screen() {
+        assert!(false);
+    }
+
+    #[test]
+    fn test_move_while_drawing() {
+        assert!(false);
+    }
+
+    #[test]
+    fn test_erase() {
+        assert!(false);
+    }
 
     #[test]
     fn test_do_do_do_undo_redo_redo_undo() {
         let mut app = App::new(Point::new(800.0, 600.0));
 
         // Do
-        app.start_drawing();
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.handle_cursor(Point::new(1.0, 0.0));
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.end_drawing();
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_move(Point::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(0.0, 1.0));
 
         // Do
-        app.start_drawing();
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.handle_cursor(Point::new(1.0, 0.0));
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.end_drawing();
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_move(Point::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(0.0, 1.0));
 
         // Do
-        app.start_drawing();
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.handle_cursor(Point::new(1.0, 0.0));
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.end_drawing();
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_move(Point::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(0.0, 1.0));
 
         app.undo();
 
@@ -437,6 +524,8 @@ mod tests {
         app.redo();
 
         app.undo();
+
+        assert_eq!(app.shape_count(), 3);
     }
 
     #[test]
@@ -444,17 +533,17 @@ mod tests {
         let mut app = App::new(Point::new(800.0, 600.0));
 
         // Do
-        app.start_drawing();
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.handle_cursor(Point::new(1.0, 0.0));
-        app.handle_cursor(Point::new(1.0, 1.0));
-        app.end_drawing();
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_move(Point::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
 
         app.undo();
 
         app.redo();
 
         app.undo();
+
+        assert_eq!(app.shape_count(), 0);
     }
 
     #[test]
@@ -462,27 +551,21 @@ mod tests {
         let mut app = App::new(Point::new(800.0, 600.0));
 
         // Do
-        app.start_drawing();
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.handle_cursor(Point::new(1.0, 0.0));
-        app.handle_cursor(Point::new(1.0, 1.0));
-        app.end_drawing();
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_move(Point::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
 
         app.undo();
 
         // Do
-        app.start_drawing();
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.handle_cursor(Point::new(1.0, 0.0));
-        app.handle_cursor(Point::new(1.0, 1.0));
-        app.end_drawing();
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_move(Point::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
 
         // Do
-        app.start_drawing();
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.handle_cursor(Point::new(1.0, 0.0));
-        app.handle_cursor(Point::new(1.0, 1.0));
-        app.end_drawing();
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_move(Point::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
 
         app.undo();
 
@@ -494,20 +577,16 @@ mod tests {
         let mut app = App::new(Point::new(800.0, 600.0));
 
         // Do
-        app.start_drawing();
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.handle_cursor(Point::new(1.0, 0.0));
-        app.handle_cursor(Point::new(1.0, 1.0));
-        app.end_drawing();
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_move(Point::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
 
         app.undo();
 
         // Do
-        app.start_drawing();
-        app.handle_cursor(Point::new(0.0, 1.0));
-        app.handle_cursor(Point::new(1.0, 0.0));
-        app.handle_cursor(Point::new(1.0, 1.0));
-        app.end_drawing();
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_move(Point::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
 
         app.undo();
         app.undo();
@@ -525,10 +604,8 @@ mod tests {
 
         assert_eq!(app.visible_extent(), (Point::new(-20.0, -15.0), Point::new(20.0, 15.0)));
 
-        app.start_moving();
-        app.handle_cursor(Point::new(0.0, 0.0));
-        app.handle_cursor(Point::new(-1.0, 0.0)); // moves one screen pixel to the right
-        app.end_moving();
+        app.handle_mouse_button_pressed(MouseButton::Middle, Point::new(0.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Middle, Point::new(-1.0, 0.0));
 
         assert_eq!(app.visible_extent(), (Point::new(-19.5, -15.0), Point::new(20.5, 15.0)));
     }

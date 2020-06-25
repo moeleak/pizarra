@@ -14,7 +14,7 @@ use gio::prelude::*;
 use glib::clone;
 
 use pizarra::{
-    App, app::{ShouldRedraw, SaveStatus}, color::Color, graphics::Transform,
+    App, app::{ShouldRedraw, SaveStatus, MouseButton}, color::Color, graphics::Transform,
 };
 use pizarra::point::Point;
 
@@ -181,11 +181,12 @@ fn init(app: &Application) {
 
     drawing_area.connect_button_press_event(clone!(@strong controller => move |_dw, event| {
         if let EventType::ButtonPress = event.get_event_type() {
-            match event.get_button() {
-                1 => controller.borrow_mut().start_drawing(),
-                2 => controller.borrow_mut().start_moving(),
-                _ => {},
-            }
+            controller.borrow_mut().handle_mouse_button_pressed(match event.get_button() {
+                1 => MouseButton::Left,
+                2 => MouseButton::Middle,
+                3 => MouseButton::Right,
+                _ => MouseButton::Unknown,
+            }, Point::from(event.get_position()));
         }
 
         Inhibit(false)
@@ -193,11 +194,12 @@ fn init(app: &Application) {
 
     drawing_area.connect_button_release_event(clone!(@strong controller, @strong header_bar => move |_dw, event| {
         if let EventType::ButtonRelease = event.get_event_type() {
-            match event.get_button() {
-                1 => controller.borrow_mut().end_drawing(),
-                2 => controller.borrow_mut().end_moving(),
-                _ => {},
-            }
+            controller.borrow_mut().handle_mouse_button_released(match event.get_button() {
+                1 => MouseButton::Left,
+                2 => MouseButton::Middle,
+                3 => MouseButton::Right,
+                _ => MouseButton::Unknown,
+            }, Point::from(event.get_position()));
         }
 
         set_subtitle(&header_bar, controller.borrow().get_save_status());
@@ -208,7 +210,7 @@ fn init(app: &Application) {
     drawing_area.connect_motion_notify_event(clone!(@strong controller => move |dw, event| {
         let (x, y) = event.get_position();
 
-        if let ShouldRedraw::Yes = controller.borrow_mut().handle_cursor(Point::new(x, y)) {
+        if let ShouldRedraw::Yes = controller.borrow_mut().handle_mouse_move(Point::new(x, y)) {
             dw.queue_draw();
         }
 

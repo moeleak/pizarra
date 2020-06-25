@@ -13,6 +13,13 @@ pub use self::line::Line;
 pub use self::rectangle::Rectangle;
 pub use self::ellipse::Ellipse;
 
+/// Shapes handle input from the user, and they're responsible of notifying when
+/// they're finished, for example in the case of a polygon
+pub enum ShapeFinished {
+    Yes,
+    No,
+}
+
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum ShapeType {
     Line,
@@ -21,9 +28,9 @@ pub enum ShapeType {
 }
 
 impl ShapeType {
-    pub fn make(&self, color: Color, initial: [Point; 2], id: ShapeId, scale_factor: f64) -> Shape {
+    pub fn start(&self, color: Color, initial: Point, id: ShapeId, stroke: f64) -> Shape {
         match *self {
-            ShapeType::Line => Line::new(color, initial, id, 4.0 / scale_factor),
+            ShapeType::Line => Line::new(color, initial, id, stroke),
             ShapeType::Rectangle => Rectangle::new(color, initial, id),
             ShapeType::Ellipse => Ellipse::new(color, initial, id),
         }
@@ -34,7 +41,11 @@ pub trait ShapeTrait {
     /// Must handle new coordinates given to this shape. If this method is
     /// called it means that the shape is being modified (thus this is the most
     /// recently added shape
-    fn handle(&mut self, val: Point);
+    fn handle_mouse_moved(&mut self, pos: Point);
+
+    fn handle_button_pressed(&mut self, pos: Point);
+
+    fn handle_button_released(&mut self, pos: Point) -> ShapeFinished;
 
     /// Must return the necessary commands to display this shape on the screen
     fn draw_commands(&self) -> WireDrawCommand;
@@ -53,8 +64,8 @@ pub trait ShapeTrait {
 pub struct ShapeId(usize);
 
 impl ShapeId {
-    pub fn incr(&mut self) {
-        self.0 += 1;
+    pub fn next(self) -> ShapeId {
+        ShapeId(self.0 + 1)
     }
 }
 
@@ -77,10 +88,6 @@ pub struct Shape {
 }
 
 impl Shape {
-    pub fn handle(&mut self, val: Point) {
-        self.shape_impl.handle(val);
-    }
-
     pub fn draw_commands(&self) -> DrawCommand {
         let cmd = self.shape_impl.draw_commands();
 
@@ -109,6 +116,18 @@ impl Shape {
 
     pub fn intersects_circle(&self, center: Point, radius: f64) -> bool {
         self.shape_impl.intersects_circle(center, radius)
+    }
+
+    pub fn handle_mouse_moved(&mut self, val: Point) {
+        self.shape_impl.handle_mouse_moved(val);
+    }
+
+    pub fn handle_button_pressed(&mut self, point: Point) {
+        self.shape_impl.handle_button_pressed(point);
+    }
+
+    pub fn handle_button_released(&mut self, point: Point) -> ShapeFinished {
+        self.shape_impl.handle_button_released(point)
     }
 }
 

@@ -86,6 +86,12 @@ impl From<[f64; 2]> for Point {
     }
 }
 
+impl From<(f64, f64)> for Point {
+    fn from(other: (f64, f64)) -> Point {
+        Point::new(other.0, other.1)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Point;

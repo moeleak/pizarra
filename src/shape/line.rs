@@ -1,5 +1,5 @@
 use crate::draw_commands::WireDrawCommand;
-use super::{Shape, ShapeTrait, ShapeId};
+use super::{Shape, ShapeTrait, ShapeId, ShapeFinished};
 use crate::color::Color;
 use crate::ShapeType;
 use crate::point::Point;
@@ -10,11 +10,10 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn new(color: Color, initial: [Point; 2], id: ShapeId, thickness: f64) -> Shape {
+    pub fn new(color: Color, initial: Point, id: ShapeId, thickness: f64) -> Shape {
         let mut init_vec = Vec::with_capacity(1000);
 
-        init_vec.push(initial[0]);
-        init_vec.push(initial[1]);
+        init_vec.push(initial);
 
         Shape {
             id,
@@ -28,8 +27,17 @@ impl Line {
 }
 
 impl ShapeTrait for Line {
-    fn handle(&mut self, val: Point) {
-        self.points.push(val);
+    fn handle_mouse_moved(&mut self, pos: Point) {
+        self.points.push(pos);
+    }
+
+    fn handle_button_pressed(&mut self, _pos: Point) {
+        unreachable!()
+    }
+
+    fn handle_button_released(&mut self, pos: Point) -> ShapeFinished {
+        self.points.push(pos);
+        ShapeFinished::Yes
     }
 
     fn draw_commands(&self) -> WireDrawCommand {
@@ -93,18 +101,19 @@ mod tests {
             thickness: 4.0,
         };
 
-        line.handle(Point::new(1.0, 0.0));
-        line.handle(Point::new(0.0, 1.0));
+        line.handle_mouse_moved(Point::new(1.0, 0.0));
+        line.handle_mouse_moved(Point::new(0.0, 1.0));
 
         assert_eq!(line.bbox(), [[0.0, 0.0], [1.0, 1.0]]);
     }
 
     #[test]
     fn test_bbox_twisted_line() {
-        let mut line = Line::new(Color::green(), [Point::new(-12.0, -1.0), Point::new(-5.0, 0.0)], ShapeId::from(1), 1.0);
+        let mut line = Line::new(Color::green(), Point::new(-12.0, -1.0), ShapeId::from(1), 1.0);
 
-        line.handle(Point::new(-2.0, 7.0));
-        line.handle(Point::new(2.0, -8.0));
+        line.handle_mouse_moved(Point::new(-5.0, 0.0));
+        line.handle_mouse_moved(Point::new(-2.0, 7.0));
+        line.handle_mouse_moved(Point::new(2.0, -8.0));
 
         assert_eq!(line.shape_impl.bbox(), [[-12.0, -8.0], [2.0, 7.0]]);
     }
