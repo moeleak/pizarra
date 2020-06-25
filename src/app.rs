@@ -26,20 +26,13 @@ enum UndoState {
     Reset,
 }
 
-/// Needed to handle pointer offset during canvas moving
-#[derive(Copy, Clone)]
-enum MovingState {
-    Start,
-    From(Point),
-}
-
 /// Manages what is happening with the board
 #[derive(Copy, Clone)]
 enum BoardState {
     Idle,
     UsingTool,
-    Moving(MovingState),
-    MovingWhileUsingTool(MovingState),
+    Moving(Point),
+    MovingWhileUsingTool(Point),
 }
 
 /// Indicates wether or not an action should trigger redraw of the canvas
@@ -275,8 +268,8 @@ impl App {
 
                     (BoardState::UsingTool, ShouldRedraw::Yes)
                 },
-                MouseButton::Middle => unimplemented!(),
-                MouseButton::Right => unimplemented!(),
+                MouseButton::Middle => (BoardState::Moving(point), ShouldRedraw::No),
+                MouseButton::Right => (BoardState::Idle, ShouldRedraw::No),
                 MouseButton::Unknown => (BoardState::Idle, ShouldRedraw::No),
             },
             BoardState::UsingTool => unimplemented!(),
@@ -308,7 +301,11 @@ impl App {
                 MouseButton::Right => unimplemented!(),
                 MouseButton::Unknown => (BoardState::UsingTool, ShouldRedraw::No),
             },
-            BoardState::Moving(_) => unimplemented!(),
+            BoardState::Moving(old_point) => {
+                self.handle_offset(point - old_point);
+
+                (BoardState::Idle, ShouldRedraw::Yes)
+            },
             BoardState::MovingWhileUsingTool(_) => unimplemented!(),
         };
 
@@ -319,30 +316,24 @@ impl App {
 
     /// Public methid that the UI must call with updates on the cursor position
     pub fn handle_mouse_move(&mut self, pos: Point) -> ShouldRedraw {
-        match self.board_state {
-            BoardState::Idle => ShouldRedraw::No,
-            BoardState::UsingTool => self.handle_tool_mouse_move(pos),
-            BoardState::Moving(moving_state) => {
-                match moving_state {
-                    MovingState::Start => ShouldRedraw::No,
-                    MovingState::From(point) => {
-                        self.handle_offset(pos - point);
+        let (new_board_state, should_redraw) = match self.board_state {
+            BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
+            BoardState::UsingTool => (BoardState::UsingTool, self.handle_tool_mouse_move(pos)),
+            BoardState::Moving(old_point) => {
+                self.handle_offset(pos - old_point);
 
-                        ShouldRedraw::Yes
-                    },
-                }
+                (BoardState::Moving(pos), ShouldRedraw::Yes)
             },
-            BoardState::MovingWhileUsingTool(moving_state) => {
-                match moving_state {
-                    MovingState::Start => ShouldRedraw::No,
-                    MovingState::From(point) => {
-                        self.handle_offset(pos - point);
+            BoardState::MovingWhileUsingTool(old_point) => {
+                self.handle_offset(pos - old_point);
 
-                        ShouldRedraw::Yes
-                    },
-                }
+                (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::Yes)
             },
-        }
+        };
+
+        self.board_state = new_board_state;
+
+        should_redraw
     }
 
     pub fn zoom_in(&mut self) {
@@ -531,22 +522,14 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_draw_a_rectangle() {
         assert!(false);
     }
 
     #[test]
+    #[ignore]
     fn test_draw_an_ellipse() {
-        assert!(false);
-    }
-
-    #[test]
-    fn test_move_screen() {
-        assert!(false);
-    }
-
-    #[test]
-    fn test_move_while_drawing() {
         assert!(false);
     }
 
@@ -651,6 +634,18 @@ mod tests {
     }
 
     #[test]
+    fn test_move() {
+        let mut app = App::new(Point::new(80.0, 60.0));
+
+        assert_eq!(app.visible_extent(), [Point::new(-40.0, -30.0), Point::new(40.0, 30.0)]);
+
+        app.handle_mouse_button_pressed(MouseButton::Middle, Point::new(0.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Middle, Point::new(-1.0, 0.0));
+
+        assert_eq!(app.visible_extent(), [Point::new(-39.0, -30.0), Point::new(41.0, 30.0)]);
+    }
+
+    #[test]
     fn move_while_in_zoom_is_coherent() {
         let mut app = App::new(Point::new(80.0, 60.0));
 
@@ -664,6 +659,12 @@ mod tests {
         app.handle_mouse_button_released(MouseButton::Middle, Point::new(-1.0, 0.0));
 
         assert_eq!(app.visible_extent(), [Point::new(-19.5, -15.0), Point::new(20.5, 15.0)]);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_move_while_drawing() {
+        assert!(false);
     }
 
     #[test]
