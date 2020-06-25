@@ -135,14 +135,24 @@ impl App {
 
     /// Compute the bounds of what is visible in the board according to current
     /// offset and zoom level
-    pub fn visible_extent(&self) -> (Point, Point) {
-        (
+    pub fn visible_extent(&self) -> [Point; 2] {
+        [
             self.offset,
             self.offset + self.dimensions / self.scale_factor
-        )
+        ]
     }
 
-    pub fn draw_commands(&self, bbox: [Point; 2]) -> impl Iterator<Item=DrawCommand> + '_ {
+    pub fn draw_commands_for_screen(&self) -> impl Iterator<Item=DrawCommand> + '_ {
+        self.storage.draw_commands(self.visible_extent())
+    }
+
+    pub fn draw_commands_for_drawing(&self) -> impl Iterator<Item=DrawCommand> + '_ {
+        let bbox = if let Some(bbox) = self.get_bounds() {
+            bbox
+        } else {
+            [Point::new(0.0, 0.0), Point::new(0.0, 0.0)]
+        };
+
         self.storage.draw_commands(bbox)
     }
 
@@ -202,10 +212,16 @@ impl App {
     }
 
     fn handle_tool_button_pressed(&mut self, point: Point) {
+        let transformed_point = self.to_storage_coordinates(point);
+
         match self.selected_tool {
             SelectedTool::Shape(shape) => {
                 if let Some(shape) = self.storage.last_mut() {
-                    shape.handle_button_pressed(point);
+                    shape.handle_button_pressed(transformed_point);
+                } else {
+                    let new_shape = shape.start(self.selected_color, transformed_point, self.next_id(), 4.0 * 1.0 / self.scale_factor);
+
+                    self.storage.add(new_shape);
                 }
             },
             SelectedTool::Eraser => unimplemented!(),
@@ -213,10 +229,12 @@ impl App {
     }
 
     fn handle_tool_button_released(&mut self, point: Point) -> Option<ShapeId> {
+        let transformed_point = self.to_storage_coordinates(point);
+
         match self.selected_tool {
-            SelectedTool::Shape(shape) => {
+            SelectedTool::Shape(_shape) => {
                 let finished = if let Some(shape) = self.storage.last_mut() {
-                    shape.handle_button_released(point)
+                    shape.handle_button_released(transformed_point)
                 } else {
                     ShapeFinished::No
                 };
@@ -463,11 +481,16 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::{App, MouseButton};
-    use crate::{draw_commands::DrawCommand, point::Point, color::Color};
+    use crate::{
+        draw_commands::DrawCommand, point::Point, color::Color, app::SelectedTool,
+        shape::ShapeType,
+    };
 
     #[test]
     fn test_draw_a_line() {
-        let mut app = App::new(Point::new(800.0, 600.0));
+        let mut app = App::new(Point::new(80.0, 60.0));
+
+        app.set_tool(SelectedTool::Shape(ShapeType::Line));
 
         app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 0.0));
         app.handle_mouse_move(Point::new(1.0, 0.0));
@@ -475,13 +498,46 @@ mod tests {
 
         assert_eq!(app.shape_count(), 1);
 
-        let commands: Vec<_> = app.draw_commands([Point::new(-1.0, -1.0), Point::new(3.0, 1.0)]).collect();
+        let commands: Vec<_> = app.draw_commands_for_screen().collect();
 
         assert_eq!(commands[0], DrawCommand::Line {
             color: Color::green(),
-            line: vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0), Point::new(2.0, 0.0)],
+            line: vec![Point::new(-40.0, -30.0), Point::new(-39.0, -30.0), Point::new(-38.0, -30.0)],
             thickness: 4.0,
         });
+    }
+
+    #[test]
+    fn test_draw_a_line_in_zoom() {
+        let mut app = App::new(Point::new(80.0, 60.0));
+
+        app.set_tool(SelectedTool::Shape(ShapeType::Line));
+
+        app.zoom_in();
+
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 0.0));
+        app.handle_mouse_move(Point::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(2.0, 0.0));
+
+        assert_eq!(app.shape_count(), 1);
+
+        let commands: Vec<_> = app.draw_commands_for_screen().collect();
+
+        assert_eq!(commands[0], DrawCommand::Line {
+            color: Color::green(),
+            line: vec![Point::new(-20.0, -15.0), Point::new(-19.5, -15.0), Point::new(-19.0, -15.0)],
+            thickness: 2.0,
+        });
+    }
+
+    #[test]
+    fn test_draw_a_rectangle() {
+        assert!(false);
+    }
+
+    #[test]
+    fn test_draw_an_ellipse() {
+        assert!(false);
     }
 
     #[test]
@@ -525,7 +581,7 @@ mod tests {
 
         app.undo();
 
-        assert_eq!(app.shape_count(), 3);
+        assert_eq!(app.shape_count(), 2);
     }
 
     #[test]
@@ -598,30 +654,30 @@ mod tests {
     fn move_while_in_zoom_is_coherent() {
         let mut app = App::new(Point::new(80.0, 60.0));
 
-        assert_eq!(app.visible_extent(), (Point::new(-40.0, -30.0), Point::new(40.0, 30.0)));
+        assert_eq!(app.visible_extent(), [Point::new(-40.0, -30.0), Point::new(40.0, 30.0)]);
 
         app.zoom_in();
 
-        assert_eq!(app.visible_extent(), (Point::new(-20.0, -15.0), Point::new(20.0, 15.0)));
+        assert_eq!(app.visible_extent(), [Point::new(-20.0, -15.0), Point::new(20.0, 15.0)]);
 
         app.handle_mouse_button_pressed(MouseButton::Middle, Point::new(0.0, 0.0));
         app.handle_mouse_button_released(MouseButton::Middle, Point::new(-1.0, 0.0));
 
-        assert_eq!(app.visible_extent(), (Point::new(-19.5, -15.0), Point::new(20.5, 15.0)));
+        assert_eq!(app.visible_extent(), [Point::new(-19.5, -15.0), Point::new(20.5, 15.0)]);
     }
 
     #[test]
     fn test_zoom_must_be_idempotent() {
         let mut app = App::new(Point::new(80.0, 60.0));
 
-        assert_eq!(app.visible_extent(), (Point::new(-40.0, -30.0), Point::new(40.0, 30.0)));
+        assert_eq!(app.visible_extent(), [Point::new(-40.0, -30.0), Point::new(40.0, 30.0)]);
 
         app.zoom_in();
 
-        assert_eq!(app.visible_extent(), (Point::new(-20.0, -15.0), Point::new(20.0, 15.0)));
+        assert_eq!(app.visible_extent(), [Point::new(-20.0, -15.0), Point::new(20.0, 15.0)]);
 
         app.zoom_in();
 
-        assert_eq!(app.visible_extent(), (Point::new(-10.0, -7.5), Point::new(10.0, 7.5)));
+        assert_eq!(app.visible_extent(), [Point::new(-10.0, -7.5), Point::new(10.0, 7.5)]);
     }
 }

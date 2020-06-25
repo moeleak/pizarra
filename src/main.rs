@@ -51,7 +51,7 @@ fn save_drawing(controller: &App, filename: &Path) {
         ctx.set_source_rgb(bgcolor.r, bgcolor.g, bgcolor.b);
         ctx.paint();
 
-        for cmd in controller.draw_commands([topleft, bottomright]) {
+        for cmd in controller.draw_commands_for_drawing() {
             cmd.draw(&ctx, t);
         }
 
@@ -163,10 +163,7 @@ fn init(app: &Application) {
         let t = controller.get_transform();
         let bgcolor = Color::black();
 
-        // the bbox of the visible things
-        let (corner_1, corner_2) = controller.visible_extent();
-
-        let commands = controller.draw_commands([corner_1, corner_2]);
+        let commands = controller.draw_commands_for_screen();
 
         ctx.set_source_rgb(bgcolor.r, bgcolor.g, bgcolor.b);
         ctx.paint();

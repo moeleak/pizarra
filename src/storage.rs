@@ -356,12 +356,12 @@ mod tests {
 
         let shapes = vec![
             // in green the ones that go
-            Rectangle::new(Color::green(), Point::new(1.1, 1.1), ShapeId::from(1)),
-            Rectangle::new(Color::green(), Point::new(-0.5, 1.5), ShapeId::from(2)),
-            Rectangle::new(Color::green(), Point::new(0.5, -0.25), ShapeId::from(3)),
+            Rectangle::from_corners([Point::new(-1.1, -1.1), Point::new(1.1, 1.1)]),
+            Rectangle::from_corners([Point::new(-1.5, 0.5), Point::new(-0.5, 1.5)]),
+            Rectangle::from_corners([Point::new(0.25, -0.5), Point::new(0.5, -0.25)]),
 
             // in red the ones that dont
-            Rectangle::new(Color::red(), Point::new(20.0, 20.0), ShapeId::from(4)),
+            Rectangle::from_corners([Point::new(20.0, 20.0), Point::new(20.0, 20.0)]),
         ];
 
         for shape in shapes.into_iter() {
@@ -406,25 +406,25 @@ mod tests {
         let mut storage = Storage::new();
 
         // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
-        storage.add(Rectangle::new(Color::red(), Point::new(3.0, 3.0), ShapeId::from(2)));
+        storage.add(Rectangle::from_corners([Point::new(1.0, 1.0), Point::new(3.0, 3.0)]));
 
         // only the previous shape is in permanent storage
         storage.flush();
 
         // A rectangle of 2x2 in zoom 0 aournd the oriign
-        storage.add(Rectangle::new(Color::blue(), Point::new(1.0, 1.0), ShapeId::from(1)));
+        storage.add(Rectangle::from_corners([Point::new(-1.0, -1.0), Point::new(1.0, 1.0)]));
 
         let buffer: Vec<_> = storage.draw_commands([Point::new(-2.0, -2.0), Point::new(4.0, 4.0)]).collect();
 
         assert_eq!(buffer.len(), 2);
 
         assert!(buffer.contains(&DrawCommand::Rectangle{
-            color: Color::red(),
+            color: Color::green(),
             corner_1: Point::new(1.0, 1.0),
             corner_2: Point::new(3.0, 3.0),
         }));
         assert!(buffer.contains(&DrawCommand::Rectangle{
-            color: Color::blue(),
+            color: Color::green(),
             corner_1: Point::new(-1.0, -1.0),
             corner_2: Point::new(1.0, 1.0),
         }));
@@ -434,8 +434,8 @@ mod tests {
     fn test_get_bounds() {
         let mut storage = Storage::new();
 
-        storage.add(Rectangle::new(Color::blue(), Point::new(1.0, 1.0), ShapeId::from(1)));
-        storage.add(Rectangle::new(Color::blue(), Point::new(1.0, 1.0), ShapeId::from(1)));
+        storage.add(Rectangle::from_corners([Point::new(-5.0, -5.0), Point::new(1.0, 1.0)]));
+        storage.add(Rectangle::from_corners([Point::new(5.0, 5.0), Point::new(1.0, 1.0)]));
 
         storage.flush();
 

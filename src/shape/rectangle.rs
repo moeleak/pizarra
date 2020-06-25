@@ -21,6 +21,7 @@ impl Rectangle {
         }
     }
 
+    /// Only used for testing
     pub fn from_corners([corner_1, corner_2]: [Point; 2]) -> Shape {
         Shape {
             id: ShapeId::from(1),
@@ -34,19 +35,20 @@ impl Rectangle {
 
 impl ShapeTrait for Rectangle {
     fn handle_mouse_moved(&mut self, pos: Point) {
-        unimplemented!()
+        self.corner_2 = pos;
     }
 
-    fn handle_button_pressed(&mut self, pos: Point) {
-        unimplemented!()
+    fn handle_button_pressed(&mut self, _pos: Point) {
+        unreachable!()
     }
 
     fn handle_button_released(&mut self, pos: Point) -> ShapeFinished {
-        unimplemented!()
+        self.corner_2 = pos;
+        ShapeFinished::Yes
     }
 
     fn draw_commands(&self) -> WireDrawCommand {
-        WireDrawCommand::Rectangle{
+        WireDrawCommand::Rectangle {
             corner_1: self.corner_1,
             corner_2: self.corner_2,
         }

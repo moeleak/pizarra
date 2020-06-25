@@ -15,6 +15,7 @@ pub use self::ellipse::Ellipse;
 
 /// Shapes handle input from the user, and they're responsible of notifying when
 /// they're finished, for example in the case of a polygon
+#[derive(Debug)]
 pub enum ShapeFinished {
     Yes,
     No,
