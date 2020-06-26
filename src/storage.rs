@@ -74,7 +74,6 @@ impl SelectionFunction<Shape> for CenterAndRadiusSelection {
 
 /// This struct handles storage and fast retrieval of shapes.
 pub struct Storage {
-    shape_count: usize,
     ids: HashMap<ShapeId, AABB<[f64; 2]>>,
     shapes: RTree<Shape>,
     current: Option<Shape>,
@@ -85,7 +84,6 @@ pub struct Storage {
 impl Storage {
     pub fn new() -> Storage {
         Storage {
-            shape_count: 0,
             shapes: RTree::new(),
             ids: HashMap::new(),
             current: None,
@@ -112,8 +110,6 @@ impl Storage {
             self.ids.insert(old_id, old_shape.envelope());
             self.shapes.insert(old_shape);
 
-            self.shape_count += 1;
-
             Some(old_id)
         } else {
             None
@@ -123,10 +119,6 @@ impl Storage {
     pub fn remove(&mut self, id: ShapeId) -> Option<Shape> {
         if let Some(bbox) = self.ids.get(&id) {
             let maybe_shape = self.shapes.remove_with_selection_function(BBoxIdSelection::new(*bbox, id));
-
-            if maybe_shape.is_some() {
-                self.shape_count -= 1;
-            }
 
             maybe_shape
         } else {
@@ -143,7 +135,7 @@ impl Storage {
     }
 
     pub fn shape_count(&self) -> usize {
-        self.shape_count
+        self.shapes.size()
     }
 
     pub fn draw_commands(&self, bbox: [Point; 2]) -> impl Iterator<Item=DrawCommand> + '_ {
