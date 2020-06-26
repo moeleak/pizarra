@@ -14,7 +14,9 @@ use gio::prelude::*;
 use glib::clone;
 
 use pizarra::{
-    App, app::{ShouldRedraw, SaveStatus, MouseButton}, color::Color, graphics::Transform,
+    App, app::{
+        ShouldRedraw, SaveStatus, MouseButton, SelectedTool,
+    }, color::Color, graphics::Transform, shape::ShapeType,
 };
 use pizarra::point::Point;
 
@@ -344,6 +346,27 @@ fn init(app: &Application) {
                 save_file_logic(&window, &header_bar, controller.clone());
             },
         }
+    }));
+
+    // Change shape
+    let set_pen_menu: MenuItem = builder.get_object("tool-pen-btn").expect("no pen menu");
+    set_pen_menu.connect_activate(clone!(@strong controller => move |_menu| {
+        controller.borrow_mut().set_tool(SelectedTool::Shape(ShapeType::Line));
+    }));
+
+    let set_rectangle_menu: MenuItem = builder.get_object("tool-rect-btn").expect("no pen menu");
+    set_rectangle_menu.connect_activate(clone!(@strong controller => move |_menu| {
+        controller.borrow_mut().set_tool(SelectedTool::Shape(ShapeType::Rectangle));
+    }));
+
+    let set_ellipse_menu: MenuItem = builder.get_object("tool-ellipse-btn").expect("no pen menu");
+    set_ellipse_menu.connect_activate(clone!(@strong controller => move |_menu| {
+        controller.borrow_mut().set_tool(SelectedTool::Shape(ShapeType::Ellipse));
+    }));
+
+    let set_eraser_menu: MenuItem = builder.get_object("tool-eraser-btn").expect("no pen menu");
+    set_eraser_menu.connect_activate(clone!(@strong controller => move |_menu| {
+        controller.borrow_mut().set_tool(SelectedTool::Eraser);
     }));
 
     // Show

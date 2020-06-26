@@ -148,6 +148,45 @@
       </object>
     </child>
   </object>
+  <object class="GtkMenu" id="tool-menu">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="tool-pen-btn">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="tooltip_text" translatable="yes">Úsala para dibujar libremente sobre la pizarra</property>
+        <property name="label" translatable="yes">Lápiz</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="tool-rect-btn">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Rectángulo</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="tool-ellipse-btn">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Elipse</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkSeparatorMenuItem">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="tool-eraser-btn">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Goma</property>
+      </object>
+    </child>
+  </object>
   <object class="GtkApplicationWindow" id="main-window">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">Pizarra</property>
@@ -185,6 +224,7 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
+            <property name="tooltip_text" translatable="yes">Cambia el color con el que se dibujan las figuras</property>
             <property name="rgba">rgb(138,226,52)</property>
           </object>
         </child>
@@ -198,6 +238,8 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <property name="tooltip_text" translatable="yes">Incrementa el nivel de zoom
+¡Todo se hará más grande!</property>
                 <property name="image">image-zoom-in</property>
                 <accelerator key="plus" signal="clicked"/>
               </object>
@@ -212,6 +254,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <property name="tooltip_text" translatable="yes">Regresa al centro de la pizarra con el nivel de zoom inicial</property>
                 <property name="image">image-zoom-out</property>
               </object>
               <packing>
@@ -225,6 +268,8 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <property name="tooltip_text" translatable="yes">Zoom hacia afuera
+Todo se hará más pequeño</property>
                 <property name="image">image-zoom-home</property>
                 <accelerator key="minus" signal="clicked"/>
               </object>
@@ -245,6 +290,7 @@
             <property name="can_focus">True</property>
             <property name="focus_on_click">False</property>
             <property name="receives_default">True</property>
+            <property name="tooltip_text" translatable="yes">Opciones de la pizarra</property>
             <property name="popup">menu</property>
             <property name="use_popover">False</property>
             <child>
@@ -258,6 +304,26 @@
           <packing>
             <property name="pack_type">end</property>
             <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkMenuButton">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="focus_on_click">False</property>
+            <property name="receives_default">True</property>
+            <property name="tooltip_text" translatable="yes">Cambia la herramienta de dibujo</property>
+            <property name="popup">tool-menu</property>
+            <child>
+              <object class="GtkImage">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="icon_name">applications-engineering</property>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="position">3</property>
           </packing>
         </child>
       </object>
