@@ -225,7 +225,7 @@ impl App {
                 }
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.erase(point, ERASE_RADIUS) {
+                if let Some(shape) = self.storage.erase(transformed_point, ERASE_RADIUS) {
                     self.erased.push(shape);
                 }
             },
@@ -254,7 +254,7 @@ impl App {
                 }
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.erase(point, ERASE_RADIUS) {
+                if let Some(shape) = self.storage.erase(transformed_point, ERASE_RADIUS) {
                     self.erased.push(shape);
                 }
 
@@ -280,7 +280,7 @@ impl App {
                 }
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.erase(point, ERASE_RADIUS) {
+                if let Some(shape) = self.storage.erase(transformed_point, ERASE_RADIUS) {
                     self.erased.push(shape);
                     ShouldRedraw::Yes
                 } else {
@@ -402,6 +402,8 @@ impl App {
 
             Action::Erase(shapes) => {
                 let ids = shapes.into_iter().map(|shape| self.storage.add(shape)).collect();
+
+                self.storage.flush();
 
                 Action::Redraw(ids)
             },
