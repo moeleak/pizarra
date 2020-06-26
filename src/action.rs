@@ -2,8 +2,12 @@ use crate::shape::{Shape, ShapeId};
 
 pub enum Action {
     Skip,
+
     Draw(ShapeId),
     Delete(Shape),
+
+    Erase(Vec<Shape>),
+    Redraw(Vec<ShapeId>),
 }
 
 impl Default for Action {

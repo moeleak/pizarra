@@ -3,11 +3,13 @@ use std::path::PathBuf;
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::Storage;
-use crate::shape::{ShapeType, ShapeId, ShapeFinished};
+use crate::shape::{Shape, ShapeType, ShapeId, ShapeFinished};
 use crate::color::Color;
 use crate::action::Action;
 use crate::point::Point;
 use crate::graphics::Transform;
+
+const ERASE_RADIUS: f64 = 10.0;
 
 #[derive(Copy,Clone,Debug)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -78,6 +80,9 @@ pub struct App {
     scale_factor: f64,
     dimensions: Point,
 
+    /// Stores erased shapes temporarily while being erased
+    erased: Vec<Shape>,
+
     /// Undo
     undo_state: UndoState,
     undo_queue: Vec<Action>,
@@ -103,6 +108,8 @@ impl App {
             offset: dimensions * -0.5,
             scale_factor: 1.0,
             dimensions,
+
+            erased: Vec::new(),
 
             board_state: BoardState::Idle,
 
@@ -217,11 +224,15 @@ impl App {
                     self.storage.add(new_shape);
                 }
             },
-            SelectedTool::Eraser => unimplemented!(),
+            SelectedTool::Eraser => {
+                if let Some(shape) = self.storage.erase(point, ERASE_RADIUS) {
+                    self.erased.push(shape);
+                }
+            },
         }
     }
 
-    fn handle_tool_button_released(&mut self, point: Point) -> Option<ShapeId> {
+    fn handle_tool_button_released(&mut self, point: Point) -> Action {
         let transformed_point = self.to_storage_coordinates(point);
 
         match self.selected_tool {
@@ -233,12 +244,26 @@ impl App {
                 };
 
                 if let ShapeFinished::Yes = finished {
-                    self.storage.flush()
+                    if let Some(shape_id) = self.storage.flush() {
+                        Action::Draw(shape_id)
+                    } else {
+                        Action::Skip
+                    }
                 } else {
-                    None
+                    Action::Skip
                 }
             },
-            SelectedTool::Eraser => unimplemented!(),
+            SelectedTool::Eraser => {
+                if let Some(shape) = self.storage.erase(point, ERASE_RADIUS) {
+                    self.erased.push(shape);
+                }
+
+                if self.erased.len() > 0 {
+                    Action::Erase(self.erased.drain(..).collect())
+                } else {
+                    Action::Skip
+                }
+            },
         }
     }
 
@@ -254,7 +279,14 @@ impl App {
                     ShouldRedraw::No
                 }
             },
-            SelectedTool::Eraser => unimplemented!(),
+            SelectedTool::Eraser => {
+                if let Some(shape) = self.storage.erase(point, ERASE_RADIUS) {
+                    self.erased.push(shape);
+                    ShouldRedraw::Yes
+                } else {
+                    ShouldRedraw::No
+                }
+            },
         }
     }
 
@@ -289,13 +321,12 @@ impl App {
             BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
             BoardState::UsingTool => match button {
                 MouseButton::Left => {
-                    if let Some(shape_id) = self.handle_tool_button_released(point) {
-                        self.conclude_action(Action::Draw(shape_id));
-
-                        (BoardState::Idle, ShouldRedraw::Yes)
-                    } else {
-                        (BoardState::UsingTool, ShouldRedraw::Yes)
+                    match self.handle_tool_button_released(point) {
+                        Action::Skip => {},
+                        x => self.conclude_action(x),
                     }
+
+                    (BoardState::Idle, ShouldRedraw::Yes)
                 },
                 MouseButton::Middle => unimplemented!(),
                 MouseButton::Right => unimplemented!(),
@@ -367,6 +398,18 @@ impl App {
                 self.storage.flush();
 
                 Action::Draw(id)
+            },
+
+            Action::Erase(shapes) => {
+                let ids = shapes.into_iter().map(|shape| self.storage.add(shape)).collect();
+
+                Action::Redraw(ids)
+            },
+
+            Action::Redraw(ids) => {
+                let shapes = ids.into_iter().map(|id| self.storage.remove(id)).filter_map(|maybe_shape| maybe_shape).collect();
+
+                Action::Erase(shapes)
             },
         }
     }
@@ -535,7 +578,24 @@ mod tests {
 
     #[test]
     fn test_erase() {
-        assert!(false);
+        let mut app = App::new(Point::new(80.0, 60.0));
+
+        app.set_tool(SelectedTool::Shape(ShapeType::Line));
+
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(10.0, 10.0));
+        app.handle_mouse_move(Point::new(15.0, 10.0));
+        app.handle_mouse_move(Point::new(15.0, 15.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(10.0, 15.0));
+
+        assert_eq!(app.shape_count(), 1);
+
+        app.set_tool(SelectedTool::Eraser);
+
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(10.0, 10.0));
+        app.handle_mouse_move(Point::new(15.0, 10.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(15.0, 10.0));
+
+        assert_eq!(app.shape_count(), 0);
     }
 
     #[test]
