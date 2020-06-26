@@ -601,6 +601,11 @@ mod tests {
     }
 
     #[test]
+    fn test_erase_with_zoom() {
+        assert!(false, "verify that the area of action of the eraser scales with the zoom");
+    }
+
+    #[test]
     fn test_do_do_do_undo_redo_redo_undo() {
         let mut app = App::new(Point::new(800.0, 600.0));
 
