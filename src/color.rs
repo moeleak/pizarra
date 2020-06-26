@@ -1,3 +1,5 @@
+use std::fmt;
+
 use gdk::RGBA;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -43,6 +45,17 @@ impl Color {
             b: 51.0/256.0,
             a: 1.0,
         }
+    }
+}
+
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#{:X}{:X}{:X}{:X}",
+            (self.r*256.0) as u32,
+            (self.g*256.0) as u32,
+            (self.b*256.0) as u32,
+            (self.a*256.0) as u32,
+        )
     }
 }
 

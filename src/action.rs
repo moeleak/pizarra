@@ -1,5 +1,6 @@
 use crate::shape::{Shape, ShapeId};
 
+#[derive(Debug)]
 pub enum Action {
     Skip,
 

@@ -132,6 +132,12 @@ impl Shape {
     }
 }
 
+impl fmt::Debug for Shape {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Shape({:?}, {}, {})", self.shape_impl.shape_type(), self.id, self.color)
+    }
+}
+
 pub fn corners_to_props(_corner_1: Point, _corner_2: Point) -> (f64, f64, f64, f64) {
     unimplemented!()
 }
