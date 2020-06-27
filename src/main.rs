@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use gtk::{
     Application, ApplicationWindow, DrawingArea, Builder, ColorButton,
@@ -41,12 +41,25 @@ fn set_subtitle(header_bar: &HeaderBar, save_status: &SaveStatus) {
     }
 }
 
+fn ensure_extension(filename: &Path) -> PathBuf {
+    if let Some(ext) = filename.extension() {
+        if ext != "svg" {
+            filename.with_extension("svg")
+        } else {
+            filename.into()
+        }
+    } else {
+        filename.with_extension("svg")
+    }
+}
+
 fn save_drawing(controller: &App, filename: &Path) {
     if let Some([topleft, bottomright]) = controller.get_bounds() {
+        let svgfilename = ensure_extension(filename);
         let width = (bottomright.x - topleft.x).abs() + 20.0;
         let height = (bottomright.y - topleft.y).abs() + 20.0;
         let bgcolor = Color::black();
-        let surface = cairo::SvgSurface::for_stream(width, height, File::create(filename).unwrap()).unwrap();
+        let surface = cairo::SvgSurface::for_stream(width, height, File::create(svgfilename).unwrap()).unwrap();
         let ctx = cairo::Context::new(&surface);
         let t = Transform::new(topleft - Point::new(10.0, 10.0), 1.0);
 
@@ -68,8 +81,9 @@ fn save_file_logic<P: IsA<Window>>(window: &P, header_bar: &HeaderBar, controlle
     match res {
         ResponseType::Accept => {
             if let Some(filename) = save_file_chooser.get_filename() {
-                save_drawing(&controller.borrow(), &filename);
-                controller.borrow_mut().set_saved(filename);
+                let svgfilename = ensure_extension(&filename);
+                save_drawing(&controller.borrow(), &svgfilename);
+                controller.borrow_mut().set_saved(svgfilename);
                 set_subtitle(&header_bar, controller.borrow().get_save_status());
             }
         },
