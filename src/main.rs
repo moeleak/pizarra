@@ -12,6 +12,7 @@ use gdk::{EventMask, EventType};
 use gtk::prelude::*;
 use gio::prelude::*;
 use glib::clone;
+use cairo::{SvgSurface, ImageSurface, Context};
 
 use pizarra::{
     App, app::{
@@ -41,50 +42,79 @@ fn set_subtitle(header_bar: &HeaderBar, save_status: &SaveStatus) {
     }
 }
 
-fn ensure_extension(filename: &Path) -> PathBuf {
+fn ensure_extension(filename: &Path, extension: &str) -> PathBuf {
     if let Some(ext) = filename.extension() {
-        if ext != "svg" {
-            filename.with_extension("svg")
+        if ext != extension {
+            filename.with_extension(extension)
         } else {
             filename.into()
         }
     } else {
-        filename.with_extension("svg")
+        filename.with_extension(extension)
     }
 }
 
-fn save_drawing(controller: &App, filename: &Path) {
+fn render_drawing(controller: &App, ctx: &Context, topleft: Point) {
+    let t = Transform::new(topleft - Point::new(10.0, 10.0), 1.0);
+    let bgcolor = controller.bgcolor();
+
+    ctx.set_source_rgb(bgcolor.r, bgcolor.g, bgcolor.b);
+    ctx.paint();
+
+    for cmd in controller.draw_commands_for_drawing() {
+        cmd.draw(&ctx, t);
+    }
+}
+
+fn save_to_svg_logic(controller: &mut App, filename: &Path) {
     if let Some([topleft, bottomright]) = controller.get_bounds() {
-        let svgfilename = ensure_extension(filename);
+        let svgfilename = ensure_extension(&filename, "svg");
         let width = (bottomright.x - topleft.x).abs() + 20.0;
         let height = (bottomright.y - topleft.y).abs() + 20.0;
-        let bgcolor = Color::black();
-        let surface = cairo::SvgSurface::for_stream(width, height, File::create(svgfilename).unwrap()).unwrap();
-        let ctx = cairo::Context::new(&surface);
-        let t = Transform::new(topleft - Point::new(10.0, 10.0), 1.0);
+        let surface = SvgSurface::for_stream(width, height, File::create(&svgfilename).unwrap()).unwrap();
+        let context = Context::new(&surface);
 
-        ctx.set_source_rgb(bgcolor.r, bgcolor.g, bgcolor.b);
-        ctx.paint();
-
-        for cmd in controller.draw_commands_for_drawing() {
-            cmd.draw(&ctx, t);
-        }
-
+        render_drawing(&controller, &context, topleft);
         surface.finish_output_stream().unwrap();
+        controller.set_saved(svgfilename);
     }
 }
 
-fn save_file_logic<P: IsA<Window>>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCell<App>>) {
+/// Implements the logic of the _save-as_ feature
+fn save_as_logic<P: IsA<Window>>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCell<App>>) {
     let save_file_chooser = FileChooserNative::new(Some("Guardar"), Some(window), FileChooserAction::Save, Some("Guardar"), Some("Cancelar"));
     let res = save_file_chooser.run();
 
     match res {
         ResponseType::Accept => {
             if let Some(filename) = save_file_chooser.get_filename() {
-                let svgfilename = ensure_extension(&filename);
-                save_drawing(&controller.borrow(), &svgfilename);
-                controller.borrow_mut().set_saved(svgfilename);
+                save_to_svg_logic(&mut controller.borrow_mut(), &filename);
                 set_subtitle(&header_bar, controller.borrow().get_save_status());
+            }
+        },
+        _ => {},
+    }
+}
+
+/// Implements the logic of the export feature
+fn export_logic<P: IsA<Window>>(window: &P, controller: Rc<RefCell<App>>) {
+    let export_file_chooser = FileChooserNative::new(Some("Exportar"), Some(window), FileChooserAction::Save, Some("Exportar"), Some("Cancelar"));
+    let res = export_file_chooser.run();
+
+    match res {
+        ResponseType::Accept => {
+            if let Some(filename) = export_file_chooser.get_filename() {
+                if let Some([topleft, bottomright]) = controller.borrow().get_bounds() {
+                    let pngfilename = ensure_extension(&filename, "png");
+                    let width = (bottomright.x - topleft.x).abs() + 20.0;
+                    let height = (bottomright.y - topleft.y).abs() + 20.0;
+                    let surface = ImageSurface::create(cairo::Format::ARgb32, width as i32, height as i32).unwrap();
+                    let context = cairo::Context::new(&surface);
+
+                    render_drawing(&controller.borrow(), &context, topleft);
+
+                    surface.write_to_png(&mut File::create(pngfilename).unwrap()).unwrap();
+                }
             }
         },
         _ => {},
@@ -134,7 +164,7 @@ fn init(app: &Application) {
                         match res {
                             ResponseType::Accept => {
                                 if let Some(filename) = save_file_chooser.get_filename() {
-                                    save_drawing(&controller.borrow(), &filename);
+                                    save_to_svg_logic(&mut controller.borrow_mut(), &filename);
                                 }
                             },
                             _ => {},
@@ -153,7 +183,7 @@ fn init(app: &Application) {
 
                 match response {
                     ResponseType::Yes => {
-                        save_drawing(&controller.borrow(), path);
+                        save_to_svg_logic(&mut controller.borrow_mut(), &path);
                         Inhibit(false)
                     },
                     ResponseType::Cancel | ResponseType::DeleteEvent => Inhibit(true),
@@ -290,7 +320,7 @@ fn init(app: &Application) {
 
                 match response {
                     ResponseType::Yes => {
-                        save_file_logic(&window, &header_bar, controller.clone());
+                        save_as_logic(&window, &header_bar, controller.clone());
                     },
                     ResponseType::Cancel | ResponseType::DeleteEvent => {},
                     _ => {
@@ -305,7 +335,7 @@ fn init(app: &Application) {
 
                 match response {
                     ResponseType::Yes => {
-                        save_drawing(&controller.borrow(), &path);
+                        save_to_svg_logic(&mut controller.borrow_mut(), &path);
                         controller.borrow_mut().reset();
                         dwb.borrow().queue_draw();
                         set_subtitle(&header_bar, controller.borrow().get_save_status());
@@ -333,10 +363,10 @@ fn init(app: &Application) {
         match save_status {
             SaveStatus::NewAndEmpty => {}, // nothing to save actually
             SaveStatus::NewAndChanged => {
-                save_file_logic(&window, &header_bar, controller.clone());
+                save_as_logic(&window, &header_bar, controller.clone());
             },
             SaveStatus::Unsaved(path) => {
-                save_drawing(&controller.borrow(), &path);
+                save_to_svg_logic(&mut controller.borrow_mut(), &path);
                 controller.borrow_mut().set_saved(path.clone());
                 set_subtitle(&header_bar, controller.borrow().get_save_status());
             },
@@ -351,15 +381,20 @@ fn init(app: &Application) {
         match save_status {
             SaveStatus::NewAndEmpty => {},
             SaveStatus::NewAndChanged => {
-                save_file_logic(&window, &header_bar, controller.clone());
+                save_as_logic(&window, &header_bar, controller.clone());
             },
             SaveStatus::Unsaved(_path) => {
-                save_file_logic(&window, &header_bar, controller.clone());
+                save_as_logic(&window, &header_bar, controller.clone());
             },
             SaveStatus::Saved(_path) => {
-                save_file_logic(&window, &header_bar, controller.clone());
+                save_as_logic(&window, &header_bar, controller.clone());
             },
         }
+    }));
+
+    let export_menu: MenuItem = builder.get_object("export-btn").expect("no export menu");
+    export_menu.connect_activate(clone!(@strong controller, @strong window => move |_menu| {
+        export_logic(&window, controller.clone());
     }));
 
     // Change shape

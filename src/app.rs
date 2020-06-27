@@ -73,6 +73,7 @@ pub struct App {
 
     selected_tool: SelectedTool,
     selected_color: Color,
+    bgcolor: Color,
 
     /// This value represents the coordinate of the drwing space that is currently
     /// at the top-left corner of the screen.
@@ -102,6 +103,7 @@ impl App {
         App {
             storage: Storage::new(),
             selected_tool: SelectedTool::Shape(ShapeType::Line),
+            bgcolor: Color::black(),
 
             /// a vector from the top-left corner of the screen to the origin
             /// of coordinates in the storage
@@ -140,6 +142,10 @@ impl App {
             self.offset,
             self.offset + self.dimensions / self.scale_factor
         ]
+    }
+
+    pub fn bgcolor(&self) -> Color {
+        self.bgcolor
     }
 
     pub fn draw_commands_for_screen(&self) -> impl Iterator<Item=DrawCommand> + '_ {

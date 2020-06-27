@@ -13,7 +13,7 @@ glib = "0.9.3"
 
 [dependencies.cairo-rs]
 version = "0.8.1"
-features = ["svg"]
+features = ["svg", "png"]
 
 [dependencies.gtk]
 version = "0.8.1"
