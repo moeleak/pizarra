@@ -74,6 +74,7 @@ pub struct App {
     selected_tool: SelectedTool,
     selected_color: Color,
     bgcolor: Color,
+    stroke: f64,
 
     /// This value represents the coordinate of the drwing space that is currently
     /// at the top-left corner of the screen.
@@ -104,6 +105,7 @@ impl App {
             storage: Storage::new(),
             selected_tool: SelectedTool::Shape(ShapeType::Line),
             bgcolor: Color::black(),
+            stroke: 4.0,
 
             /// a vector from the top-left corner of the screen to the origin
             /// of coordinates in the storage
@@ -192,6 +194,14 @@ impl App {
         self.selected_tool = selected_tool;
     }
 
+    pub fn set_stroke(&mut self, stroke: f64) {
+        self.stroke = stroke;
+    }
+
+    pub fn set_bgcolor(&mut self, bgcolor: Color) {
+        self.bgcolor = bgcolor;
+    }
+
     fn conclude_action(&mut self, action: Action) {
         // this means some undos have been applied. Doing something from here
         // means effectively dropping some actions such that we're again in the
@@ -225,7 +235,7 @@ impl App {
                 if let Some(shape) = self.storage.last_mut() {
                     shape.handle_button_pressed(transformed_point);
                 } else {
-                    let new_shape = shape.start(self.selected_color, transformed_point, self.next_id(), 4.0 * 1.0 / self.scale_factor);
+                    let new_shape = shape.start(self.selected_color, transformed_point, self.next_id(), self.stroke * 1.0 / self.scale_factor);
 
                     self.storage.add(new_shape);
                 }
