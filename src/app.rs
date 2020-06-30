@@ -9,8 +9,6 @@ use crate::action::Action;
 use crate::point::Point;
 use crate::graphics::Transform;
 
-const ERASE_RADIUS: f64 = 10.0;
-
 #[derive(Copy,Clone,Debug)]
 /// Describes the possible states of the undo_queue and a pointer that moves
 /// in it
@@ -75,6 +73,7 @@ pub struct App {
     selected_color: Color,
     bgcolor: Color,
     stroke: f64,
+    erase_radius: f64,
 
     /// This value represents the coordinate of the drwing space that is currently
     /// at the top-left corner of the screen.
@@ -106,6 +105,7 @@ impl App {
             selected_tool: SelectedTool::Shape(ShapeType::Line),
             bgcolor: Color::black(),
             stroke: 4.0,
+            erase_radius: 10.0,
 
             /// a vector from the top-left corner of the screen to the origin
             /// of coordinates in the storage
@@ -202,6 +202,10 @@ impl App {
         self.bgcolor = bgcolor;
     }
 
+    pub fn set_erase_radius(&mut self, erase_radius: f64) {
+        self.erase_radius = erase_radius;
+    }
+
     fn conclude_action(&mut self, action: Action) {
         // this means some undos have been applied. Doing something from here
         // means effectively dropping some actions such that we're again in the
@@ -241,7 +245,7 @@ impl App {
                 }
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.erase(transformed_point, ERASE_RADIUS) {
+                if let Some(shape) = self.storage.erase(transformed_point, self.erase_radius / self.scale_factor) {
                     self.erased.push(shape);
                 }
             },
@@ -270,7 +274,7 @@ impl App {
                 }
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.erase(transformed_point, ERASE_RADIUS) {
+                if let Some(shape) = self.storage.erase(transformed_point, self.erase_radius / self.scale_factor) {
                     self.erased.push(shape);
                 }
 
@@ -296,7 +300,7 @@ impl App {
                 }
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.erase(transformed_point, ERASE_RADIUS) {
+                if let Some(shape) = self.storage.erase(transformed_point, self.erase_radius / self.scale_factor) {
                     self.erased.push(shape);
                     ShouldRedraw::Yes
                 } else {
@@ -618,7 +622,36 @@ mod tests {
 
     #[test]
     fn test_erase_with_zoom() {
-        assert!(false, "verify that the area of action of the eraser scales with the zoom");
+        let mut app = App::new(Point::new(4.0, 4.0));
+
+        app.set_tool(SelectedTool::Shape(ShapeType::Line));
+
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(2.0, 1.0));
+        app.handle_mouse_move(Point::new(2.0, 1.5));
+        app.handle_mouse_move(Point::new(2.0, 2.0));
+        app.handle_mouse_move(Point::new(2.0, 2.5));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(2.0, 3.0));
+
+        assert_eq!(app.shape_count(), 1);
+
+        app.zoom_in();
+
+        app.set_tool(SelectedTool::Eraser);
+        app.set_erase_radius(0.5);
+
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(2.6, 0.0));
+        app.handle_mouse_move(Point::new(2.6, 1.0));
+        app.handle_mouse_move(Point::new(2.6, 3.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(2.6, 4.0));
+
+        assert_eq!(app.shape_count(), 1);
+
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(2.24, 0.0));
+        app.handle_mouse_move(Point::new(2.4, 1.0));
+        app.handle_mouse_move(Point::new(2.4, 3.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(2.24, 4.0));
+
+        assert_eq!(app.shape_count(), 0);
     }
 
     #[test]
