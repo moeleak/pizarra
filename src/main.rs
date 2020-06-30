@@ -21,6 +21,9 @@ use pizarra::{
 };
 use pizarra::point::Point;
 
+// Padding in pixels around the bbox of the drawing when exporting or saving
+const RENDER_PADDING: f64 = 20.0;
+
 fn set_subtitle(header_bar: &HeaderBar, save_status: &SaveStatus) {
     match save_status {
         SaveStatus::NewAndEmpty => {
@@ -55,7 +58,7 @@ fn ensure_extension(filename: &Path, extension: &str) -> PathBuf {
 }
 
 fn render_drawing(controller: &App, ctx: &Context, topleft: Point) {
-    let t = Transform::new(topleft - Point::new(10.0, 10.0), 1.0);
+    let t = Transform::new(topleft - Point::new(RENDER_PADDING, RENDER_PADDING), 1.0);
     let bgcolor = controller.bgcolor();
 
     ctx.set_source_rgb(bgcolor.r, bgcolor.g, bgcolor.b);
@@ -69,8 +72,8 @@ fn render_drawing(controller: &App, ctx: &Context, topleft: Point) {
 fn save_to_svg_logic(controller: &mut App, filename: &Path) {
     if let Some([topleft, bottomright]) = controller.get_bounds() {
         let svgfilename = ensure_extension(&filename, "svg");
-        let width = (bottomright.x - topleft.x).abs() + 20.0;
-        let height = (bottomright.y - topleft.y).abs() + 20.0;
+        let width = (bottomright.x - topleft.x).abs() + 2.0 * RENDER_PADDING;
+        let height = (bottomright.y - topleft.y).abs() + 2.0 * RENDER_PADDING;
         let surface = SvgSurface::for_stream(width, height, File::create(&svgfilename).unwrap()).unwrap();
         let context = Context::new(&surface);
 
@@ -106,8 +109,8 @@ fn export_logic<P: IsA<Window>>(window: &P, controller: Rc<RefCell<App>>) {
             if let Some(filename) = export_file_chooser.get_filename() {
                 if let Some([topleft, bottomright]) = controller.borrow().get_bounds() {
                     let pngfilename = ensure_extension(&filename, "png");
-                    let width = (bottomright.x - topleft.x).abs() + 20.0;
-                    let height = (bottomright.y - topleft.y).abs() + 20.0;
+                    let width = (bottomright.x - topleft.x).abs() + 2.0 * RENDER_PADDING;
+                    let height = (bottomright.y - topleft.y).abs() + 2.0 * RENDER_PADDING;
                     let surface = ImageSurface::create(cairo::Format::ARgb32, width as i32, height as i32).unwrap();
                     let context = cairo::Context::new(&surface);
 
