@@ -528,7 +528,6 @@ impl App {
         self.scale_factor = 1.0;
         self.undo_state = UndoState::Reset;
         self.undo_queue = Vec::new();
-        self.selected_color = Color::green();
         self.next_id = ShapeId::from(1);
         self.save_status = SaveStatus::NewAndEmpty;
     }
