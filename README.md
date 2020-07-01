@@ -8,12 +8,14 @@ Nada más que eso, una pizarra.
 * espacio de dibujo infinito¹
 * zoom infinito¹
 * guardado en formato svg
+* exportado en formato png
 * integración con tableta digitalizadora
 
 ## ¿Dónde funciona?
 
-Debería funcionar en cualquier plataforma en la que funcione Rust y OpenGl pero
-solo lo he logrado correr en linux.
+Debería funcionar en cualquier plataforma en la que funcione Rust y Gtk. Por el
+momento funciona confiablemente en Linux, le faltan íconos en Mac y no compila
+en windows.
 
 ## Para ejecutar
 
@@ -26,10 +28,9 @@ ejecutar en una terminal dentro del directorio del proyecto:
 
 En este momento se ve así:
 
-![Vista de la tercera versión de la pizarra](https://categulario.tk/pizarra.png)
+![Vista de la quinta pre-versión de la pizarra](https://categulario.tk/pizarra.png)
 
 ---------------------------
 1. Ok, no es tan infinito. El espacio de dibujo guarda coordenadas en números
-flotantes, entonces está sujeto a sus límites. El zoom usa un entero de 32 bits,
-entonces también hay un número finito de niveles de zoom pero para fines
-prácticos esto no importa.
+flotantes, entonces está sujeto a sus límites. El zoom está sujeto a los límites
+de precisión de coma flotante.
