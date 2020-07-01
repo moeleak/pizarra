@@ -7,16 +7,18 @@ use crate::ShapeType;
 pub struct Rectangle {
     corner_1: Point,
     corner_2: Point,
+    stroke: f64,
 }
 
 impl Rectangle {
-    pub fn new(color: Color, initial: Point, id: ShapeId) -> Shape {
+    pub fn new(color: Color, initial: Point, id: ShapeId, stroke: f64) -> Shape {
         Shape {
             id,
             color,
             shape_impl: Box::new(Rectangle {
                 corner_1: initial,
                 corner_2: initial,
+                stroke,
             }),
         }
     }
@@ -28,8 +30,18 @@ impl Rectangle {
             color: Color::green(),
             shape_impl: Box::new(Rectangle {
                 corner_1, corner_2,
+                stroke: 4.0,
             }),
         }
+    }
+
+    pub fn all_four_corners(&self) -> [Point; 4] {
+        [
+            Point::new(self.corner_1.x, self.corner_1.y),
+            Point::new(self.corner_1.x, self.corner_2.y),
+            Point::new(self.corner_2.x, self.corner_2.y),
+            Point::new(self.corner_2.x, self.corner_1.y),
+        ]
     }
 }
 
@@ -48,9 +60,11 @@ impl ShapeTrait for Rectangle {
     }
 
     fn draw_commands(&self) -> WireDrawCommand {
-        WireDrawCommand::Rectangle {
-            corner_1: self.corner_1,
-            corner_2: self.corner_2,
+        let data = self.all_four_corners().iter().map(|p| *p).cycle().take(5).collect();
+
+        WireDrawCommand::Line {
+            line: data,
+            thickness: self.stroke,
         }
     }
 
@@ -75,7 +89,25 @@ impl ShapeTrait for Rectangle {
     }
 
     fn intersects_circle(&self, center: Point, radius: f64) -> bool {
-        unimplemented!()
+        let intersects_corners = self
+            .all_four_corners()
+            .iter()
+            .map(|p| p.distance(center) < radius)
+            .filter(|a| *a)
+            .count() > 0;
+
+        let min_y = self.corner_1.y.min(self.corner_2.y);
+        let min_x = self.corner_1.x.min(self.corner_2.x);
+        let max_y = self.corner_1.y.max(self.corner_2.y);
+        let max_x = self.corner_1.x.max(self.corner_2.x);
+
+        let intersects_sides =
+            ((center.x - self.corner_1.x).abs() < radius && center.y >= min_y && center.y <= max_y) ||
+            ((center.x - self.corner_2.x).abs() < radius && center.y >= min_y && center.y <= max_y) ||
+            ((center.y - self.corner_1.y).abs() < radius && center.x >= min_x && center.x <= max_x) ||
+            ((center.y - self.corner_2.y).abs() < radius && center.x >= min_x && center.x <= max_x);
+
+        intersects_sides || intersects_corners
     }
 }
 

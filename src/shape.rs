@@ -32,7 +32,7 @@ impl ShapeType {
     pub fn start(&self, color: Color, initial: Point, id: ShapeId, stroke: f64) -> Shape {
         match *self {
             ShapeType::Line => Line::new(color, initial, id, stroke),
-            ShapeType::Rectangle => Rectangle::new(color, initial, id),
+            ShapeType::Rectangle => Rectangle::new(color, initial, id, stroke),
             ShapeType::Ellipse => Ellipse::new(color, initial, id),
         }
     }

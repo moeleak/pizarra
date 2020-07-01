@@ -182,13 +182,6 @@
       </object>
     </child>
     <child>
-      <object class="GtkMenuItem" id="tool-ellipse-btn">
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
-        <property name="label" translatable="yes">Elipse</property>
-      </object>
-    </child>
-    <child>
       <object class="GtkSeparatorMenuItem">
         <property name="visible">True</property>
         <property name="can_focus">False</property>

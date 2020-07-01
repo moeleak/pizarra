@@ -411,11 +411,6 @@ fn init(app: &Application) {
         controller.borrow_mut().set_tool(SelectedTool::Shape(ShapeType::Rectangle));
     }));
 
-    let set_ellipse_menu: MenuItem = builder.get_object("tool-ellipse-btn").expect("no pen menu");
-    set_ellipse_menu.connect_activate(clone!(@strong controller => move |_menu| {
-        controller.borrow_mut().set_tool(SelectedTool::Shape(ShapeType::Ellipse));
-    }));
-
     let set_eraser_menu: MenuItem = builder.get_object("tool-eraser-btn").expect("no pen menu");
     set_eraser_menu.connect_activate(clone!(@strong controller => move |_menu| {
         controller.borrow_mut().set_tool(SelectedTool::Eraser);
