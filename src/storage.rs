@@ -203,7 +203,7 @@ mod tests {
         let mut storage = Storage::new();
         let shapes: Vec<Shape> = vec![
             Line::new(Color::red(), Point::new(0.0, 0.0), ShapeId::from(1), 1.0),
-            Rectangle::new(Color::green(), Point::new(0.0, 0.0), ShapeId::from(2)),
+            Rectangle::new(Color::green(), Point::new(0.0, 0.0), ShapeId::from(2), 1.0),
             Ellipse::new(Color::blue(), Point::new(0.0, 0.0), ShapeId::from(3)),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|shape| {
@@ -234,7 +234,7 @@ mod tests {
         last_shape.handle_mouse_moved(Point::new(0.0, 0.0));
         last_shape.handle_mouse_moved(Point::new(1.0, 0.0));
 
-        storage.add(Rectangle::new(Color::blue(), Point::new(0.0, 0.0), ShapeId::from(2)));
+        storage.add(Rectangle::from_corners([Point::new(0.0, 0.0), Point::new(0.0, 0.0)]));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -366,27 +366,47 @@ mod tests {
 
         assert_eq!(buffer.len(), 3);
 
+        dbg!(&buffer);
+
         assert!(buffer.contains(
-            &DrawCommand::Rectangle {
+            &DrawCommand::Line {
+                thickness: 4.0,
                 color: Color::green(),
-                corner_1: Point::new(-1.1, -1.1),
-                corner_2: Point::new(1.1, 1.1),
+                line: vec![
+                    Point::new(0.25, -0.5),
+                    Point::new(0.25, -0.25),
+                    Point::new(0.5, -0.25),
+                    Point::new(0.5, -0.5),
+                    Point::new(0.25, -0.5),
+                ],
             }
         ));
 
         assert!(buffer.contains(
-            &DrawCommand::Rectangle {
+            &DrawCommand::Line {
+                thickness: 4.0,
                 color: Color::green(),
-                corner_1: Point::new(-1.5, 0.5),
-                corner_2: Point::new(-0.5, 1.5),
+                line: vec![
+                    Point::new(-1.5, 0.5),
+                    Point::new(-1.5, 1.5),
+                    Point::new(-0.5, 1.5),
+                    Point::new(-0.5, 0.5),
+                    Point::new(-1.5, 0.5),
+                ],
             }
         ));
 
         assert!(buffer.contains(
-            &DrawCommand::Rectangle {
+            &DrawCommand::Line {
+                thickness: 4.0,
                 color: Color::green(),
-                corner_1: Point::new(0.25, -0.5),
-                corner_2: Point::new(0.5, -0.25),
+                line: vec![
+                    Point::new(-1.1, -1.1),
+                    Point::new(-1.1, 1.1),
+                    Point::new(1.1, 1.1),
+                    Point::new(1.1, -1.1),
+                    Point::new(-1.1, -1.1),
+                ],
             }
         ));
 
@@ -410,15 +430,27 @@ mod tests {
 
         assert_eq!(buffer.len(), 2);
 
-        assert!(buffer.contains(&DrawCommand::Rectangle{
+        assert!(buffer.contains(&DrawCommand::Line{
+            thickness: 4.0,
             color: Color::green(),
-            corner_1: Point::new(1.0, 1.0),
-            corner_2: Point::new(3.0, 3.0),
+            line: vec![
+                Point::new(1.0, 1.0),
+                Point::new(1.0, 3.0),
+                Point::new(3.0, 3.0),
+                Point::new(3.0, 1.0),
+                Point::new(1.0, 1.0),
+            ],
         }));
-        assert!(buffer.contains(&DrawCommand::Rectangle{
+        assert!(buffer.contains(&DrawCommand::Line{
+            thickness: 4.0,
             color: Color::green(),
-            corner_1: Point::new(-1.0, -1.0),
-            corner_2: Point::new(1.0, 1.0),
+            line: vec![
+                Point::new(-1.0, -1.0),
+                Point::new(-1.0, 1.0),
+                Point::new(1.0, 1.0),
+                Point::new(1.0, -1.0),
+                Point::new(-1.0, -1.0),
+            ],
         }));
     }
 
