@@ -8,7 +8,7 @@ use gtk::{
     Button, MenuItem, FileChooserNative, FileChooserAction, ResponseType,
     HeaderBar, MessageDialog, DialogFlags, MessageType, ButtonsType, Window
 };
-use gdk::{EventMask, EventType};
+use gdk::{EventMask, EventType, ScrollDirection};
 use gtk::prelude::*;
 use gio::prelude::*;
 use glib::clone;
@@ -202,7 +202,8 @@ fn init(app: &Application) {
     let event_mask = EventMask::POINTER_MOTION_MASK
         | EventMask::BUTTON_PRESS_MASK | EventMask::BUTTON_RELEASE_MASK
         | EventMask::KEY_PRESS_MASK | EventMask::KEY_RELEASE_MASK
-        | EventMask::POINTER_MOTION_MASK | EventMask::TABLET_PAD_MASK;
+        | EventMask::POINTER_MOTION_MASK | EventMask::TABLET_PAD_MASK
+        | EventMask::SCROLL_MASK;
 
     drawing_area.set_can_focus(true);
     drawing_area.add_events(event_mask);
@@ -235,6 +236,24 @@ fn init(app: &Application) {
     drawing_area.connect_key_release_event(|_dw, _event| {
         Inhibit(false)
     });
+
+    drawing_area.connect_scroll_event(clone!(@strong controller => move |dw, event| {
+        if let Some(direction) = event.get_scroll_direction() {
+            match direction {
+                ScrollDirection::Up => {
+                    controller.borrow_mut().zoom_in();
+                    dw.queue_draw();
+                },
+                ScrollDirection::Down => {
+                    controller.borrow_mut().zoom_out();
+                    dw.queue_draw();
+                },
+                _ => {},
+            }
+        }
+
+        Inhibit(false)
+    }));
 
     drawing_area.connect_button_press_event(clone!(@strong controller => move |_dw, event| {
         if let EventType::ButtonPress = event.get_event_type() {
