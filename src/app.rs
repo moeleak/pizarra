@@ -462,7 +462,7 @@ impl App {
             BoardState::MovingWhileUsingTool(old_point) => {
                 self.handle_offset(pos - old_point);
 
-                (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::Yes)
+                (BoardState::MovingWhileUsingTool(pos), ShouldRedraw::Yes)
             },
         };
 
@@ -845,9 +845,40 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_move_while_drawing() {
-        assert!(false);
+        let mut app = App::new(Point::new(80.0, 60.0));
+
+        assert_eq!(app.visible_extent(), [Point::new(-40.0, -30.0), Point::new(40.0, 30.0)]);
+
+        app.set_tool(SelectedTool::Shape(ShapeType::Line));
+
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(10.0, 10.0));
+        app.handle_mouse_move(Point::new(20.0, 10.0));
+        app.handle_mouse_button_pressed(MouseButton::Middle, Point::new(20.0, 10.0));
+        app.handle_mouse_move(Point::new(30.0, 10.0));
+        app.handle_mouse_button_released(MouseButton::Middle, Point::new(30.0, 10.0));
+        app.handle_mouse_move(Point::new(40.0, 10.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(40.0, 10.0));
+
+        assert_eq!(app.visible_extent(), [Point::new(-50.0, -30.0), Point::new(30.0, 30.0)]);
+        assert_eq!(app.shape_count(), 1);
+
+        let mut commands: Vec<_> = app.draw_commands_for_screen().collect();
+
+        assert_eq!(commands.len(), 1);
+
+        let command = commands.remove(0);
+
+        assert_eq!(command, DrawCommand::Line {
+            color: Color::green(),
+            thickness: 4.0,
+            line: vec![
+                Point::new(-30.0, -20.0),
+                Point::new(-20.0, -20.0),
+                Point::new(-10.0, -20.0),
+                Point::new(-10.0, -20.0),
+            ],
+        });
     }
 
     #[test]

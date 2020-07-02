@@ -264,6 +264,7 @@
                 <property name="receives_default">True</property>
                 <property name="tooltip_text" translatable="yes">Regresa al centro de la pizarra con el nivel de zoom inicial</property>
                 <property name="image">image-zoom-out</property>
+                <accelerator key="0" signal="clicked" />
               </object>
               <packing>
                 <property name="expand">True</property>
