@@ -12,7 +12,7 @@ use gdk::{EventMask, EventType};
 use gtk::prelude::*;
 use gio::prelude::*;
 use glib::clone;
-use cairo::{SvgSurface, ImageSurface, Context};
+use cairo::{SvgSurface, ImageSurface, Context, FontWeight, FontSlant};
 
 use pizarra::{
     App, app::{
@@ -222,8 +222,19 @@ fn init(app: &Application) {
             cmd.draw(ctx, t);
         }
 
+        // command being executed
+        ctx.set_source_rgb(1.0, 1.0, 1.0);
+        ctx.select_font_face("monospace", FontSlant::Normal, FontWeight::Normal);
+        ctx.set_font_size(15.0);
+        ctx.move_to(10.0, controller.get_dimensions().y - 10.0);
+        ctx.show_text("color");
+
         Inhibit(false)
     }));
+
+    drawing_area.connect_key_release_event(|_dw, _event| {
+        Inhibit(false)
+    });
 
     drawing_area.connect_button_press_event(clone!(@strong controller => move |_dw, event| {
         if let EventType::ButtonPress = event.get_event_type() {

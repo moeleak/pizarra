@@ -98,70 +98,12 @@ pub struct App {
     save_status: SaveStatus,
 }
 
+// Private methods
 impl App {
-    pub fn new(dimensions: Point) -> App {
-        App {
-            storage: Storage::new(),
-            selected_tool: SelectedTool::Shape(ShapeType::Line),
-            bgcolor: Color::black(),
-            stroke: 4.0,
-            erase_radius: 10.0,
-
-            /// a vector from the top-left corner of the screen to the origin
-            /// of coordinates in the storage
-            offset: dimensions * -0.5,
-            scale_factor: 1.0,
-            dimensions,
-
-            erased: Vec::new(),
-
-            board_state: BoardState::Idle,
-
-            undo_state: UndoState::Reset,
-            undo_queue: Vec::new(),
-
-            selected_color: Color::green(),
-            next_id: ShapeId::from(1),
-
-            save_status: SaveStatus::NewAndEmpty,
-        }
-    }
-
     fn next_id(&mut self) -> ShapeId {
         let id = self.next_id;
         self.next_id = self.next_id.next();
         id
-    }
-
-    pub fn get_transform(&self) -> Transform {
-        Transform::new(self.offset, self.scale_factor)
-    }
-
-    /// Compute the bounds of what is visible in the board according to current
-    /// offset and zoom level
-    pub fn visible_extent(&self) -> [Point; 2] {
-        [
-            self.offset,
-            self.offset + self.dimensions / self.scale_factor
-        ]
-    }
-
-    pub fn bgcolor(&self) -> Color {
-        self.bgcolor
-    }
-
-    pub fn draw_commands_for_screen(&self) -> impl Iterator<Item=DrawCommand> + '_ {
-        self.storage.draw_commands(self.visible_extent())
-    }
-
-    pub fn draw_commands_for_drawing(&self) -> impl Iterator<Item=DrawCommand> + '_ {
-        let bbox = if let Some(bbox) = self.get_bounds() {
-            bbox
-        } else {
-            [Point::new(0.0, 0.0), Point::new(0.0, 0.0)]
-        };
-
-        self.storage.draw_commands(bbox)
     }
 
     /// p is a point in the coordinate space of the drawing area. This function
@@ -171,39 +113,10 @@ impl App {
         p / self.scale_factor + self.offset
     }
 
-    /// p is a point in the coordinate space of the shape storage, and this function
-    /// translates it to drawing area's coordinate system.
-    pub fn to_screen_coordinates(&self, p: Point) -> Point {
-        (p - self.offset) * self.scale_factor
-    }
-
     /// This function is in charge of changing the position of the canvas with respect to the
     /// window.
     fn handle_offset(&mut self, delta: Point) {
         self.offset -= delta / self.scale_factor;
-    }
-
-    pub fn resize(&mut self, new_size: Point) {
-        let delta = (self.dimensions * -1.0 + new_size) * 0.5;
-
-        self.handle_offset(delta);
-        self.dimensions = new_size;
-    }
-
-    pub fn set_tool(&mut self, selected_tool: SelectedTool) {
-        self.selected_tool = selected_tool;
-    }
-
-    pub fn set_stroke(&mut self, stroke: f64) {
-        self.stroke = stroke;
-    }
-
-    pub fn set_bgcolor(&mut self, bgcolor: Color) {
-        self.bgcolor = bgcolor;
-    }
-
-    pub fn set_erase_radius(&mut self, erase_radius: f64) {
-        self.erase_radius = erase_radius;
     }
 
     fn conclude_action(&mut self, action: Action) {
@@ -310,102 +223,6 @@ impl App {
         }
     }
 
-    /// Public method that the UI must call whenever a button of the mouse or pen
-    /// is pressed.
-    pub fn handle_mouse_button_pressed(&mut self, button: MouseButton, point: Point) -> ShouldRedraw {
-        let (new_board_state, should_redraw) = match self.board_state {
-            BoardState::Idle => match button {
-                MouseButton::Left => {
-                    self.handle_tool_button_pressed(point);
-
-                    (BoardState::UsingTool, ShouldRedraw::Yes)
-                },
-                MouseButton::Middle => (BoardState::Moving(point), ShouldRedraw::No),
-                MouseButton::Right => (BoardState::Idle, ShouldRedraw::No),
-                MouseButton::Unknown => (BoardState::Idle, ShouldRedraw::No),
-            },
-            BoardState::UsingTool => unimplemented!(),
-            BoardState::Moving(_) => unimplemented!(),
-            BoardState::MovingWhileUsingTool(_) => unimplemented!(),
-        };
-
-        self.board_state = new_board_state;
-
-        should_redraw
-    }
-
-    /// Public method that the UI must call whenever a button of the mouse or pen
-    /// is released.
-    pub fn handle_mouse_button_released(&mut self, button: MouseButton, point: Point) -> ShouldRedraw {
-        let (new_board_state, should_redraw) = match self.board_state {
-            BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
-            BoardState::UsingTool => match button {
-                MouseButton::Left => {
-                    match self.handle_tool_button_released(point) {
-                        Action::Skip => {},
-                        x => self.conclude_action(x),
-                    }
-
-                    (BoardState::Idle, ShouldRedraw::Yes)
-                },
-                MouseButton::Middle => unimplemented!(),
-                MouseButton::Right => unimplemented!(),
-                MouseButton::Unknown => (BoardState::UsingTool, ShouldRedraw::No),
-            },
-            BoardState::Moving(old_point) => {
-                self.handle_offset(point - old_point);
-
-                (BoardState::Idle, ShouldRedraw::Yes)
-            },
-            BoardState::MovingWhileUsingTool(_) => unimplemented!(),
-        };
-
-        self.board_state = new_board_state;
-
-        should_redraw
-    }
-
-    /// Public methid that the UI must call with updates on the cursor position
-    pub fn handle_mouse_move(&mut self, pos: Point) -> ShouldRedraw {
-        let (new_board_state, should_redraw) = match self.board_state {
-            BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
-            BoardState::UsingTool => (BoardState::UsingTool, self.handle_tool_mouse_move(pos)),
-            BoardState::Moving(old_point) => {
-                self.handle_offset(pos - old_point);
-
-                (BoardState::Moving(pos), ShouldRedraw::Yes)
-            },
-            BoardState::MovingWhileUsingTool(old_point) => {
-                self.handle_offset(pos - old_point);
-
-                (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::Yes)
-            },
-        };
-
-        self.board_state = new_board_state;
-
-        should_redraw
-    }
-
-    pub fn zoom_in(&mut self) {
-        self.offset += (self.dimensions / self.scale_factor) * 0.25;
-        self.scale_factor *= 2.0;
-    }
-
-    pub fn zoom_out(&mut self) {
-        self.offset -= (self.dimensions / self.scale_factor) * 0.5;
-        self.scale_factor /= 2.0;
-    }
-
-    pub fn go_home(&mut self) {
-        self.offset = self.dimensions * -0.5;
-        self.scale_factor = 1.0;
-    }
-
-    pub fn set_color(&mut self, color: Color) {
-        self.selected_color = color;
-    }
-
     fn revert(&mut self, action: Action) -> Action {
         match action {
             Action::Skip => Action::Skip,
@@ -435,7 +252,251 @@ impl App {
             },
         }
     }
+}
 
+// Public interface
+impl App {
+    /// Create a new instance of Pizarra's controller. Only one is needed and it
+    /// can be put inside an Rc<RefCell<_>> to use it inside event callbacks in
+    /// UI implementations.
+    pub fn new(dimensions: Point) -> App {
+        App {
+            storage: Storage::new(),
+            selected_tool: SelectedTool::Shape(ShapeType::Line),
+            bgcolor: Color::black(),
+            stroke: 4.0,
+            erase_radius: 10.0,
+
+            /// a vector from the top-left corner of the screen to the origin
+            /// of coordinates in the storage
+            offset: dimensions * -0.5,
+            scale_factor: 1.0,
+            dimensions,
+
+            erased: Vec::new(),
+
+            board_state: BoardState::Idle,
+
+            undo_state: UndoState::Reset,
+            undo_queue: Vec::new(),
+
+            selected_color: Color::green(),
+            next_id: ShapeId::from(1),
+
+            save_status: SaveStatus::NewAndEmpty,
+        }
+    }
+
+    /// Returns a transform object needed for proper rendering. This object can
+    /// translate a point from storage coordinates to screen coordinates.
+    pub fn get_transform(&self) -> Transform {
+        Transform::new(self.offset, self.scale_factor)
+    }
+
+    /// Compute the bounds of what is visible in the board according to current
+    /// offset and zoom level
+    pub fn visible_extent(&self) -> [Point; 2] {
+        [
+            self.offset,
+            self.offset + self.dimensions / self.scale_factor
+        ]
+    }
+
+    /// Returns the dimensions of the screen
+    pub fn get_dimensions(&self) -> Point {
+        self.dimensions
+    }
+
+    /// Returns current background color
+    pub fn bgcolor(&self) -> Color {
+        self.bgcolor
+    }
+
+    /// Returns an iterator over the draw commands required to render the visible
+    /// portion of the drawing
+    pub fn draw_commands_for_screen(&self) -> impl Iterator<Item=DrawCommand> + '_ {
+        self.storage.draw_commands(self.visible_extent())
+    }
+
+    /// Returns an interator over the draw commands required to render the wole
+    /// drawing
+    pub fn draw_commands_for_drawing(&self) -> impl Iterator<Item=DrawCommand> + '_ {
+        let bbox = if let Some(bbox) = self.get_bounds() {
+            bbox
+        } else {
+            [Point::new(0.0, 0.0), Point::new(0.0, 0.0)]
+        };
+
+        self.storage.draw_commands(bbox)
+    }
+
+    /// p is a point in the coordinate space of the shape storage, and this function
+    /// translates it to drawing area's coordinate system.
+    pub fn to_screen_coordinates(&self, p: Point) -> Point {
+        (p - self.offset) * self.scale_factor
+    }
+
+    /// Notify the application that the screen size has changed
+    pub fn resize(&mut self, new_size: Point) {
+        let delta = (self.dimensions * -1.0 + new_size) * 0.5;
+
+        self.handle_offset(delta);
+        self.dimensions = new_size;
+    }
+
+    /// Set a new tool used to handle user input
+    pub fn set_tool(&mut self, selected_tool: SelectedTool) {
+        self.selected_tool = selected_tool;
+    }
+
+    /// Set a new stroke that will be used in next shapes
+    pub fn set_stroke(&mut self, stroke: f64) {
+        self.stroke = stroke;
+    }
+
+    /// Set the background color of the drawing
+    pub fn set_bgcolor(&mut self, bgcolor: Color) {
+        self.bgcolor = bgcolor;
+    }
+
+    /// Set the radius of action for the eraser tool
+    pub fn set_erase_radius(&mut self, erase_radius: f64) {
+        self.erase_radius = erase_radius;
+    }
+
+    /// Public method that the UI must call whenever a button of the mouse or pen
+    /// is pressed.
+    pub fn handle_mouse_button_pressed(&mut self, button: MouseButton, point: Point) -> ShouldRedraw {
+        let (new_board_state, should_redraw) = match self.board_state {
+            current@BoardState::Idle => match button {
+                MouseButton::Left => {
+                    self.handle_tool_button_pressed(point);
+
+                    (BoardState::UsingTool, ShouldRedraw::Yes)
+                },
+                MouseButton::Middle => (BoardState::Moving(point), ShouldRedraw::No),
+                MouseButton::Right => (current, ShouldRedraw::No),
+                MouseButton::Unknown => (current, ShouldRedraw::No),
+            },
+            current@BoardState::UsingTool => match button {
+                MouseButton::Left => {
+                    self.handle_tool_button_pressed(point);
+
+                    (current, ShouldRedraw::Yes)
+                },
+                MouseButton::Middle => (BoardState::MovingWhileUsingTool(point), ShouldRedraw::No),
+                MouseButton::Right => (current, ShouldRedraw::No),
+                MouseButton::Unknown => (current, ShouldRedraw::No),
+            },
+            current@BoardState::Moving(_) => (current, ShouldRedraw::No),
+            current@BoardState::MovingWhileUsingTool(_) => (current, ShouldRedraw::No),
+        };
+
+        self.board_state = new_board_state;
+
+        should_redraw
+    }
+
+    /// Public method that the UI must call whenever a button of the mouse or pen
+    /// is released.
+    pub fn handle_mouse_button_released(&mut self, button: MouseButton, point: Point) -> ShouldRedraw {
+        let (new_board_state, should_redraw) = match self.board_state {
+            current@BoardState::Idle => (current, ShouldRedraw::No),
+            current@BoardState::UsingTool => match button {
+                MouseButton::Left => match self.handle_tool_button_released(point) {
+                    Action::Skip => (current, ShouldRedraw::Yes),
+                    x => {
+                        self.conclude_action(x);
+                        (BoardState::Idle, ShouldRedraw::Yes)
+                    }
+                },
+                MouseButton::Middle => (current, ShouldRedraw::No),
+                MouseButton::Right => (current, ShouldRedraw::No),
+                MouseButton::Unknown => (current, ShouldRedraw::No),
+            },
+            BoardState::Moving(old_point) => match button {
+                MouseButton::Left => (BoardState::Moving(old_point), ShouldRedraw::No),
+                MouseButton::Middle => {
+                    self.handle_offset(point - old_point);
+
+                    (BoardState::Idle, ShouldRedraw::Yes)
+                },
+                MouseButton::Right => (BoardState::Moving(old_point), ShouldRedraw::No),
+                MouseButton::Unknown => (BoardState::Moving(old_point), ShouldRedraw::No),
+            },
+            // TODO check if https://github.com/rust-lang/rust/issues/65490 is resolved
+            BoardState::MovingWhileUsingTool(old_point) => match button {
+                MouseButton::Left => match self.handle_tool_button_released(point) {
+                        Action::Skip => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::Yes),
+                        x => {
+                            self.conclude_action(x);
+
+                            (BoardState::Moving(point), ShouldRedraw::Yes)
+                        }
+                },
+                MouseButton::Middle => {
+                    self.handle_offset(point - old_point);
+
+                    (BoardState::UsingTool, ShouldRedraw::Yes)
+                },
+                MouseButton::Right => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::No),
+                MouseButton::Unknown => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::No),
+            },
+        };
+
+        self.board_state = new_board_state;
+
+        should_redraw
+    }
+
+    /// Public methid that the UI must call with updates on the cursor position
+    pub fn handle_mouse_move(&mut self, pos: Point) -> ShouldRedraw {
+        let (new_board_state, should_redraw) = match self.board_state {
+            BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
+            BoardState::UsingTool => (BoardState::UsingTool, self.handle_tool_mouse_move(pos)),
+            BoardState::Moving(old_point) => {
+                self.handle_offset(pos - old_point);
+
+                (BoardState::Moving(pos), ShouldRedraw::Yes)
+            },
+            BoardState::MovingWhileUsingTool(old_point) => {
+                self.handle_offset(pos - old_point);
+
+                (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::Yes)
+            },
+        };
+
+        self.board_state = new_board_state;
+
+        should_redraw
+    }
+
+    /// Zooms in the current view, so objects are bigger and the visible portion
+    /// of the drawing gets reduced
+    pub fn zoom_in(&mut self) {
+        self.offset += (self.dimensions / self.scale_factor) * 0.25;
+        self.scale_factor *= 2.0;
+    }
+
+    /// Zooms out the current view, so objects are smaller and the visible portion
+    /// of the drawing increases
+    pub fn zoom_out(&mut self) {
+        self.offset -= (self.dimensions / self.scale_factor) * 0.5;
+        self.scale_factor /= 2.0;
+    }
+
+    /// Resets the center and zoom level of the view to its original place
+    pub fn go_home(&mut self) {
+        self.offset = self.dimensions * -0.5;
+        self.scale_factor = 1.0;
+    }
+
+    /// Sets the color for the new shapes
+    pub fn set_color(&mut self, color: Color) {
+        self.selected_color = color;
+    }
+
+    /// Undoes the last action if any
     pub fn undo(&mut self) {
         match self.undo_state {
             // this is the first undo of this queue, we'll invert the last state
@@ -471,6 +532,7 @@ impl App {
         }
     }
 
+    /// Redoes the last undone action, if any
     pub fn redo(&mut self) {
         match self.undo_state {
             // nothing has to be done for nothing has been undone
@@ -505,22 +567,28 @@ impl App {
         }
     }
 
+    /// Return the drawing's total number of shapes
     pub fn shape_count(&self) -> usize {
         self.storage.shape_count()
     }
 
+    /// Returns the bounding box that contains all the shapes in the drawing
     pub fn get_bounds(&self) -> Option<[Point; 2]> {
         self.storage.get_bounds()
     }
 
+    /// Returns a reference to this drawing's save status
     pub fn get_save_status(&self) -> &SaveStatus {
         &self.save_status
     }
 
+    /// Notify the application that the drawing has been saved at `path`
     pub fn set_saved(&mut self, path: PathBuf) {
         self.save_status = SaveStatus::Saved(path);
     }
 
+    /// Resets the state of the drawing, undo, shapes etc so you can start
+    /// drawing again.
     pub fn reset(&mut self) {
         self.storage = Storage::new();
         self.selected_tool = SelectedTool::Shape(ShapeType::Line);
