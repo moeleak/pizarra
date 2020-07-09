@@ -8,6 +8,7 @@ use crate::color::Color;
 use crate::action::Action;
 use crate::point::Point;
 use crate::graphics::Transform;
+use crate::consts::DEFAULT_THICKNESS;
 
 #[derive(Copy,Clone,Debug)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -253,7 +254,7 @@ impl App {
             storage: Storage::new(),
             selected_tool: SelectedTool::Shape(ShapeType::Line),
             bgcolor: Color::black(),
-            stroke: 4.0,
+            stroke: DEFAULT_THICKNESS,
             erase_radius: 10.0,
 
             /// a vector from the top-left corner of the screen to the origin

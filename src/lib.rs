@@ -50,6 +50,7 @@ pub mod action;
 pub mod point;
 pub mod graphics;
 pub mod deserialize;
+pub mod consts;
 
 pub use shape::ShapeType;
 pub use app::App;

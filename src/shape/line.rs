@@ -24,7 +24,9 @@ impl Line {
     }
 
     pub fn with_params(color: Color, points: Vec<Point>, thickness: f64) -> Line {
-        unimplemented!()
+        Line {
+            points, color, thickness,
+        }
     }
 }
 
