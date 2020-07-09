@@ -24,6 +24,9 @@ use pizarra::point::Point;
 // Padding in pixels around the bbox of the drawing when exporting or saving
 const RENDER_PADDING: f64 = 20.0;
 
+const UNSAVED_CHANGES_SINCE_LAST_TIME: &'static str = "Hiciste algunos trazos desde la última vez\n\n¿Los quieres guardar?";
+const UNSAVED_CHANGES_NEW_FILE: &'static str = "Hay algunos trazos aquí\n\n¿Los quieres guardar?";
+
 fn set_subtitle(header_bar: &HeaderBar, save_status: &SaveStatus) {
     match save_status {
         SaveStatus::NewAndEmpty => {
@@ -84,7 +87,11 @@ fn save_to_svg_logic(controller: &mut App, filename: &Path) {
 }
 
 /// Implements the logic of the _save-as_ feature
-fn save_as_logic<P: IsA<Window>>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCell<App>>) {
+fn save_as_logic<P, F>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCell<App>>, callback: F)
+    where
+    P: IsA<Window>,
+    F: Fn() -> (),
+{
     let save_file_chooser = FileChooserNative::new(Some("Guardar"), Some(window), FileChooserAction::Save, Some("Guardar"), Some("Cancelar"));
     let res = save_file_chooser.run();
 
@@ -93,6 +100,27 @@ fn save_as_logic<P: IsA<Window>>(window: &P, header_bar: &HeaderBar, controller:
             if let Some(filename) = save_file_chooser.get_filename() {
                 save_to_svg_logic(&mut controller.borrow_mut(), &filename);
                 set_subtitle(&header_bar, controller.borrow().get_save_status());
+            }
+        },
+        _ => {},
+    }
+
+    callback();
+}
+
+fn open_logic<P>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCell<App>>)
+    where
+    P: IsA<Window>,
+{
+    let open_file_chooser = FileChooserNative::new(Some("Abrir"), Some(window), FileChooserAction::Open, Some("Abrir"), Some("Cancelar"));
+    let res = open_file_chooser.run();
+
+    match res {
+        ResponseType::Accept => {
+            if let Some(filename) = open_file_chooser.get_filename() {
+                if let Err(msg) = controller.borrow_mut().open(&filename) {
+                    // TODO notify that file could not be opened
+                }
             }
         },
         _ => {},
@@ -124,7 +152,12 @@ fn export_logic<P: IsA<Window>>(window: &P, controller: Rc<RefCell<App>>) {
     }
 }
 
-fn yes_no_cancel_dialog(window: &ApplicationWindow, message: &str) -> ResponseType {
+fn yes_no_cancel_dialog<F, G, H>(window: &ApplicationWindow, message: &str, yes_callback: F, no_callback: G, cancel_callback: H) -> Inhibit
+    where
+    F: Fn() -> Inhibit,
+    G: Fn() -> Inhibit,
+    H: Fn() -> Inhibit,
+{
     let message_dialog = MessageDialog::new(
         Some(window),
         DialogFlags::DESTROY_WITH_PARENT,
@@ -140,7 +173,11 @@ fn yes_no_cancel_dialog(window: &ApplicationWindow, message: &str) -> ResponseTy
 
     message_dialog.hide();
 
-    response
+    match response {
+        ResponseType::Yes => yes_callback(),
+        ResponseType::Cancel | ResponseType::DeleteEvent => cancel_callback(),
+        _ => no_callback(),
+    }
 }
 
 fn init(app: &Application) {
@@ -156,43 +193,35 @@ fn init(app: &Application) {
     // save on exit
     window.connect_delete_event(clone!(@strong controller, @strong window => move |_window, _event| {
         match controller.borrow().get_save_status() {
-            SaveStatus::NewAndChanged => {
-                let response = yes_no_cancel_dialog(&window, "Ya hiciste algunos dibujos\n\n¿Deseas guardar?");
+            SaveStatus::NewAndChanged => yes_no_cancel_dialog(&window, "Ya hiciste algunos dibujos\n\n¿Deseas guardar?", || {
+                let save_file_chooser = FileChooserNative::new(Some("Guardar"), Some(&window), FileChooserAction::Save, Some("Guardar"), Some("Cancelar"));
+                let res = save_file_chooser.run();
 
-                match response {
-                    ResponseType::Yes => {
-                        let save_file_chooser = FileChooserNative::new(Some("Guardar"), Some(&window), FileChooserAction::Save, Some("Guardar"), Some("Cancelar"));
-                        let res = save_file_chooser.run();
-
-                        match res {
-                            ResponseType::Accept => {
-                                if let Some(filename) = save_file_chooser.get_filename() {
-                                    save_to_svg_logic(&mut controller.borrow_mut(), &filename);
-                                }
-                            },
-                            _ => {},
+                match res {
+                    ResponseType::Accept => {
+                        if let Some(filename) = save_file_chooser.get_filename() {
+                            save_to_svg_logic(&mut controller.borrow_mut(), &filename);
                         }
-
-                        Inhibit(false)
                     },
-                    ResponseType::Cancel | ResponseType::DeleteEvent => Inhibit(true),
-                    _response => Inhibit(false), // "No" and everything else
+                    _ => {},
                 }
-            },
+
+                Inhibit(false)
+            }, || {
+                Inhibit(false)
+            }, || {
+                Inhibit(true)
+            }),
             SaveStatus::NewAndEmpty => Inhibit(false),
             SaveStatus::Saved(_path) => Inhibit(false),
-            SaveStatus::Unsaved(path) => {
-                let response = yes_no_cancel_dialog(&window, "Hay cambios desde la última vez que guardaste\n\n¿Quieres guardarlos?");
-
-                match response {
-                    ResponseType::Yes => {
-                        save_to_svg_logic(&mut controller.borrow_mut(), &path);
-                        Inhibit(false)
-                    },
-                    ResponseType::Cancel | ResponseType::DeleteEvent => Inhibit(true),
-                    _response => Inhibit(false),
-                }
-            },
+            SaveStatus::Unsaved(path) => yes_no_cancel_dialog(&window, "Hay cambios desde la última vez que guardaste\n\n¿Quieres guardarlos?", || {
+                    save_to_svg_logic(&mut controller.borrow_mut(), &path);
+                    Inhibit(false)
+                }, || {
+                    Inhibit(false)
+                }, || {
+                    Inhibit(true)
+                }),
         }
     }));
 
@@ -335,44 +364,75 @@ fn init(app: &Application) {
     }));
 
     // File management
+    let open_menu: MenuItem = builder.get_object("open-btn").expect("no open menu");
+    open_menu.connect_activate(clone!(@strong controller, @strong header_bar, @strong window => move |_menu| {
+        let save_status = controller.borrow().get_save_status().clone();
+
+        match save_status {
+            SaveStatus::NewAndEmpty => open_logic(&window, &header_bar, controller.clone()),
+            SaveStatus::NewAndChanged => {
+                yes_no_cancel_dialog(&window, UNSAVED_CHANGES_NEW_FILE, clone!(@strong controller, @strong header_bar, @strong window => move || {
+                    save_as_logic(&window, &header_bar, controller.clone(), clone!(@strong controller, @strong header_bar, @strong window => move || {
+                        open_logic(&window, &header_bar, controller.clone());
+                    }));
+                    Inhibit(false)
+                }), clone!(@strong controller, @strong header_bar, @strong window => move || {
+                    open_logic(&window, &header_bar, controller.clone());
+                    Inhibit(false)
+                }), || {
+                    Inhibit(false)
+                });
+            },
+            SaveStatus::Unsaved(path) => {
+                yes_no_cancel_dialog(&window, UNSAVED_CHANGES_SINCE_LAST_TIME, clone!(@strong controller, @strong header_bar, @strong window => move || {
+                    save_to_svg_logic(&mut controller.borrow_mut(), &path);
+                    open_logic(&window, &header_bar, controller.clone());
+                    Inhibit(false)
+                }), || {
+                    Inhibit(false)
+                }, || {
+                    Inhibit(false)
+                });
+            },
+            SaveStatus::Saved(_path) => open_logic(&window, &header_bar, controller.clone()),
+        }
+    }));
+
     let new_menu: MenuItem = builder.get_object("new-btn").expect("no new menu");
-    new_menu.connect_activate(clone!(@strong controller, @strong header_bar, @strong window => move |_menu| {
+    new_menu.connect_activate(clone!(@strong controller, @strong header_bar, @strong window, @strong dwb => move |_menu| {
         let save_status = controller.borrow().get_save_status().clone();
 
         match save_status {
             SaveStatus::NewAndEmpty => {},
             SaveStatus::NewAndChanged => {
-                let response = yes_no_cancel_dialog(&window, "Hay algunos trazos aquí\n\n¿Los quieres guardar?");
-
-                match response {
-                    ResponseType::Yes => {
-                        save_as_logic(&window, &header_bar, controller.clone());
-                    },
-                    ResponseType::Cancel | ResponseType::DeleteEvent => {},
-                    _ => {
-                        controller.borrow_mut().reset();
-                        dwb.borrow().queue_draw();
-                        set_subtitle(&header_bar, controller.borrow().get_save_status());
-                    },
-                }
+                yes_no_cancel_dialog(&window, UNSAVED_CHANGES_NEW_FILE, || {
+                    save_as_logic(&window, &header_bar, controller.clone(), || {
+                    });
+                    Inhibit(false)
+                }, || {
+                    controller.borrow_mut().reset();
+                    dwb.borrow().queue_draw();
+                    set_subtitle(&header_bar, controller.borrow().get_save_status());
+                    Inhibit(false)
+                }, || {
+                    Inhibit(false)
+                });
             },
             SaveStatus::Unsaved(path) => {
-                let response = yes_no_cancel_dialog(&window, "Hiciste algunos trazos desde la última vez\n\n¿Los quieres guardar?");
-
-                match response {
-                    ResponseType::Yes => {
-                        save_to_svg_logic(&mut controller.borrow_mut(), &path);
-                        controller.borrow_mut().reset();
-                        dwb.borrow().queue_draw();
-                        set_subtitle(&header_bar, controller.borrow().get_save_status());
-                    },
-                    ResponseType::Cancel | ResponseType::DeleteEvent => {},
-                    _ => {
-                        controller.borrow_mut().reset();
-                        dwb.borrow().queue_draw();
-                        set_subtitle(&header_bar, controller.borrow().get_save_status());
-                    },
-                }
+                yes_no_cancel_dialog(&window, UNSAVED_CHANGES_SINCE_LAST_TIME, || {
+                    save_to_svg_logic(&mut controller.borrow_mut(), &path);
+                    controller.borrow_mut().reset();
+                    dwb.borrow().queue_draw();
+                    set_subtitle(&header_bar, controller.borrow().get_save_status());
+                    Inhibit(false)
+                }, || {
+                    controller.borrow_mut().reset();
+                    dwb.borrow().queue_draw();
+                    set_subtitle(&header_bar, controller.borrow().get_save_status());
+                    Inhibit(false)
+                }, || {
+                    Inhibit(false)
+                });
             },
             SaveStatus::Saved(_path) => {
                 controller.borrow_mut().reset();
@@ -389,7 +449,8 @@ fn init(app: &Application) {
         match save_status {
             SaveStatus::NewAndEmpty => {}, // nothing to save actually
             SaveStatus::NewAndChanged => {
-                save_as_logic(&window, &header_bar, controller.clone());
+                save_as_logic(&window, &header_bar, controller.clone(), || {
+                });
             },
             SaveStatus::Unsaved(path) => {
                 save_to_svg_logic(&mut controller.borrow_mut(), &path);
@@ -407,13 +468,16 @@ fn init(app: &Application) {
         match save_status {
             SaveStatus::NewAndEmpty => {},
             SaveStatus::NewAndChanged => {
-                save_as_logic(&window, &header_bar, controller.clone());
+                save_as_logic(&window, &header_bar, controller.clone(), || {
+                });
             },
             SaveStatus::Unsaved(_path) => {
-                save_as_logic(&window, &header_bar, controller.clone());
+                save_as_logic(&window, &header_bar, controller.clone(), || {
+                });
             },
             SaveStatus::Saved(_path) => {
-                save_as_logic(&window, &header_bar, controller.clone());
+                save_as_logic(&window, &header_bar, controller.clone(), || {
+                });
             },
         }
     }));

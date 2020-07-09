@@ -1,5 +1,5 @@
 use std::mem;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::Storage;
@@ -585,6 +585,10 @@ impl App {
         self.undo_state = UndoState::Reset;
         self.undo_queue = Vec::new();
         self.save_status = SaveStatus::NewAndEmpty;
+    }
+
+    pub fn open(&mut self, filename: &Path) -> Result<(), ()> {
+        unimplemented!()
     }
 }
 
