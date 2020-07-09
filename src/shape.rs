@@ -7,7 +7,7 @@ pub mod rectangle;
 pub mod ellipse;
 
 use super::color::Color;
-use crate::draw_commands::{WireDrawCommand, DrawCommand};
+pub use crate::draw_commands::DrawCommand;
 
 pub use self::line::Line;
 pub use self::rectangle::Rectangle;
@@ -29,11 +29,11 @@ pub enum ShapeType {
 }
 
 impl ShapeType {
-    pub fn start(&self, color: Color, initial: Point, id: ShapeId, stroke: f64) -> Shape {
+    pub fn start(&self, color: Color, initial: Point, stroke: f64) -> Box<dyn ShapeTrait> {
         match *self {
-            ShapeType::Line => Line::new(color, initial, id, stroke),
-            ShapeType::Rectangle => Rectangle::new(color, initial, id, stroke),
-            ShapeType::Ellipse => Ellipse::new(color, initial, id),
+            ShapeType::Line => Box::new(Line::new(color, initial, stroke)),
+            ShapeType::Rectangle => Box::new(Rectangle::new(color, initial, stroke)),
+            ShapeType::Ellipse => Box::new(Ellipse::new(color, initial)),
         }
     }
 }
@@ -49,7 +49,7 @@ pub trait ShapeTrait {
     fn handle_button_released(&mut self, pos: Point) -> ShapeFinished;
 
     /// Must return the necessary commands to display this shape on the screen
-    fn draw_commands(&self) -> WireDrawCommand;
+    fn draw_commands(&self) -> DrawCommand;
 
     /// Must know its bbox
     fn bbox(&self) -> [[f64; 2]; 2];
@@ -59,6 +59,9 @@ pub trait ShapeTrait {
 
     /// does this circle intersect this shape? Used by the eraser
     fn intersects_circle(&self, center: Point, radius: f64) -> bool;
+
+    /// returns the color of this shape
+    fn color(&self) -> Color;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -83,20 +86,20 @@ impl fmt::Display for ShapeId {
 }
 
 pub struct Shape {
-    color: Color,
     id: ShapeId,
     shape_impl: Box<dyn ShapeTrait>,
 }
 
 impl Shape {
-    pub fn draw_commands(&self) -> DrawCommand {
-        let cmd = self.shape_impl.draw_commands();
-
-        match cmd {
-            WireDrawCommand::Ellipse{ corner_1, corner_2 } => DrawCommand::Ellipse{ corner_1, corner_2, color: self.color },
-            WireDrawCommand::Rectangle{ corner_1, corner_2 } => DrawCommand::Rectangle{ corner_1, corner_2, color: self.color },
-            WireDrawCommand::Line{ line, thickness } => DrawCommand::Line{ line, color: self.color, thickness },
+    pub fn from_shape(shape: Box<dyn ShapeTrait>, id: ShapeId) -> Shape {
+        Shape {
+            id,
+            shape_impl: shape,
         }
+    }
+
+    pub fn draw_commands(&self) -> DrawCommand {
+        self.shape_impl.draw_commands()
     }
 
     pub fn shape_type(&self) -> ShapeType {
@@ -108,7 +111,7 @@ impl Shape {
     }
 
     pub fn color(&self) -> Color {
-        self.color
+        self.shape_impl.color()
     }
 
     pub fn bbox(&self) -> [[f64; 2]; 2] {
@@ -134,7 +137,7 @@ impl Shape {
 
 impl fmt::Debug for Shape {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Shape({:?}, {}, {})", self.shape_impl.shape_type(), self.id, self.color)
+        write!(f, "Shape({:?}, {}, {})", self.shape_impl.shape_type(), self.id, self.color())
     }
 }
 

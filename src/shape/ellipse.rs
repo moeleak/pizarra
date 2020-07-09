@@ -1,5 +1,5 @@
-use crate::draw_commands::WireDrawCommand;
-use super::{Shape, ShapeTrait, ShapeId, ShapeFinished};
+use crate::draw_commands::DrawCommand;
+use super::{ShapeTrait, ShapeFinished};
 use crate::color::Color;
 use crate::ShapeType;
 use crate::point::Point;
@@ -7,27 +7,22 @@ use crate::point::Point;
 pub struct Ellipse {
     corner_1: Point,
     corner_2: Point,
+    color: Color,
 }
 
 impl Ellipse {
-    pub fn new(color: Color, initial: Point, id: ShapeId) -> Shape {
-        Shape {
-            id,
+    pub fn new(color: Color, initial: Point) -> Ellipse {
+        Ellipse {
+            corner_1: initial,
+            corner_2: initial,
             color,
-            shape_impl: Box::new(Ellipse {
-                corner_1: initial,
-                corner_2: initial,
-            }),
         }
     }
 
-    pub fn from_corners([corner_1, corner_2]: [Point; 2]) -> Shape {
-        Shape {
-            id: ShapeId::from(1),
+    pub fn from_corners([corner_1, corner_2]: [Point; 2]) -> Ellipse {
+        Ellipse {
+            corner_1, corner_2,
             color: Color::green(),
-            shape_impl: Box::new(Ellipse {
-                corner_1, corner_2,
-            }),
         }
     }
 }
@@ -46,10 +41,11 @@ impl ShapeTrait for Ellipse {
         ShapeFinished::Yes
     }
 
-    fn draw_commands(&self) -> WireDrawCommand {
-        WireDrawCommand::Ellipse{
+    fn draw_commands(&self) -> DrawCommand {
+        DrawCommand::Ellipse{
             corner_1: self.corner_1,
             corner_2: self.corner_2,
+            color: self.color,
         }
     }
 
@@ -76,20 +72,25 @@ impl ShapeTrait for Ellipse {
     fn intersects_circle(&self, center: Point, radius: f64) -> bool {
         unimplemented!()
     }
+
+    fn color(&self) -> Color {
+        self.color
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Ellipse;
     use crate::point::Point;
+    use crate::shape::ShapeTrait;
 
     #[test]
     fn test_bbox() {
         let shape1 = Ellipse::from_corners([Point::new(-1.0, -2.0), Point::new(5.0, 2.0)]);
         let shape2 = Ellipse::from_corners([Point::new(-1.0, 2.0), Point::new(5.0, -2.0)]);
 
-        assert_eq!(shape1.shape_impl.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
-        assert_eq!(shape2.shape_impl.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
+        assert_eq!(shape1.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
+        assert_eq!(shape2.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
     }
 
     #[test]
@@ -102,7 +103,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.shape_impl.bbox(), [[15.0, -48.0], [37.0, -27.0]]);
+            assert_eq!(rectangle.bbox(), [[15.0, -48.0], [37.0, -27.0]]);
         }
 
         let rectangles = vec![
@@ -113,7 +114,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.shape_impl.bbox(), [[15.0, -24.0], [60.0, 6.0]]);
+            assert_eq!(rectangle.bbox(), [[15.0, -24.0], [60.0, 6.0]]);
         }
 
         let rectangles = vec![
@@ -124,7 +125,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.shape_impl.bbox(), [[-8.0, -32.0], [16.0, 0.0]]);
+            assert_eq!(rectangle.bbox(), [[-8.0, -32.0], [16.0, 0.0]]);
         }
 
         let rectangles = vec![
@@ -135,7 +136,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.shape_impl.bbox(), [[48.0, -19.0], [78.0, 22.0]]);
+            assert_eq!(rectangle.bbox(), [[48.0, -19.0], [78.0, 22.0]]);
         }
     }
 }

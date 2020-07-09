@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::Storage;
-use crate::shape::{Shape, ShapeType, ShapeId, ShapeFinished};
+use crate::shape::{Shape, ShapeType, ShapeFinished};
 use crate::color::Color;
 use crate::action::Action;
 use crate::point::Point;
@@ -91,21 +91,12 @@ pub struct App {
     /// What is happening with the board right now?
     board_state: BoardState,
 
-    /// Next available id for a shape
-    next_id: ShapeId,
-
     /// File management
     save_status: SaveStatus,
 }
 
 // Private methods
 impl App {
-    fn next_id(&mut self) -> ShapeId {
-        let id = self.next_id;
-        self.next_id = self.next_id.next();
-        id
-    }
-
     /// p is a point in the coordinate space of the drawing area. This function
     /// converts p's coordinates to storage coordinates given the current zoom
     /// and offset.
@@ -152,7 +143,7 @@ impl App {
                 if let Some(shape) = self.storage.last_mut() {
                     shape.handle_button_pressed(transformed_point);
                 } else {
-                    let new_shape = shape.start(self.selected_color, transformed_point, self.next_id(), self.stroke * 1.0 / self.scale_factor);
+                    let new_shape = shape.start(self.selected_color, transformed_point, self.stroke * 1.0 / self.scale_factor);
 
                     self.storage.add(new_shape);
                 }
@@ -230,15 +221,13 @@ impl App {
             Action::Draw(id) => Action::Delete(self.storage.remove(id).unwrap()),
 
             Action::Delete(shape) => {
-                let id = self.storage.add(shape);
-
-                self.storage.flush();
+                let id = self.storage.restore(shape);
 
                 Action::Draw(id)
             },
 
             Action::Erase(shapes) => {
-                let ids = shapes.into_iter().map(|shape| self.storage.add(shape)).collect();
+                let ids = shapes.into_iter().map(|shape| self.storage.restore(shape)).collect();
 
                 self.storage.flush();
 
@@ -281,7 +270,6 @@ impl App {
             undo_queue: Vec::new(),
 
             selected_color: Color::green(),
-            next_id: ShapeId::from(1),
 
             save_status: SaveStatus::NewAndEmpty,
         }
@@ -596,7 +584,6 @@ impl App {
         self.scale_factor = 1.0;
         self.undo_state = UndoState::Reset;
         self.undo_queue = Vec::new();
-        self.next_id = ShapeId::from(1);
         self.save_status = SaveStatus::NewAndEmpty;
     }
 }

@@ -1,22 +1,6 @@
 use crate::point::Point;
 use crate::color::Color;
 
-/// The most primitive draw command: the one returned by the shape impl
-pub enum WireDrawCommand {
-    Line {
-        line: Vec<Point>,
-        thickness: f64,
-    },
-    Rectangle {
-        corner_1: Point,
-        corner_2: Point,
-    },
-    Ellipse {
-        corner_1: Point,
-        corner_2: Point,
-    },
-}
-
 /// The draw command as returned by the shape: adds the color 
 #[derive(Debug, PartialEq)]
 pub enum DrawCommand {

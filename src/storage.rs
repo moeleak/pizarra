@@ -1,10 +1,9 @@
-use rstar::Envelope;
 use std::collections::HashMap;
 use std::f64;
 
-use rstar::{RTree, RTreeObject, AABB, SelectionFunction};
+use rstar::{RTree, RTreeObject, AABB, SelectionFunction, Envelope};
 
-use super::shape::{Shape, ShapeId};
+use super::shape::{Shape, ShapeId, ShapeTrait};
 use super::draw_commands::DrawCommand;
 use crate::point::Point;
 
@@ -77,6 +76,7 @@ pub struct Storage {
     ids: HashMap<ShapeId, AABB<[f64; 2]>>,
     shapes: RTree<Shape>,
     current: Option<Shape>,
+    nex_id: ShapeId,
 }
 
 /// A storage struct that organizes shapes by their zoom level and allows for
@@ -87,18 +87,36 @@ impl Storage {
             shapes: RTree::new(),
             ids: HashMap::new(),
             current: None,
+            nex_id: ShapeId::from(1),
         }
     }
 
-    pub fn add(&mut self, shape: Shape) -> ShapeId {
-        // The previous shape has been finished, move it to the immutable storage
+    pub fn nex_id(&mut self) -> ShapeId {
+        let id = self.nex_id;
+        self.nex_id = id.next();
+        id
+    }
+
+    /// Adds a new shape to the storage
+    pub fn add(&mut self, shape: Box<dyn ShapeTrait>) -> ShapeId {
+        // The previous shape has been finished, move it to persistent storage
         self.flush();
 
-        let id = shape.id();
+        let id = self.nex_id();
 
-        self.current = Some(shape);
+        self.current = Some(Shape::from_shape(shape, id));
 
         id
+    }
+
+    /// Restores a deleted shape
+    pub fn restore(&mut self, shape: Shape) -> ShapeId {
+        let shape_id = shape.id();
+
+        self.ids.insert(shape_id, shape.envelope());
+        self.shapes.insert(shape);
+
+        shape_id
     }
 
     pub fn flush(&mut self) -> Option<ShapeId> {
@@ -193,7 +211,7 @@ impl <'a> Iterator for ShapeIterator<'a> {
 mod tests {
     use super::Storage;
 
-    use crate::shape::{Shape, ShapeType, ShapeId, Line, Rectangle, Ellipse};
+    use crate::shape::{ShapeType, ShapeTrait, ShapeId, Line, Rectangle, Ellipse};
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;
     use crate::point::Point;
@@ -201,10 +219,10 @@ mod tests {
     #[test]
     fn test_add_shapes_at_zoom() {
         let mut storage = Storage::new();
-        let shapes: Vec<Shape> = vec![
-            Line::new(Color::red(), Point::new(0.0, 0.0), ShapeId::from(1), 1.0),
-            Rectangle::new(Color::green(), Point::new(0.0, 0.0), ShapeId::from(2), 1.0),
-            Ellipse::new(Color::blue(), Point::new(0.0, 0.0), ShapeId::from(3)),
+        let shapes: Vec<Box<dyn ShapeTrait>> = vec![
+            Box::new(Line::new(Color::red(), Point::new(0.0, 0.0), 1.0)),
+            Box::new(Rectangle::new(Color::green(), Point::new(0.0, 0.0), 1.0)),
+            Box::new(Ellipse::new(Color::blue(), Point::new(0.0, 0.0))),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|shape| {
             storage.add(shape)
@@ -225,7 +243,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Line::new(Color::blue(), Point::new(0.0, 0.0), ShapeId::from(1), 1.0));
+        storage.add(Box::new(Line::new(Color::blue(), Point::new(0.0, 0.0), 1.0)));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -234,7 +252,7 @@ mod tests {
         last_shape.handle_mouse_moved(Point::new(0.0, 0.0));
         last_shape.handle_mouse_moved(Point::new(1.0, 0.0));
 
-        storage.add(Rectangle::from_corners([Point::new(0.0, 0.0), Point::new(0.0, 0.0)]));
+        storage.add(Box::new(Rectangle::from_corners([Point::new(0.0, 0.0), Point::new(0.0, 0.0)])));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -243,7 +261,7 @@ mod tests {
         last_shape.handle_mouse_moved(Point::new(0.0, 0.0));
         last_shape.handle_mouse_moved(Point::new(1.0, 0.0));
 
-        storage.add(Ellipse::new(Color::blue(), Point::new(0.0, 0.0), ShapeId::from(2)));
+        storage.add(Box::new(Ellipse::new(Color::blue(), Point::new(0.0, 0.0))));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -259,7 +277,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Line::new(Color::blue(), Point::new(0.0, 0.0), ShapeId::from(1), 1.0));
+        storage.add(Box::new(Line::new(Color::blue(), Point::new(0.0, 0.0), 1.0)));
 
         assert!(storage.last_mut().is_some());
 
@@ -272,14 +290,14 @@ mod tests {
     fn test_remove_line() {
         let mut storage = Storage::new();
 
-        let mut line = Line::new(Color::green(), Point::new(0.0, -1.0), ShapeId::from(1), 1.0);
+        let mut line = Line::new(Color::green(), Point::new(0.0, -1.0), 1.0);
 
         line.handle_mouse_moved(Point::new(0.0, 0.0));
         line.handle_mouse_moved(Point::new(1.0, 0.0));
         line.handle_mouse_moved(Point::new(1.0, 1.0));
         line.handle_mouse_moved(Point::new(0.0, 1.0));
 
-        storage.add(line);
+        storage.add(Box::new(line));
         storage.flush();
 
         assert!(storage.erase(Point::new(0.5, -0.5), 0.5).is_none());
@@ -296,20 +314,17 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let id_to_remove = ShapeId::from(1);
-        let id_to_interfere = ShapeId::from(2);
+        let obj_to_remove = Box::new(Line::new(Color::green(), Point::new(1.0, 1.0), 1.0));
+        let obj_to_interfere = Box::new(Line::new(Color::blue(), Point::new(0.0, 1.0), 1.0));
 
-        let obj_to_remove = Line::new(Color::green(), Point::new(1.0, 1.0), id_to_remove, 1.0);
-        let obj_to_interfere = Line::new(Color::blue(), Point::new(0.0, 1.0), id_to_interfere, 1.0);
-
-        let id = storage.add(obj_to_remove);
-        storage.add(obj_to_interfere);
+        let id_to_remove = storage.add(obj_to_remove);
+        let id_to_interfere = storage.add(obj_to_interfere);
 
         storage.flush();
 
         assert_eq!(storage.shape_count(), 2);
 
-        let data = storage.remove(id).unwrap();
+        let data = storage.remove(id_to_remove).unwrap();
 
         assert_eq!(storage.shape_count(), 1);
 
@@ -322,20 +337,17 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let id_to_remove = ShapeId::from(1);
-        let id_to_interfere = ShapeId::from(2);
+        let obj_to_remove = Box::new(Line::new(Color::green(), Point::new(1.0, 1.0), 1.0));
+        let obj_to_interfere = Box::new(Line::new(Color::blue(), Point::new(0.0, 1.0), 1.0));
 
-        let obj_to_remove = Line::new(Color::green(), Point::new(1.0, 1.0), id_to_remove, 1.0);
-        let obj_to_interfere = Line::new(Color::blue(), Point::new(0.0, 1.0), id_to_interfere, 1.0);
-
-        storage.add(obj_to_interfere);
-        let id = storage.add(obj_to_remove);
+        let id_to_interfere = storage.add(obj_to_interfere);
+        let id_to_remove = storage.add(obj_to_remove);
 
         storage.flush();
 
         assert_eq!(storage.shape_count(), 2);
 
-        let data = storage.remove(id).unwrap();
+        let data = storage.remove(id_to_remove).unwrap();
 
         assert_eq!(storage.shape_count(), 1);
 
@@ -348,12 +360,12 @@ mod tests {
 
         let shapes = vec![
             // in green the ones that go
-            Rectangle::from_corners([Point::new(-1.1, -1.1), Point::new(1.1, 1.1)]),
-            Rectangle::from_corners([Point::new(-1.5, 0.5), Point::new(-0.5, 1.5)]),
-            Rectangle::from_corners([Point::new(0.25, -0.5), Point::new(0.5, -0.25)]),
+            Box::new(Rectangle::from_corners([Point::new(-1.1, -1.1), Point::new(1.1, 1.1)])),
+            Box::new(Rectangle::from_corners([Point::new(-1.5, 0.5), Point::new(-0.5, 1.5)])),
+            Box::new(Rectangle::from_corners([Point::new(0.25, -0.5), Point::new(0.5, -0.25)])),
 
             // in red the ones that dont
-            Rectangle::from_corners([Point::new(20.0, 20.0), Point::new(20.0, 20.0)]),
+            Box::new(Rectangle::from_corners([Point::new(20.0, 20.0), Point::new(20.0, 20.0)])),
         ];
 
         for shape in shapes.into_iter() {
@@ -418,13 +430,13 @@ mod tests {
         let mut storage = Storage::new();
 
         // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
-        storage.add(Rectangle::from_corners([Point::new(1.0, 1.0), Point::new(3.0, 3.0)]));
+        storage.add(Box::new(Rectangle::from_corners([Point::new(1.0, 1.0), Point::new(3.0, 3.0)])));
 
         // only the previous shape is in permanent storage
         storage.flush();
 
         // A rectangle of 2x2 in zoom 0 aournd the oriign
-        storage.add(Rectangle::from_corners([Point::new(-1.0, -1.0), Point::new(1.0, 1.0)]));
+        storage.add(Box::new(Rectangle::from_corners([Point::new(-1.0, -1.0), Point::new(1.0, 1.0)])));
 
         let buffer: Vec<_> = storage.draw_commands([Point::new(-2.0, -2.0), Point::new(4.0, 4.0)]).collect();
 
@@ -458,8 +470,8 @@ mod tests {
     fn test_get_bounds() {
         let mut storage = Storage::new();
 
-        storage.add(Rectangle::from_corners([Point::new(-5.0, -5.0), Point::new(1.0, 1.0)]));
-        storage.add(Rectangle::from_corners([Point::new(5.0, 5.0), Point::new(1.0, 1.0)]));
+        storage.add(Box::new(Rectangle::from_corners([Point::new(-5.0, -5.0), Point::new(1.0, 1.0)])));
+        storage.add(Box::new(Rectangle::from_corners([Point::new(5.0, 5.0), Point::new(1.0, 1.0)])));
 
         storage.flush();
 

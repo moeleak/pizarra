@@ -11,6 +11,20 @@ pub struct Color {
 }
 
 impl Color {
+    /// Creates an opaque color from rgb
+    pub fn from_rgb(r: f64, g: f64, b: f64) -> Color {
+        Color {
+            r, g, b, a: 0.0,
+        }
+    }
+
+    /// Creates a color from rgba values
+    pub fn from_rgba(r: f64, g: f64, b: f64, a: f64) -> Color {
+        Color {
+            r, g, b, a,
+        }
+    }
+
     pub fn green() -> Color {
         Color {
             r: 138.0/256.0,

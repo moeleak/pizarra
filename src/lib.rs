@@ -49,6 +49,7 @@ pub mod draw_commands;
 pub mod action;
 pub mod point;
 pub mod graphics;
+pub mod deserialize;
 
 pub use shape::ShapeType;
 pub use app::App;

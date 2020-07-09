@@ -1,5 +1,5 @@
-use crate::draw_commands::WireDrawCommand;
-use super::{Shape, ShapeTrait, ShapeId, ShapeFinished};
+use crate::draw_commands::DrawCommand;
+use super::{ShapeTrait, ShapeFinished};
 use crate::color::Color;
 use crate::ShapeType;
 use crate::point::Point;
@@ -7,22 +7,24 @@ use crate::point::Point;
 pub struct Line {
     points: Vec<Point>,
     thickness: f64,
+    color: Color,
 }
 
 impl Line {
-    pub fn new(color: Color, initial: Point, id: ShapeId, thickness: f64) -> Shape {
+    pub fn new(color: Color, initial: Point, thickness: f64) -> Line {
         let mut init_vec = Vec::with_capacity(1000);
 
         init_vec.push(initial);
 
-        Shape {
-            id,
+        Line {
+            points: init_vec,
+            thickness,
             color,
-            shape_impl: Box::new(Line {
-                points: init_vec,
-                thickness,
-            }),
         }
+    }
+
+    pub fn with_params(color: Color, points: Vec<Point>, thickness: f64) -> Line {
+        unimplemented!()
     }
 }
 
@@ -40,10 +42,11 @@ impl ShapeTrait for Line {
         ShapeFinished::Yes
     }
 
-    fn draw_commands(&self) -> WireDrawCommand {
-        WireDrawCommand::Line {
+    fn draw_commands(&self) -> DrawCommand {
+        DrawCommand::Line {
             line: self.points.iter().map(|p| p.clone()).collect(),
             thickness: self.thickness,
+            color: self.color,
         }
     }
 
@@ -85,12 +88,16 @@ impl ShapeTrait for Line {
 
         false
     }
+
+    fn color(&self) -> Color {
+        self.color
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Line;
-    use crate::shape::{ShapeTrait, ShapeId};
+    use crate::shape::ShapeTrait;
     use crate::color::Color;
     use crate::point::Point;
 
@@ -99,6 +106,7 @@ mod tests {
         let mut line = Line {
             points: Vec::new(),
             thickness: 4.0,
+            color: Color::green(),
         };
 
         line.handle_mouse_moved(Point::new(1.0, 0.0));
@@ -109,12 +117,12 @@ mod tests {
 
     #[test]
     fn test_bbox_twisted_line() {
-        let mut line = Line::new(Color::green(), Point::new(-12.0, -1.0), ShapeId::from(1), 1.0);
+        let mut line = Line::new(Color::green(), Point::new(-12.0, -1.0), 1.0);
 
         line.handle_mouse_moved(Point::new(-5.0, 0.0));
         line.handle_mouse_moved(Point::new(-2.0, 7.0));
         line.handle_mouse_moved(Point::new(2.0, -8.0));
 
-        assert_eq!(line.shape_impl.bbox(), [[-12.0, -8.0], [2.0, 7.0]]);
+        assert_eq!(line.bbox(), [[-12.0, -8.0], [2.0, 7.0]]);
     }
 }

@@ -1,6 +1,6 @@
 use crate::point::Point;
-use crate::draw_commands::WireDrawCommand;
-use super::{Shape, ShapeTrait, ShapeId, ShapeFinished};
+use crate::draw_commands::DrawCommand;
+use super::{ShapeTrait, ShapeFinished};
 use crate::color::Color;
 use crate::ShapeType;
 
@@ -8,30 +8,25 @@ pub struct Rectangle {
     corner_1: Point,
     corner_2: Point,
     stroke: f64,
+    color: Color,
 }
 
 impl Rectangle {
-    pub fn new(color: Color, initial: Point, id: ShapeId, stroke: f64) -> Shape {
-        Shape {
-            id,
+    pub fn new(color: Color, initial: Point, stroke: f64) -> Rectangle {
+        Rectangle {
+            corner_1: initial,
+            corner_2: initial,
+            stroke,
             color,
-            shape_impl: Box::new(Rectangle {
-                corner_1: initial,
-                corner_2: initial,
-                stroke,
-            }),
         }
     }
 
     /// Only used for testing
-    pub fn from_corners([corner_1, corner_2]: [Point; 2]) -> Shape {
-        Shape {
-            id: ShapeId::from(1),
+    pub fn from_corners([corner_1, corner_2]: [Point; 2]) -> Rectangle {
+        Rectangle {
+            corner_1, corner_2,
+            stroke: 4.0,
             color: Color::green(),
-            shape_impl: Box::new(Rectangle {
-                corner_1, corner_2,
-                stroke: 4.0,
-            }),
         }
     }
 
@@ -59,12 +54,13 @@ impl ShapeTrait for Rectangle {
         ShapeFinished::Yes
     }
 
-    fn draw_commands(&self) -> WireDrawCommand {
+    fn draw_commands(&self) -> DrawCommand {
         let data = self.all_four_corners().iter().map(|p| *p).cycle().take(5).collect();
 
-        WireDrawCommand::Line {
+        DrawCommand::Line {
             line: data,
             thickness: self.stroke,
+            color: self.color,
         }
     }
 
@@ -109,20 +105,25 @@ impl ShapeTrait for Rectangle {
 
         intersects_sides || intersects_corners
     }
+
+    fn color(&self) -> Color {
+        self.color
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Rectangle;
     use crate::point::Point;
+    use crate::shape::ShapeTrait;
 
     #[test]
     fn test_bbox() {
         let shape1 = Rectangle::from_corners([Point::new(-1.0, -2.0), Point::new(5.0, 2.0)]);
         let shape2 = Rectangle::from_corners([Point::new(-1.0, 2.0), Point::new(5.0, -2.0)]);
 
-        assert_eq!(shape1.shape_impl.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
-        assert_eq!(shape2.shape_impl.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
+        assert_eq!(shape1.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
+        assert_eq!(shape2.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
     }
 
     #[test]
@@ -135,7 +136,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.shape_impl.bbox(), [[15.0, -48.0], [37.0, -27.0]]);
+            assert_eq!(rectangle.bbox(), [[15.0, -48.0], [37.0, -27.0]]);
         }
 
         let rectangles = vec![
@@ -146,7 +147,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.shape_impl.bbox(), [[15.0, -24.0], [60.0, 6.0]]);
+            assert_eq!(rectangle.bbox(), [[15.0, -24.0], [60.0, 6.0]]);
         }
 
         let rectangles = vec![
@@ -157,7 +158,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.shape_impl.bbox(), [[-8.0, -32.0], [16.0, 0.0]]);
+            assert_eq!(rectangle.bbox(), [[-8.0, -32.0], [16.0, 0.0]]);
         }
 
         let rectangles = vec![
@@ -168,7 +169,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.shape_impl.bbox(), [[48.0, -19.0], [78.0, 22.0]]);
+            assert_eq!(rectangle.bbox(), [[48.0, -19.0], [78.0, 22.0]]);
         }
     }
 }
