@@ -252,13 +252,6 @@ fn init(app: &Application) {
             cmd.draw(ctx, t);
         }
 
-        // command being executed
-        ctx.set_source_rgb(1.0, 1.0, 1.0);
-        ctx.select_font_face("monospace", FontSlant::Normal, FontWeight::Normal);
-        ctx.set_font_size(15.0);
-        ctx.move_to(10.0, controller.get_dimensions().y - 10.0);
-        ctx.show_text("color");
-
         Inhibit(false)
     }));
 
