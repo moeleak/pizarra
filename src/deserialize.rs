@@ -143,6 +143,8 @@ impl Storage {
             }
         }
 
+        storage.flush();
+
         Ok(storage)
     }
 }
