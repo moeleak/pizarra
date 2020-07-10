@@ -110,9 +110,7 @@ fn save_as_logic<P, F>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCel
     callback();
 }
 
-fn open_logic<P>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCell<App>>)
-    where P: IsA<Window>
-{
+fn open_logic(window: &ApplicationWindow, header_bar: &HeaderBar, controller: Rc<RefCell<App>>) {
     let open_file_chooser = FileChooserNative::new(Some("Abrir"), Some(window), FileChooserAction::Open, Some("Abrir"), Some("Cancelar"));
     let res = open_file_chooser.run();
 
@@ -128,13 +126,13 @@ fn open_logic<P>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCell<App>
                             controller.set_saved(filename);
                             set_subtitle(&header_bar, controller.get_save_status());
                         } else {
-                            // TODO failed parsing
+                            dialog(window, "No pudimos interpretar el formato de este archivo :(", MessageType::Error);
                         }
                     } else {
-                        // TODO read failed
+                        dialog(window, "No pudimos leer los contenidos del archivo :(", MessageType::Error);
                     }
                 } else {
-                    // TODO open failed
+                    dialog(window, "Ese archivo no existe :(", MessageType::Error);
                 }
             }
         },
@@ -193,6 +191,21 @@ fn yes_no_cancel_dialog<F, G, H>(window: &ApplicationWindow, message: &str, yes_
         ResponseType::Cancel | ResponseType::DeleteEvent => cancel_callback(),
         _ => no_callback(),
     }
+}
+
+fn dialog(window: &ApplicationWindow, message: &str, msg_type: MessageType) {
+    let message_dialog = MessageDialog::new(
+        Some(window),
+        DialogFlags::DESTROY_WITH_PARENT,
+        msg_type,
+        ButtonsType::None,
+        message,
+    );
+
+    message_dialog.add_button("chales", ResponseType::Ok);
+
+    message_dialog.run();
+    message_dialog.hide();
 }
 
 fn init(app: &Application, filename: Option<PathBuf>) {
