@@ -1,5 +1,5 @@
 use std::mem;
-use std::path::{PathBuf, Path};
+use std::path::PathBuf;
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::Storage;
@@ -9,6 +9,7 @@ use crate::action::Action;
 use crate::point::Point;
 use crate::graphics::Transform;
 use crate::consts::DEFAULT_THICKNESS;
+use crate::deserialize;
 
 #[derive(Copy,Clone,Debug)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -588,8 +589,11 @@ impl App {
         self.save_status = SaveStatus::NewAndEmpty;
     }
 
-    pub fn open(&mut self, filename: &Path) -> Result<(), ()> {
-        unimplemented!()
+    pub fn open(&mut self, svg: &str) -> Result<(), deserialize::Error> {
+        self.reset();
+        self.storage = Storage::from_svg(svg)?;
+
+        Ok(())
     }
 }
 

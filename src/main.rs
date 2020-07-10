@@ -1,7 +1,9 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::fs::File;
+use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::env;
 
 use gtk::{
     Application, ApplicationWindow, DrawingArea, Builder, ColorButton,
@@ -12,7 +14,7 @@ use gdk::{EventMask, EventType, ScrollDirection};
 use gtk::prelude::*;
 use gio::prelude::*;
 use glib::clone;
-use cairo::{SvgSurface, ImageSurface, Context, FontWeight, FontSlant};
+use cairo::{SvgSurface, ImageSurface, Context};
 
 use pizarra::{
     App, app::{
@@ -109,8 +111,7 @@ fn save_as_logic<P, F>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCel
 }
 
 fn open_logic<P>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCell<App>>)
-    where
-    P: IsA<Window>,
+    where P: IsA<Window>
 {
     let open_file_chooser = FileChooserNative::new(Some("Abrir"), Some(window), FileChooserAction::Open, Some("Abrir"), Some("Cancelar"));
     let res = open_file_chooser.run();
@@ -118,8 +119,21 @@ fn open_logic<P>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCell<App>
     match res {
         ResponseType::Accept => {
             if let Some(filename) = open_file_chooser.get_filename() {
-                if let Err(msg) = controller.borrow_mut().open(&filename) {
-                    // TODO notify that file could not be opened
+                if let Ok(mut file) = File::open(&filename) {
+                    let mut svg = String::new();
+
+                    if let Ok(_) = file.read_to_string(&mut svg) {
+                        if let Ok(_) = controller.borrow_mut().open(&svg) {
+                            controller.borrow_mut().set_saved(filename);
+                            set_subtitle(&header_bar, controller.borrow().get_save_status());
+                        } else {
+                            // failed parsing
+                        }
+                    } else {
+                        // read failed
+                    }
+                } else {
+                    // open failed
                 }
             }
         },
@@ -180,7 +194,7 @@ fn yes_no_cancel_dialog<F, G, H>(window: &ApplicationWindow, message: &str, yes_
     }
 }
 
-fn init(app: &Application) {
+fn init(app: &Application, filename: Option<PathBuf>) {
     // Initialize layout from .glade file
     let layout = include_str!("../res/layout.glade");
     let builder = Builder::new_from_string(layout);
@@ -189,6 +203,16 @@ fn init(app: &Application) {
     let header_bar: HeaderBar = builder.get_object("header-bar").expect("no header bar");
 
     window.set_application(Some(app));
+
+    if let Some(filename) = filename {
+        let mut svg = String::new();
+        let mut file = File::open(&filename).expect("Could not open given file");
+
+        file.read_to_string(&mut svg).expect("could not read file contents");
+        controller.borrow_mut().open(&svg).expect("Could not parse given file");
+        controller.borrow_mut().set_saved(filename);
+        set_subtitle(&header_bar, controller.borrow().get_save_status());
+    }
 
     // save on exit
     window.connect_delete_event(clone!(@strong controller, @strong window => move |_window, _event| {
@@ -513,7 +537,9 @@ fn main() {
         Default::default(),
     ).expect("failed to initialize GTK application");
 
-    application.connect_activate(|app| init(app));
+    let arguments: Vec<_> = env::args().collect();
+
+    application.connect_activate(move |app| init(app, arguments.get(1).map(|f| f.into())));
 
     application.run(&[]);
 }
