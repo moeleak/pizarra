@@ -128,13 +128,13 @@ fn open_logic<P>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCell<App>
                             controller.set_saved(filename);
                             set_subtitle(&header_bar, controller.get_save_status());
                         } else {
-                            // failed parsing
+                            // TODO failed parsing
                         }
                     } else {
-                        // read failed
+                        // TODO read failed
                     }
                 } else {
-                    // open failed
+                    // TODO open failed
                 }
             }
         },
