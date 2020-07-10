@@ -123,9 +123,10 @@ fn open_logic<P>(window: &P, header_bar: &HeaderBar, controller: Rc<RefCell<App>
                     let mut svg = String::new();
 
                     if let Ok(_) = file.read_to_string(&mut svg) {
-                        if let Ok(_) = controller.borrow_mut().open(&svg) {
-                            controller.borrow_mut().set_saved(filename);
-                            set_subtitle(&header_bar, controller.borrow().get_save_status());
+                        let mut controller = controller.borrow_mut();
+                        if let Ok(_) = controller.open(&svg) {
+                            controller.set_saved(filename);
+                            set_subtitle(&header_bar, controller.get_save_status());
                         } else {
                             // failed parsing
                         }
