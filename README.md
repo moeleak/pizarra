@@ -1,7 +1,12 @@
 Pizarra
 =======
 
-Nada más que eso, una pizarra.
+Nada más que eso, una pizarra. En este repositorio vive solamente el backend, es
+decir la biblioteca con las funciones necesarias para implementar una pizarra en
+algún frontend (como gtk).
+
+Para el código de una aplicación que puedes ejecutar en tu escritorio visita
+[pizarra-gtk](https://gitlab.com/categulario/pizarra-gtk)
 
 ## Características
 
@@ -10,25 +15,6 @@ Nada más que eso, una pizarra.
 * guardado en formato svg
 * exportado en formato png
 * integración con tableta digitalizadora
-
-## ¿Dónde funciona?
-
-Debería funcionar en cualquier plataforma en la que funcione Rust y Gtk. Por el
-momento funciona confiablemente en Linux, le faltan íconos en Mac y no compila
-en windows.
-
-## Para ejecutar
-
-Es necesario tener [Rust instalado](https://rustup.rs), clonar el proyecto y
-ejecutar en una terminal dentro del directorio del proyecto:
-
-`cargo run`
-
-## ¿Y cómo se ve esto?
-
-En este momento se ve así:
-
-![Vista de la quinta pre-versión de la pizarra](https://categulario.tk/pizarra.png)
 
 ---------------------------
 1. Ok, no es tan infinito. El espacio de dibujo guarda coordenadas en números
