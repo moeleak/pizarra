@@ -20,6 +20,27 @@ impl Point {
     pub fn distance(&self, other: Point) -> f64 {
         ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()
     }
+
+    pub fn abs(self) -> Point {
+        Point {
+            x: self.x.abs(),
+            y: self.y.abs(),
+        }
+    }
+
+    pub fn min(self, other: Point) -> Point {
+        Point {
+            x: self.x.min(other.x),
+            y: self.y.min(other.y),
+        }
+    }
+
+    pub fn max(self, other: Point) -> Point {
+        Point {
+            x: self.x.max(other.x),
+            y: self.y.max(other.y),
+        }
+    }
 }
 
 impl Mul<f64> for Point {

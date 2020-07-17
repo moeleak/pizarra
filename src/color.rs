@@ -25,9 +25,9 @@ impl Color {
 
     pub fn green() -> Color {
         Color {
-            r: 138.0/256.0,
-            g: 226.0/256.0,
-            b: 52.0/256.0,
+            r: 138.0/255.0,
+            g: 226.0/255.0,
+            b: 52.0/255.0,
             a: 1.0,
         }
     }
@@ -61,21 +61,37 @@ impl Color {
 
     pub fn black() -> Color {
         Color {
-            r: 48.0/256.0,
-            g: 54.0/256.0,
-            b: 51.0/256.0,
+            r: 48.0/255.0,
+            g: 54.0/255.0,
+            b: 51.0/255.0,
             a: 1.0,
         }
+    }
+
+    pub fn css(&self) -> String {
+        format!("#{:02X}{:02X}{:02X}", (self.r*255.0) as u32, (self.g*255.0) as u32, (self.b*255.0) as u32)
     }
 }
 
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "#{:X}{:X}{:X}{:X}",
-            (self.r*256.0) as u32,
-            (self.g*256.0) as u32,
-            (self.b*256.0) as u32,
-            (self.a*256.0) as u32,
+            (self.r*255.0) as u32,
+            (self.g*255.0) as u32,
+            (self.b*255.0) as u32,
+            (self.a*255.0) as u32,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Color;
+
+    #[test]
+    fn test_to_css() {
+        let c = Color::red();
+
+        assert_eq!(c.css(), "#FF0000");
     }
 }
