@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::f64;
+use std::cell::RefCell;
 
 use rstar::{RTree, RTreeObject, AABB, SelectionFunction, Envelope};
 
@@ -71,12 +72,25 @@ impl SelectionFunction<Shape> for CenterAndRadiusSelection {
     }
 }
 
+struct DrawCommandCache {
+    commands: Vec<DrawCommand>,
+    bbox: [Point; 2],
+}
+
+impl DrawCommandCache {
+    fn add(&mut self, command: DrawCommand) {
+        self.commands.push(command);
+    }
+}
+
 /// This struct handles storage and fast retrieval of shapes.
 pub struct Storage {
     ids: HashMap<ShapeId, AABB<[f64; 2]>>,
     shapes: RTree<Shape>,
     current: Option<Shape>,
-    nex_id: ShapeId,
+    next_id: ShapeId,
+    next_z_index: usize,
+    cache: RefCell<Option<DrawCommandCache>>,
 }
 
 /// A storage struct that organizes shapes by their zoom level and allows for
@@ -87,14 +101,22 @@ impl Storage {
             shapes: RTree::new(),
             ids: HashMap::new(),
             current: None,
-            nex_id: ShapeId::from(1),
+            next_id: ShapeId::from(1),
+            next_z_index: 1,
+            cache: RefCell::new(None),
         }
     }
 
     pub fn nex_id(&mut self) -> ShapeId {
-        let id = self.nex_id;
-        self.nex_id = id.next();
+        let id = self.next_id;
+        self.next_id = id.next();
         id
+    }
+
+    pub fn next_z_index(&mut self) -> usize {
+        let index = self.next_z_index;
+        self.next_z_index = index + 1;
+        index
     }
 
     /// Adds a new shape to the storage
@@ -103,8 +125,15 @@ impl Storage {
         self.flush();
 
         let id = self.nex_id();
+        let index = self.next_z_index();
+        let shape = Shape::from_shape(shape, id, index);
+        let draw_command = shape.draw_commands();
 
-        self.current = Some(Shape::from_shape(shape, id));
+        self.current = Some(shape);
+
+        if let Some(cache) = self.cache.borrow_mut().as_mut() {
+            cache.add(draw_command);
+        }
 
         id
     }
@@ -156,16 +185,39 @@ impl Storage {
         self.shapes.size()
     }
 
-    pub fn draw_commands(&self, bbox: [Point; 2]) -> impl Iterator<Item=DrawCommand> + '_ {
-        let mut current = Vec::new();
+    fn query_commands(&self, bbox: [Point; 2]) -> Vec<DrawCommand> {
+        let bbox = AABB::from_corners(bbox[0].to_a(), bbox[1].to_a());
+        let mut commands: Vec<_> = self
+            .shapes
+            .locate_in_envelope_intersecting(&bbox)
+            .map(|shape| (shape.z_index(), shape.draw_commands()))
+            .collect();
 
         if let Some(shape) = self.current.as_ref() {
-            current.push(shape.draw_commands());
+            commands.push((shape.z_index(), shape.draw_commands()));
         }
 
-        let bbox = AABB::from_corners(bbox[0].to_a(), bbox[1].to_a());
+        commands.sort_unstable_by_key(|(i, _dc)| *i);
 
-        self.shapes.locate_in_envelope_intersecting(&bbox).map(|shape| shape.draw_commands()).chain(current)
+        commands.into_iter().map(|(_i, dc)| dc).collect()
+    }
+
+    pub fn draw_commands(&self, bbox: [Point; 2]) -> Vec<DrawCommand> {
+        let mut borrow = self.cache.borrow_mut();
+
+        match borrow.as_ref() {
+            Some(cache) if cache.bbox == bbox => {
+                cache.commands.clone()
+            },
+            _ => {
+                borrow.get_or_insert_with(|| {
+                    DrawCommandCache {
+                        commands: self.query_commands(bbox),
+                        bbox,
+                    }
+                }).commands.clone()
+            }
+        }
     }
 
     /// Gets the bounding box that surrounds every shape drawn or returns None
@@ -209,6 +261,8 @@ impl <'a> Iterator for ShapeIterator<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::rc::Rc;
+
     use super::Storage;
 
     use crate::shape::{ShapeType, ShapeTrait, ShapeId, Line, Rectangle, Ellipse};
@@ -318,7 +372,7 @@ mod tests {
         let obj_to_interfere = Box::new(Line::new(Color::blue(), Point::new(0.0, 1.0), 1.0));
 
         let id_to_remove = storage.add(obj_to_remove);
-        let id_to_interfere = storage.add(obj_to_interfere);
+        let _id_to_interfere = storage.add(obj_to_interfere);
 
         storage.flush();
 
@@ -340,7 +394,7 @@ mod tests {
         let obj_to_remove = Box::new(Line::new(Color::green(), Point::new(1.0, 1.0), 1.0));
         let obj_to_interfere = Box::new(Line::new(Color::blue(), Point::new(0.0, 1.0), 1.0));
 
-        let id_to_interfere = storage.add(obj_to_interfere);
+        let _id_to_interfere = storage.add(obj_to_interfere);
         let id_to_remove = storage.add(obj_to_remove);
 
         storage.flush();
@@ -374,7 +428,7 @@ mod tests {
 
         storage.flush();
 
-        let buffer: Vec<_> = storage.draw_commands([Point::new(-1.0, -1.0), Point::new(1.0, 1.0)]).collect();
+        let buffer = storage.draw_commands([Point::new(-1.0, -1.0), Point::new(1.0, 1.0)]);
 
         assert_eq!(buffer.len(), 3);
 
@@ -384,13 +438,13 @@ mod tests {
             &DrawCommand::Line {
                 thickness: 4.0,
                 color: Color::green(),
-                line: vec![
+                line: Rc::new(vec![
                     Point::new(0.25, -0.5),
                     Point::new(0.25, -0.25),
                     Point::new(0.5, -0.25),
                     Point::new(0.5, -0.5),
                     Point::new(0.25, -0.5),
-                ],
+                ]),
             }
         ));
 
@@ -398,13 +452,13 @@ mod tests {
             &DrawCommand::Line {
                 thickness: 4.0,
                 color: Color::green(),
-                line: vec![
+                line: Rc::new(vec![
                     Point::new(-1.5, 0.5),
                     Point::new(-1.5, 1.5),
                     Point::new(-0.5, 1.5),
                     Point::new(-0.5, 0.5),
                     Point::new(-1.5, 0.5),
-                ],
+                ]),
             }
         ));
 
@@ -412,13 +466,13 @@ mod tests {
             &DrawCommand::Line {
                 thickness: 4.0,
                 color: Color::green(),
-                line: vec![
+                line: Rc::new(vec![
                     Point::new(-1.1, -1.1),
                     Point::new(-1.1, 1.1),
                     Point::new(1.1, 1.1),
                     Point::new(1.1, -1.1),
                     Point::new(-1.1, -1.1),
-                ],
+                ]),
             }
         ));
 
@@ -438,31 +492,31 @@ mod tests {
         // A rectangle of 2x2 in zoom 0 aournd the oriign
         storage.add(Box::new(Rectangle::from_corners([Point::new(-1.0, -1.0), Point::new(1.0, 1.0)])));
 
-        let buffer: Vec<_> = storage.draw_commands([Point::new(-2.0, -2.0), Point::new(4.0, 4.0)]).collect();
+        let buffer = storage.draw_commands([Point::new(-2.0, -2.0), Point::new(4.0, 4.0)]);
 
         assert_eq!(buffer.len(), 2);
 
         assert!(buffer.contains(&DrawCommand::Line{
             thickness: 4.0,
             color: Color::green(),
-            line: vec![
+            line: Rc::new(vec![
                 Point::new(1.0, 1.0),
                 Point::new(1.0, 3.0),
                 Point::new(3.0, 3.0),
                 Point::new(3.0, 1.0),
                 Point::new(1.0, 1.0),
-            ],
+            ]),
         }));
         assert!(buffer.contains(&DrawCommand::Line{
             thickness: 4.0,
             color: Color::green(),
-            line: vec![
+            line: Rc::new(vec![
                 Point::new(-1.0, -1.0),
                 Point::new(-1.0, 1.0),
                 Point::new(1.0, 1.0),
                 Point::new(1.0, -1.0),
                 Point::new(-1.0, -1.0),
-            ],
+            ]),
         }));
     }
 
@@ -476,5 +530,30 @@ mod tests {
         storage.flush();
 
         assert_eq!(storage.get_bounds(), Some([Point::new(-5.0, -5.0), Point::new(5.0, 5.0)]));
+    }
+
+    #[test]
+    fn test_draw_oder_is_respected() {
+        let mut storage = Storage::new();
+
+        storage.add(Box::new(Line::with_params(Color::red(), vec![Point::new(0.0, 0.0), Point::new(0.0, 2.0)], 4.0)));
+        storage.add(Box::new(Line::with_params(Color::green(), vec![Point::new(0.0, 0.0), Point::new(0.0, 1.0)], 4.0)));
+
+        storage.flush();
+
+        let commands = storage.draw_commands([Point::new(-1.0, -1.0), Point::new(1.0, 3.0)]);
+
+        assert_eq!(commands.len(), 2);
+
+        assert_eq!(commands[0], DrawCommand::Line {
+            color: Color::red(),
+            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(0.0, 2.0)]),
+            thickness: 4.0,
+        });
+        assert_eq!(commands[1], DrawCommand::Line {
+            color: Color::green(),
+            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(0.0, 1.0)]),
+            thickness: 4.0,
+        });
     }
 }

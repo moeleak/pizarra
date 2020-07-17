@@ -304,13 +304,13 @@ impl App {
 
     /// Returns an iterator over the draw commands required to render the visible
     /// portion of the drawing
-    pub fn draw_commands_for_screen(&self) -> impl Iterator<Item=DrawCommand> + '_ {
+    pub fn draw_commands_for_screen(&self) -> Vec<DrawCommand> {
         self.storage.draw_commands(self.visible_extent())
     }
 
     /// Returns an interator over the draw commands required to render the wole
     /// drawing
-    pub fn draw_commands_for_drawing(&self) -> impl Iterator<Item=DrawCommand> + '_ {
+    pub fn draw_commands_for_drawing(&self) -> Vec<DrawCommand> {
         let bbox = if let Some(bbox) = self.get_bounds() {
             bbox
         } else {
@@ -599,6 +599,8 @@ impl App {
 
 #[cfg(test)]
 mod tests {
+    use std::rc::Rc;
+
     use super::{App, MouseButton};
     use crate::{
         draw_commands::DrawCommand, point::Point, color::Color, app::SelectedTool,
@@ -617,11 +619,11 @@ mod tests {
 
         assert_eq!(app.shape_count(), 1);
 
-        let commands: Vec<_> = app.draw_commands_for_screen().collect();
+        let commands = app.draw_commands_for_screen();
 
         assert_eq!(commands[0], DrawCommand::Line {
             color: Color::green(),
-            line: vec![Point::new(-40.0, -30.0), Point::new(-39.0, -30.0), Point::new(-38.0, -30.0)],
+            line: Rc::new(vec![Point::new(-40.0, -30.0), Point::new(-39.0, -30.0), Point::new(-38.0, -30.0)]),
             thickness: 4.0,
         });
     }
@@ -640,11 +642,11 @@ mod tests {
 
         assert_eq!(app.shape_count(), 1);
 
-        let commands: Vec<_> = app.draw_commands_for_screen().collect();
+        let commands = app.draw_commands_for_screen();
 
         assert_eq!(commands[0], DrawCommand::Line {
             color: Color::green(),
-            line: vec![Point::new(-20.0, -15.0), Point::new(-19.5, -15.0), Point::new(-19.0, -15.0)],
+            line: Rc::new(vec![Point::new(-20.0, -15.0), Point::new(-19.5, -15.0), Point::new(-19.0, -15.0)]),
             thickness: 2.0,
         });
     }
@@ -859,21 +861,19 @@ mod tests {
         assert_eq!(app.visible_extent(), [Point::new(-50.0, -30.0), Point::new(30.0, 30.0)]);
         assert_eq!(app.shape_count(), 1);
 
-        let mut commands: Vec<_> = app.draw_commands_for_screen().collect();
+        let commands = app.draw_commands_for_screen();
 
         assert_eq!(commands.len(), 1);
 
-        let command = commands.remove(0);
-
-        assert_eq!(command, DrawCommand::Line {
+        assert_eq!(commands[0], DrawCommand::Line {
             color: Color::green(),
             thickness: 4.0,
-            line: vec![
+            line: Rc::new(vec![
                 Point::new(-30.0, -20.0),
                 Point::new(-20.0, -20.0),
                 Point::new(-10.0, -20.0),
                 Point::new(-10.0, -20.0),
-            ],
+            ]),
         });
     }
 

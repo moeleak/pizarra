@@ -87,14 +87,16 @@ impl fmt::Display for ShapeId {
 
 pub struct Shape {
     id: ShapeId,
+    z_index: usize,
     shape_impl: Box<dyn ShapeTrait>,
 }
 
 impl Shape {
-    pub fn from_shape(shape: Box<dyn ShapeTrait>, id: ShapeId) -> Shape {
+    pub fn from_shape(shape: Box<dyn ShapeTrait>, id: ShapeId, z_index: usize) -> Shape {
         Shape {
             id,
             shape_impl: shape,
+            z_index,
         }
     }
 
@@ -108,6 +110,10 @@ impl Shape {
 
     pub fn id(&self) -> ShapeId {
         self.id
+    }
+
+    pub fn z_index(&self) -> usize {
+        self.z_index
     }
 
     pub fn color(&self) -> Color {

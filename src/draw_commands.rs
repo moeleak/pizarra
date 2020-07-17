@@ -1,12 +1,14 @@
+use std::rc::Rc;
+
 use crate::point::Point;
 use crate::color::Color;
 
-/// The draw command as returned by the shape: adds the color 
-#[derive(Debug, PartialEq)]
+/// The draw command as returned by the shape: adds the color
+#[derive(Debug, PartialEq, Clone)]
 pub enum DrawCommand {
     Line {
         color: Color,
-        line: Vec<Point>,
+        line: Rc<Vec<Point>>,
         thickness: f64,
     },
     Rectangle {

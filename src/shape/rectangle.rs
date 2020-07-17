@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::point::Point;
 use crate::draw_commands::DrawCommand;
 use super::{ShapeTrait, ShapeFinished};
@@ -58,7 +60,7 @@ impl ShapeTrait for Rectangle {
         let data = self.all_four_corners().iter().map(|p| *p).cycle().take(5).collect();
 
         DrawCommand::Line {
-            line: data,
+            line: Rc::new(data),
             thickness: self.stroke,
             color: self.color,
         }

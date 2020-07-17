@@ -151,6 +151,8 @@ impl Storage {
 
 #[cfg(test)]
 mod tests {
+    use std::rc::Rc;
+
     use crate::storage::Storage;
     use crate::shape::{Line, DrawCommand, ShapeTrait};
     use crate::color::Color;
@@ -174,7 +176,7 @@ mod tests {
             thickness,
         } = line.draw_commands() {
             assert_eq!(color, Color::from_rgb(0.5390625, 0.8828125, 0.203125));
-            assert_eq!(line, vec![Point::new(147.570312, 40.121094), Point::new(146.9375, 40.121094), Point::new(145.296875, 40.460938), Point::new(142.519531, 41.710938), Point::new(139.613281, 43.304688), Point::new(138.097656, 44.894531), Point::new(137.339844, 46.714844), Point::new(138.097656, 47.621094), Point::new(139.992188, 47.851562), Point::new(142.898438, 47.621094), Point::new(146.179688, 47.167969), Point::new(150.097656, 47.964844), Point::new(151.738281, 49.667969), Point::new(152.496094, 51.714844), Point::new(152.875, 53.191406)]);
+            assert_eq!(line, Rc::new(vec![Point::new(147.570312, 40.121094), Point::new(146.9375, 40.121094), Point::new(145.296875, 40.460938), Point::new(142.519531, 41.710938), Point::new(139.613281, 43.304688), Point::new(138.097656, 44.894531), Point::new(137.339844, 46.714844), Point::new(138.097656, 47.621094), Point::new(139.992188, 47.851562), Point::new(142.898438, 47.621094), Point::new(146.179688, 47.167969), Point::new(150.097656, 47.964844), Point::new(151.738281, 49.667969), Point::new(152.496094, 51.714844), Point::new(152.875, 53.191406)]));
             assert_eq!(thickness, 3.0);
         } else {
             panic!();

@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::draw_commands::DrawCommand;
 use super::{ShapeTrait, ShapeFinished};
 use crate::color::Color;
@@ -46,7 +48,7 @@ impl ShapeTrait for Line {
 
     fn draw_commands(&self) -> DrawCommand {
         DrawCommand::Line {
-            line: self.points.iter().map(|p| p.clone()).collect(),
+            line: Rc::new(self.points.iter().map(|p| p.clone()).collect()),
             thickness: self.thickness,
             color: self.color,
         }
