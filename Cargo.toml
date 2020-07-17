@@ -4,6 +4,14 @@ version = "0.6.1"
 authors = ["Abraham Toriz <categulario@gmail.com>"]
 keywords = ["drawing", "presentation"]
 edition = "2018"
+license = "MIT"
+description = "The backend for a simple vector hand-drawing application"
+documentation = "https://docs.rs/pizarra"
+readme = "README.md"
+repository = "https://gitlab.com/categulario/pizarra"
+keywords = ["drawing"]
+categories = ["graphics", "gui", "multimedia::images"]
+gitlab = { repository = "https://gitlab.com/categulario/pizarra", branch = "master" }
 
 [dependencies]
 rstar = "0.7.1"
