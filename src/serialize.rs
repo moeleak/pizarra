@@ -44,7 +44,9 @@ impl App {
             let width = svg_dimensions.x.to_string();
             let height = svg_dimensions.y.to_string();
             let min = bbox[0].min(bbox[1]);
-            let view_box = format!("{} {} {} {}", min.x - EXPORT_PADDING, min.y - EXPORT_PADDING, width, height);
+            let min_x = (min.x - EXPORT_PADDING).to_string();
+            let min_y = (min.y - EXPORT_PADDING).to_string();
+            let view_box = format!("{} {} {} {}", &min_x, &min_y, width, height);
             let background_style = format!("fill:{fill};fill-opacity:1;stroke:none;", fill = self.bgcolor().css());
 
             writer.write(XmlEvent::start_element("svg")
@@ -58,8 +60,8 @@ impl App {
                 .attr("id", "storage")).unwrap();
 
             writer.write(XmlEvent::start_element("rect")
-                .attr("x", "0")
-                .attr("y", "0")
+                .attr("x", &min_x)
+                .attr("y", &min_y)
                 .attr("width", &width)
                 .attr("height", &height)
                 .attr("style", &background_style)).unwrap();
