@@ -125,15 +125,8 @@ impl Storage {
         self.flush();
 
         let id = self.nex_id();
-        let index = self.next_z_index();
-        let shape = Shape::from_shape(shape, id, index);
-        let draw_command = shape.draw_commands();
 
-        self.current = Some(shape);
-
-        if let Some(cache) = self.cache.borrow_mut().as_mut() {
-            cache.add(draw_command);
-        }
+        self.current = Some(Shape::from_shape(shape, id, self.next_z_index()));
 
         id
     }
@@ -145,17 +138,27 @@ impl Storage {
         self.ids.insert(shape_id, shape.envelope());
         self.shapes.insert(shape);
 
+        // Invalidate cache
+        self.cache.swap(&RefCell::new(None));
+
         shape_id
     }
 
+    /// moves the last inserted shape to persistent storage. It will no longer
+    /// be accesible through .last_mut()
     pub fn flush(&mut self) -> Option<ShapeId> {
         let old_current = self.current.take();
 
         if let Some(old_shape) = old_current {
             let old_id = old_shape.id();
+            let draw_command = old_shape.draw_commands();
 
             self.ids.insert(old_id, old_shape.envelope());
             self.shapes.insert(old_shape);
+
+            if let Some(cache) = self.cache.borrow_mut().as_mut() {
+                cache.add(draw_command);
+            }
 
             Some(old_id)
         } else {
@@ -163,9 +166,13 @@ impl Storage {
         }
     }
 
+    /// Deletes a shape from this storage given its id if such id exists
     pub fn remove(&mut self, id: ShapeId) -> Option<Shape> {
         if let Some(bbox) = self.ids.get(&id) {
             let maybe_shape = self.shapes.remove_with_selection_function(BBoxIdSelection::new(*bbox, id));
+
+            // Invalidate cache
+            self.cache.swap(&RefCell::new(None));
 
             maybe_shape
         } else {
@@ -173,18 +180,24 @@ impl Storage {
         }
     }
 
-    pub fn erase(&mut self, center: Point, radius: f64) -> Option<Shape> {
-        self.shapes.remove_with_selection_function(CenterAndRadiusSelection::new(center, radius))
+    /// Returns the id of a shape intersecting the circle described by center
+    /// and radius, if any.
+    pub fn query_circle(&self, center: Point, radius: f64) -> Option<ShapeId> {
+        self.shapes.locate_with_selection_function(CenterAndRadiusSelection::new(center, radius)).next().map(|shape| shape.id())
     }
 
+    /// gets a mutable reference to the last inserted shape for modifying
     pub fn last_mut(&mut self) -> Option<&mut Shape> {
         self.current.as_mut()
     }
 
+    /// Returns the number of shapes in this storage
     pub fn shape_count(&self) -> usize {
         self.shapes.size()
     }
 
+    /// returns the draw commands necessary to paint the portion of the screen
+    /// indicated by bbox.
     fn query_commands(&self, bbox: [Point; 2]) -> Vec<DrawCommand> {
         let bbox = AABB::from_corners(bbox[0].to_a(), bbox[1].to_a());
         let mut commands: Vec<_> = self
@@ -193,19 +206,18 @@ impl Storage {
             .map(|shape| (shape.z_index(), shape.draw_commands()))
             .collect();
 
-        if let Some(shape) = self.current.as_ref() {
-            commands.push((shape.z_index(), shape.draw_commands()));
-        }
-
         commands.sort_unstable_by_key(|(i, _dc)| *i);
 
         commands.into_iter().map(|(_i, dc)| dc).collect()
     }
 
+    /// gets all the draw commands necessary to paint the portion of the screen
+    /// indicated by bbox. Commands are cached to improve the performance of
+    /// continuously drawing on the same portion of the screen
     pub fn draw_commands(&self, bbox: [Point; 2]) -> Vec<DrawCommand> {
         let mut borrow = self.cache.borrow_mut();
 
-        match borrow.as_ref() {
+        let mut commands = match borrow.as_ref() {
             Some(cache) if cache.bbox == bbox => {
                 cache.commands.clone()
             },
@@ -217,7 +229,13 @@ impl Storage {
                     }
                 }).commands.clone()
             }
+        };
+
+        if let Some(shape) = self.current.as_ref() {
+            commands.push(shape.draw_commands());
         }
+
+        commands
     }
 
     /// Gets the bounding box that surrounds every shape drawn or returns None
@@ -354,12 +372,10 @@ mod tests {
         storage.add(Box::new(line));
         storage.flush();
 
-        assert!(storage.erase(Point::new(0.5, -0.5), 0.5).is_none());
-        assert!(storage.erase(Point::new(0.5, 0.5), 0.5).is_none());
+        assert!(storage.query_circle(Point::new(0.5, -0.5), 0.5).is_none());
+        assert!(storage.query_circle(Point::new(0.5, 0.5), 0.5).is_none());
 
-        let shape = storage.erase(Point::new(-0.25, -1.25), 0.5).unwrap();
-
-        assert_eq!(shape.id(), ShapeId::from(1));
+        assert_eq!(storage.query_circle(Point::new(-0.25, -1.25), 0.5).unwrap(), ShapeId::from(1));
     }
 
     #[test]
@@ -409,6 +425,65 @@ mod tests {
     }
 
     #[test]
+    fn incremental_drawing() {
+        let mut storage = Storage::new();
+        let bbox = [Point::new(-40.0, -40.0), Point::new(40.0, 40.0)];
+
+        storage.add(Box::new(Line::new(Color::green(), Point::new(0.0, 0.0), 4.0)));
+
+        storage.last_mut().unwrap().handle_mouse_moved(Point::new(1.0, 0.0));
+
+        assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Line {
+            color: Color::green(),
+            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0)]),
+            thickness: 4.0,
+        }]);
+
+        storage.last_mut().unwrap().handle_mouse_moved(Point::new(2.0, 0.0));
+
+        assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Line {
+            color: Color::green(),
+            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0), Point::new(2.0, 0.0)]),
+            thickness: 4.0,
+        }]);
+
+        storage.last_mut().unwrap().handle_button_released(Point::new(3.0, 0.0));
+
+        assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Line {
+            color: Color::green(),
+            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0), Point::new(2.0, 0.0), Point::new(3.0, 0.0)]),
+            thickness: 4.0,
+        }]);
+
+        storage.flush();
+
+        assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Line {
+            color: Color::green(),
+            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0), Point::new(2.0, 0.0), Point::new(3.0, 0.0)]),
+            thickness: 4.0,
+        }]);
+    }
+
+    #[test]
+    fn test_erase_invalidates_cache() {
+        let mut storage = Storage::new();
+        let bbox = [Point::new(-40.0, -40.0), Point::new(40.0, 40.0)];
+
+        storage.add(Box::new(Line::with_params(Color::green(), vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0)], 4.0)));
+        storage.add(Box::new(Line::with_params(Color::green(), vec![Point::new(0.0, 1.0), Point::new(1.0, 1.0)], 4.0)));
+
+        let id = storage.flush().unwrap();
+
+        storage.remove(id);
+
+        assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Line {
+            color: Color::green(),
+            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0)]),
+            thickness: 4.0,
+        }]);
+    }
+
+    #[test]
     fn test_iter_by_bounds() {
         let mut storage = Storage::new();
 
@@ -431,8 +506,6 @@ mod tests {
         let buffer = storage.draw_commands([Point::new(-1.0, -1.0), Point::new(1.0, 1.0)]);
 
         assert_eq!(buffer.len(), 3);
-
-        dbg!(&buffer);
 
         assert!(buffer.contains(
             &DrawCommand::Line {

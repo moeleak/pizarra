@@ -151,7 +151,7 @@ impl App {
                 }
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.erase(transformed_point, self.erase_radius / self.scale_factor) {
+                if let Some(shape) = self.storage.query_circle(transformed_point, self.erase_radius / self.scale_factor).map(|id| self.storage.remove(id)).flatten() {
                     self.erased.push(shape);
                 }
             },
@@ -180,7 +180,7 @@ impl App {
                 }
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.erase(transformed_point, self.erase_radius / self.scale_factor) {
+                if let Some(shape) = self.storage.query_circle(transformed_point, self.erase_radius / self.scale_factor).map(|id| self.storage.remove(id)).flatten() {
                     self.erased.push(shape);
                 }
 
@@ -206,7 +206,7 @@ impl App {
                 }
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.erase(transformed_point, self.erase_radius / self.scale_factor) {
+                if let Some(shape) = self.storage.query_circle(transformed_point, self.erase_radius / self.scale_factor).map(|id| self.storage.remove(id)).flatten() {
                     self.erased.push(shape);
                     ShouldRedraw::Yes
                 } else {
