@@ -1,6 +1,8 @@
 Pizarra
 =======
 
+[![pipeline status](https://gitlab.com/categulario/pizarra/badges/master/pipeline.svg)](https://gitlab.com/categulario/pizarra/-/commits/master)
+
 Nada más que eso, una pizarra. En este repositorio vive solamente el backend, es
 decir la biblioteca con las funciones necesarias para implementar una pizarra en
 algún frontend (como gtk).
