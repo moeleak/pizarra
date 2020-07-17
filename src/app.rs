@@ -7,7 +7,7 @@ use crate::shape::{Shape, ShapeType, ShapeFinished};
 use crate::color::Color;
 use crate::action::Action;
 use crate::point::Point;
-use crate::graphics::Transform;
+use crate::transform::Transform;
 use crate::consts::DEFAULT_THICKNESS;
 use crate::deserialize;
 

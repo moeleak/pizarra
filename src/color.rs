@@ -1,7 +1,5 @@
 use std::fmt;
 
-use gdk::RGBA;
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Color {
     pub r: f64,
@@ -79,16 +77,5 @@ impl fmt::Display for Color {
             (self.b*256.0) as u32,
             (self.a*256.0) as u32,
         )
-    }
-}
-
-impl From<RGBA> for Color {
-    fn from(rgba: RGBA) -> Color {
-        Color {
-            r: rgba.red,
-            g: rgba.green,
-            b: rgba.blue,
-            a: rgba.alpha,
-        }
     }
 }
