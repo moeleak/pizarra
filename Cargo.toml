@@ -9,7 +9,6 @@ description = "The backend for a simple vector hand-drawing application"
 documentation = "https://docs.rs/pizarra"
 readme = "README.md"
 repository = "https://gitlab.com/categulario/pizarra"
-keywords = ["drawing"]
 categories = ["graphics", "gui", "multimedia::images"]
 gitlab = { repository = "https://gitlab.com/categulario/pizarra", branch = "master" }
 
