@@ -13,6 +13,11 @@ use crate::consts::DEFAULT_THICKNESS;
 use crate::point::Point;
 
 lazy_static! {
+    static ref CSS_COLOR_REGEX: Regex = Regex::new(r"(?x)#
+        (?P<r>[\dA-Fa-f]{2})
+        (?P<g>[\dA-Fa-f]{2})
+        (?P<b>[\dA-Fa-f]{2})
+    ").unwrap();
     static ref COLOR_REGEX: Regex = Regex::new(r"(?x)rgb\(
         (?P<r>\d+(\.\d+)?)
         %\s*,\s*
@@ -68,7 +73,15 @@ impl FromStr for Color {
                 captures["b"].parse::<f64>()?/100.0,
             ))
         } else {
-            Err(Error::ColorDoesntMatchRegex)
+            if let Some(captures) = CSS_COLOR_REGEX.captures(s) {
+                Ok(Color::from_rgb(
+                    u32::from_str_radix(&captures["r"], 16).unwrap() as f64 / 255.0,
+                    u32::from_str_radix(&captures["g"], 16).unwrap() as f64 / 255.0,
+                    u32::from_str_radix(&captures["b"], 16).unwrap() as f64 / 255.0,
+                ))
+            } else {
+                Err(Error::ColorDoesntMatchRegex)
+            }
         }
     }
 }
@@ -167,6 +180,14 @@ mod tests {
     }
 
     #[test]
+    fn test_from_custom_svg() {
+        let svg_data = include_str!("../res/serialize_test.svg");
+        let storage = Storage::from_svg(svg_data).unwrap();
+
+        assert_eq!(storage.shape_count(), 1);
+    }
+
+    #[test]
     fn test_line_from_xml_attributes() {
         let line = Line::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(53.90625%,88.28125%,20.3125%);stroke-opacity:1;stroke-miterlimit:10;", "M 147.570312 40.121094 L 146.9375 40.121094 L 145.296875 40.460938 L 142.519531 41.710938 L 139.613281 43.304688 L 138.097656 44.894531 L 137.339844 46.714844 L 138.097656 47.621094 L 139.992188 47.851562 L 142.898438 47.621094 L 146.179688 47.167969 L 150.097656 47.964844 L 151.738281 49.667969 L 152.496094 51.714844 L 152.875 53.191406 ").unwrap();
 
@@ -188,6 +209,17 @@ mod tests {
         let color: Color = "rgb(53.90625%,88.28125%,20.3125%)".parse().unwrap();
 
         assert_eq!(color, Color::from_rgb(0.5390625, 0.8828125, 0.203125));
+    }
+
+    #[test]
+    fn test_parse_css_color() {
+        let color: Color = "#FF2030".parse().unwrap();
+
+        assert_eq!(color, Color::from_rgb(1.0, 0.12549019607843137, 0.18823529411764706));
+
+        let color: Color = "#FF2003".parse().unwrap();
+
+        assert_eq!(color, Color::from_rgb(1.0, 0.12549019607843137, 0.011764705882352941));
     }
 
     #[test]
