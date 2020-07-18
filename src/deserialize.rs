@@ -26,9 +26,9 @@ lazy_static! {
         (?P<b>\d+(\.\d+))?
     %\s*\)").unwrap();
     static ref POINT_REGEX: Regex = Regex::new(r"(?x)
-        (?P<x>\d+(\.\d+)?)
+        (?P<x>-?\d+(\.\d+)?)
         \s+
-        (?P<y>\d+(\.\d+)?)
+        (?P<y>-?\d+(\.\d+)?)
     ").unwrap();
 }
 
@@ -185,6 +185,14 @@ mod tests {
         let storage = Storage::from_svg(svg_data).unwrap();
 
         assert_eq!(storage.shape_count(), 1);
+    }
+
+    #[test]
+    fn test_point_bug() {
+        let svg_data = include_str!("../res/bug_opening.svg");
+        let storage = Storage::from_svg(svg_data).unwrap();
+
+        assert_eq!(storage.shape_count(), 4);
     }
 
     #[test]
