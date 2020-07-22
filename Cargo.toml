@@ -1,6 +1,6 @@
 [package]
 name = "pizarra"
-version = "0.6.2"
+version = "0.6.3"
 authors = ["Abraham Toriz <categulario@gmail.com>"]
 keywords = ["drawing", "presentation"]
 edition = "2018"
