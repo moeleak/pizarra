@@ -891,4 +891,50 @@ mod tests {
 
         assert_eq!(app.visible_extent(), [Point::new(-10.0, -7.5), Point::new(10.0, 7.5)]);
     }
+
+    #[test]
+    fn test_cache_invalidation_on_ctrl_z() {
+        let mut app = App::new(Point::new(10.0, 10.0));
+
+        app.set_tool(SelectedTool::Shape(ShapeType::Rectangle));
+
+        // draw a shape
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(5.0, 5.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(6.0, 6.0));
+
+        assert_eq!(app.draw_commands_for_screen().len(), 1);
+
+        // move the screen
+        app.handle_mouse_button_pressed(MouseButton::Middle, Point::new(10.0, 5.0));
+        app.handle_mouse_move(Point::new(5.0, 5.0));
+        app.handle_mouse_move(Point::new(0.0, 5.0));
+        app.handle_mouse_button_released(MouseButton::Middle, Point::new(0.0, 5.0));
+
+        assert_eq!(app.draw_commands_for_screen().len(), 0);
+
+        // draw another shape
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(5.0, 5.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(6.0, 6.0));
+
+        assert_eq!(app.draw_commands_for_screen().len(), 1);
+
+        // and draw a third shape
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(6.0, 6.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(7.0, 7.0));
+
+        assert_eq!(app.draw_commands_for_screen().len(), 2);
+
+        // undo that last one
+        app.undo();
+
+        assert_eq!(app.draw_commands_for_screen().len(), 1);
+
+        // move back to where the first shape was
+        app.handle_mouse_button_pressed(MouseButton::Middle, Point::new(0.0, 5.0));
+        app.handle_mouse_move(Point::new(5.0, 5.0));
+        app.handle_mouse_move(Point::new(10.0, 5.0));
+        app.handle_mouse_button_released(MouseButton::Middle, Point::new(10.0, 5.0));
+
+        assert_eq!(app.draw_commands_for_screen().len(), 1);
+    }
 }

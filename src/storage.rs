@@ -222,12 +222,12 @@ impl Storage {
                 cache.commands.clone()
             },
             _ => {
-                borrow.get_or_insert_with(|| {
-                    DrawCommandCache {
-                        commands: self.query_commands(bbox),
-                        bbox,
-                    }
-                }).commands.clone()
+                borrow.replace(DrawCommandCache {
+                    commands: self.query_commands(bbox),
+                    bbox,
+                });
+
+                borrow.as_ref().unwrap().commands.clone()
             }
         };
 
