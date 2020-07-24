@@ -173,10 +173,10 @@ impl App {
                     if let Some(shape_id) = self.storage.flush() {
                         Action::Draw(shape_id)
                     } else {
-                        Action::Skip
+                        Action::Empty
                     }
                 } else {
-                    Action::Skip
+                    Action::Unfinished
                 }
             },
             SelectedTool::Eraser => {
@@ -187,7 +187,7 @@ impl App {
                 if self.erased.len() > 0 {
                     Action::Erase(self.erased.drain(..).collect())
                 } else {
-                    Action::Skip
+                    Action::Empty
                 }
             },
         }
@@ -218,7 +218,8 @@ impl App {
 
     fn revert(&mut self, action: Action) -> Action {
         match action {
-            Action::Skip => Action::Skip,
+            Action::Unfinished => Action::Unfinished,
+            Action::Empty => Action::Empty,
 
             Action::Draw(id) => Action::Delete(self.storage.remove(id).unwrap()),
 
@@ -394,7 +395,8 @@ impl App {
             current@BoardState::Idle => (current, ShouldRedraw::No),
             current@BoardState::UsingTool => match button {
                 MouseButton::Left => match self.handle_tool_button_released(point) {
-                    Action::Skip => (current, ShouldRedraw::Yes),
+                    Action::Unfinished => (current, ShouldRedraw::Yes),
+                    Action::Empty => (BoardState::Idle, ShouldRedraw::No),
                     x => {
                         self.conclude_action(x);
                         (BoardState::Idle, ShouldRedraw::Yes)
@@ -417,7 +419,8 @@ impl App {
             // TODO check if https://github.com/rust-lang/rust/issues/65490 is resolved
             BoardState::MovingWhileUsingTool(old_point) => match button {
                 MouseButton::Left => match self.handle_tool_button_released(point) {
-                        Action::Skip => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::Yes),
+                        Action::Unfinished => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::Yes),
+                        Action::Empty => (BoardState::Moving(point), ShouldRedraw::Yes),
                         x => {
                             self.conclude_action(x);
 
@@ -506,7 +509,7 @@ impl App {
             },
 
             UndoState::At(point) => {
-                let action_to_undo = mem::replace(&mut self.undo_queue[point], Action::Skip);
+                let action_to_undo = mem::replace(&mut self.undo_queue[point], Action::Empty);
 
                 self.undo_queue[point] = self.revert(action_to_undo);
 
@@ -529,7 +532,7 @@ impl App {
             UndoState::InSync => {},
 
             UndoState::At(point) => {
-                let action_to_redo = mem::replace(&mut self.undo_queue[point + 1], Action::Skip);
+                let action_to_redo = mem::replace(&mut self.undo_queue[point + 1], Action::Empty);
 
                 self.undo_queue[point + 1] = self.revert(action_to_redo);
 
@@ -543,7 +546,7 @@ impl App {
             UndoState::Reset => {
                 // there's something to redo
                 if !self.undo_queue.is_empty() {
-                    let action_to_redo = mem::replace(&mut self.undo_queue[0], Action::Skip);
+                    let action_to_redo = mem::replace(&mut self.undo_queue[0], Action::Empty);
 
                     self.undo_queue[0] = self.revert(action_to_redo);
 
@@ -604,7 +607,7 @@ mod tests {
     use super::{App, MouseButton};
     use crate::{
         draw_commands::DrawCommand, point::Point, color::Color, app::SelectedTool,
-        shape::ShapeType,
+        shape::ShapeType, consts::DEFAULT_THICKNESS,
     };
 
     #[test]
@@ -624,7 +627,7 @@ mod tests {
         assert_eq!(commands[0], DrawCommand::Line {
             color: Color::green(),
             line: Rc::new(vec![Point::new(-40.0, -30.0), Point::new(-39.0, -30.0), Point::new(-38.0, -30.0)]),
-            thickness: 4.0,
+            thickness: DEFAULT_THICKNESS,
         });
     }
 
@@ -647,7 +650,7 @@ mod tests {
         assert_eq!(commands[0], DrawCommand::Line {
             color: Color::green(),
             line: Rc::new(vec![Point::new(-20.0, -15.0), Point::new(-19.5, -15.0), Point::new(-19.0, -15.0)]),
-            thickness: 2.0,
+            thickness: DEFAULT_THICKNESS/2.0,
         });
     }
 
@@ -867,7 +870,7 @@ mod tests {
 
         assert_eq!(commands[0], DrawCommand::Line {
             color: Color::green(),
-            thickness: 4.0,
+            thickness: DEFAULT_THICKNESS,
             line: Rc::new(vec![
                 Point::new(-30.0, -20.0),
                 Point::new(-20.0, -20.0),
@@ -936,5 +939,35 @@ mod tests {
         app.handle_mouse_button_released(MouseButton::Middle, Point::new(10.0, 5.0));
 
         assert_eq!(app.draw_commands_for_screen().len(), 1);
+    }
+
+    #[test]
+    fn test_not_erasing_a_shape_doesnt_leave_the_eraser_active() {
+        // the scenario is: you draw a few shapes, then change to the eraser, click and drag
+        // on the screen but without touching a shape and then release the left button.
+        //
+        // what happens is the eraser remains active and when you move and touch a shape
+        // it gets erased
+        //
+        // it's expeceted for the eraser not to erase the shape
+        let mut app = App::new(Point::new(100.0, 100.0));
+
+        app.set_tool(SelectedTool::Shape(ShapeType::Rectangle));
+
+        // draw a shape
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(5.0, 5.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(6.0, 6.0));
+
+        app.set_tool(SelectedTool::Eraser);
+
+        // erase nothing
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(90.0, 90.0));
+        app.handle_mouse_move(Point::new(91.0, 91.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(92.0, 92.0));
+
+        // move to where the shape is
+        app.handle_mouse_move(Point::new(5.0, 5.0));
+
+        assert_eq!(app.shape_count(), 1);
     }
 }

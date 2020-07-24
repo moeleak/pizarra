@@ -2,7 +2,8 @@ use crate::shape::{Shape, ShapeId};
 
 #[derive(Debug)]
 pub enum Action {
-    Skip,
+    Unfinished,
+    Empty,
 
     Draw(ShapeId),
     Delete(Shape),
@@ -13,6 +14,6 @@ pub enum Action {
 
 impl Default for Action {
     fn default() -> Action {
-        Action::Skip
+        Action::Empty
     }
 }

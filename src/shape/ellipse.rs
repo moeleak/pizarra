@@ -33,7 +33,6 @@ impl ShapeTrait for Ellipse {
     }
 
     fn handle_button_pressed(&mut self, _pos: Point) {
-        unreachable!();
     }
 
     fn handle_button_released(&mut self, pos: Point) -> ShapeFinished {
@@ -69,8 +68,8 @@ impl ShapeTrait for Ellipse {
         ShapeType::Ellipse
     }
 
-    fn intersects_circle(&self, center: Point, radius: f64) -> bool {
-        unimplemented!()
+    fn intersects_circle(&self, _center: Point, _radius: f64) -> bool {
+        false
     }
 
     fn color(&self) -> Color {
@@ -138,5 +137,11 @@ mod tests {
         for rectangle in rectangles.into_iter() {
             assert_eq!(rectangle.bbox(), [[48.0, -19.0], [78.0, 22.0]]);
         }
+    }
+
+    #[test]
+    #[ignore]
+    fn test_intersects() {
+        assert!(false, "intersects is implemented");
     }
 }

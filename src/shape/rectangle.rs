@@ -48,7 +48,6 @@ impl ShapeTrait for Rectangle {
     }
 
     fn handle_button_pressed(&mut self, _pos: Point) {
-        unreachable!()
     }
 
     fn handle_button_released(&mut self, pos: Point) -> ShapeFinished {
