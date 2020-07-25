@@ -625,7 +625,7 @@ mod tests {
         let commands = app.draw_commands_for_screen();
 
         assert_eq!(commands[0], DrawCommand::Line {
-            color: Color::green(),
+            color: Default::default(),
             line: Rc::new(vec![Point::new(-40.0, -30.0), Point::new(-39.0, -30.0), Point::new(-38.0, -30.0)]),
             thickness: DEFAULT_THICKNESS,
         });
@@ -648,7 +648,7 @@ mod tests {
         let commands = app.draw_commands_for_screen();
 
         assert_eq!(commands[0], DrawCommand::Line {
-            color: Color::green(),
+            color: Default::default(),
             line: Rc::new(vec![Point::new(-20.0, -15.0), Point::new(-19.5, -15.0), Point::new(-19.0, -15.0)]),
             thickness: DEFAULT_THICKNESS/2.0,
         });
@@ -869,7 +869,7 @@ mod tests {
         assert_eq!(commands.len(), 1);
 
         assert_eq!(commands[0], DrawCommand::Line {
-            color: Color::green(),
+            color: Default::default(),
             thickness: DEFAULT_THICKNESS,
             line: Rc::new(vec![
                 Point::new(-30.0, -20.0),

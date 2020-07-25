@@ -48,3 +48,14 @@ pub fn segment_intersects_circle([a, b]: [Point; 2], center: Point, radius: f64)
 
     proj.distance(center) < radius && is_within(proj, a, b)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::segment_intersects_circle;
+    use crate::point::Point;
+
+    #[test]
+    fn test_segment_intersects_circle() {
+        assert!(segment_intersects_circle([Point::new(0.0, 0.0), Point::new(100.0, 0.0)], Point::new(50.0, 9.0), 10.0));
+    }
+}
