@@ -52,6 +52,7 @@ pub mod transform;
 pub mod deserialize;
 pub mod consts;
 pub mod serialize;
+pub mod geom;
 
 pub use shape::ShapeType;
 pub use app::App;

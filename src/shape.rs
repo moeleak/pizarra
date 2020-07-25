@@ -5,6 +5,7 @@ use crate::point::Point;
 pub mod line;
 pub mod rectangle;
 pub mod ellipse;
+pub mod polygon;
 
 use super::color::Color;
 pub use crate::draw_commands::DrawCommand;
@@ -12,6 +13,7 @@ pub use crate::draw_commands::DrawCommand;
 pub use self::line::Line;
 pub use self::rectangle::Rectangle;
 pub use self::ellipse::Ellipse;
+pub use self::polygon::Polygon;
 
 /// Shapes handle input from the user, and they're responsible of notifying when
 /// they're finished, for example in the case of a polygon
@@ -24,6 +26,7 @@ pub enum ShapeFinished {
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum ShapeType {
     Line,
+    Polygon,
     Rectangle,
     Ellipse,
 }
@@ -34,6 +37,7 @@ impl ShapeType {
             ShapeType::Line => Box::new(Line::new(color, initial, stroke)),
             ShapeType::Rectangle => Box::new(Rectangle::new(color, initial, stroke)),
             ShapeType::Ellipse => Box::new(Ellipse::new(color, initial)),
+            ShapeType::Polygon => Box::new(Polygon::new(color, initial, stroke)),
         }
     }
 }
