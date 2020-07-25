@@ -41,6 +41,10 @@ impl Point {
             y: self.y.max(other.y),
         }
     }
+
+    pub fn dot(self, other: Point) -> f64 {
+        (self.x - other.x).powi(2) + (self.y - other.y).powi(2)
+    }
 }
 
 impl Mul<f64> for Point {

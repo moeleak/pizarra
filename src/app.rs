@@ -8,7 +8,7 @@ use crate::color::Color;
 use crate::action::Action;
 use crate::point::Point;
 use crate::transform::Transform;
-use crate::consts::DEFAULT_THICKNESS;
+use crate::consts::{DEFAULT_THICKNESS, TOUCH_RADIUS};
 use crate::deserialize;
 
 #[derive(Copy,Clone,Debug)]
@@ -257,7 +257,7 @@ impl App {
             selected_tool: SelectedTool::Shape(ShapeType::Line),
             bgcolor: Color::black(),
             stroke: DEFAULT_THICKNESS,
-            erase_radius: 10.0,
+            erase_radius: TOUCH_RADIUS,
 
             /// a vector from the top-left corner of the screen to the origin
             /// of coordinates in the storage
@@ -272,7 +272,7 @@ impl App {
             undo_state: UndoState::Reset,
             undo_queue: Vec::new(),
 
-            selected_color: Color::green(),
+            selected_color: Default::default(),
 
             save_status: SaveStatus::NewAndEmpty,
         }
