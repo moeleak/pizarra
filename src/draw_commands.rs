@@ -21,4 +21,10 @@ pub enum DrawCommand {
         corner_1: Point,
         corner_2: Point,
     },
+    Circle {
+        center: Point,
+        radius: f64,
+        color: Color,
+        thickness: f64,
+    }
 }

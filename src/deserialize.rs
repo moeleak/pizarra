@@ -7,7 +7,7 @@ use regex::Regex;
 use lazy_static::lazy_static;
 
 use crate::storage::Storage;
-use crate::shape::line::Line;
+use crate::shape::Line;
 use crate::color::Color;
 use crate::consts::DEFAULT_THICKNESS;
 use crate::point::Point;

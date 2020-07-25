@@ -2,10 +2,11 @@ use std::fmt;
 
 use crate::point::Point;
 
-pub mod line;
-pub mod rectangle;
-pub mod ellipse;
-pub mod polygon;
+mod line;
+mod rectangle;
+mod ellipse;
+mod polygon;
+mod circle;
 
 use super::color::Color;
 pub use crate::draw_commands::DrawCommand;
@@ -14,6 +15,7 @@ pub use self::line::Line;
 pub use self::rectangle::Rectangle;
 pub use self::ellipse::Ellipse;
 pub use self::polygon::Polygon;
+pub use self::circle::Circle;
 
 /// Shapes handle input from the user, and they're responsible of notifying when
 /// they're finished, for example in the case of a polygon
@@ -29,6 +31,7 @@ pub enum ShapeType {
     Polygon,
     Rectangle,
     Ellipse,
+    Circle,
 }
 
 impl ShapeType {
@@ -38,6 +41,7 @@ impl ShapeType {
             ShapeType::Rectangle => Box::new(Rectangle::new(color, initial, stroke)),
             ShapeType::Ellipse => Box::new(Ellipse::new(color, initial)),
             ShapeType::Polygon => Box::new(Polygon::new(color, initial, stroke)),
+            ShapeType::Circle => Box::new(Circle::new(color, initial, stroke)),
         }
     }
 }
