@@ -27,7 +27,45 @@ impl DrawCommand {
                     .attr("d", &d)).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
             },
-            _ => {},
+            DrawCommand::Circle {
+                color, thickness, center, radius,
+            } => {
+                writer.write(XmlEvent::start_element("ellipse")
+                    .attr("cx", &center.x.to_string())
+                    .attr("cy", &center.y.to_string())
+                    .attr("rx", &radius.to_string())
+                    .attr("ry", &radius.to_string())
+                    .attr("style", &format!(
+                        "fill:none;stroke-width:{stroke};stroke:{color};stroke-opacity:1;stroke-miterlimit:10",
+                        stroke = thickness,
+                        color = color.css(),
+                    ))
+                ).unwrap();
+                writer.write(XmlEvent::end_element()).unwrap();
+            },
+            DrawCommand::Ellipse {
+                bbox, thickness, color,
+            } => {
+                let min = bbox[0].min(bbox[1]);
+                let max = bbox[0].max(bbox[1]);
+
+                let bounds = max - min;
+                let half = bounds/2.0;
+                let center = half + min;
+
+                writer.write(XmlEvent::start_element("ellipse")
+                    .attr("cx", &center.x.to_string())
+                    .attr("cy", &center.y.to_string())
+                    .attr("rx", &half.x.to_string())
+                    .attr("ry", &half.y.to_string())
+                    .attr("style", &format!(
+                        "fill:none;stroke-width:{stroke};stroke:{color};stroke-opacity:1;stroke-miterlimit:10",
+                        stroke = thickness,
+                        color = color.css(),
+                    ))
+                ).unwrap();
+                writer.write(XmlEvent::end_element()).unwrap();
+            },
         }
     }
 }
@@ -100,5 +138,19 @@ mod tests {
         app.handle_mouse_button_released(MouseButton::Left, Point::new(21.0, 20.0));
 
         assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_test.svg"));
+    }
+
+    #[test]
+    fn serialize_ellipse() {
+        let mut app = App::new(Point::new(40.0, 40.0));
+
+        app.set_tool(SelectedTool::Shape(ShapeType::Ellipse));
+        app.set_color(Color::red());
+        app.set_stroke(3.5);
+
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(5.0, 10.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(35.0, 30.0));
+
+        assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_ellipse.svg"));
     }
 }

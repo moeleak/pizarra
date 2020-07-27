@@ -11,20 +11,15 @@ pub enum DrawCommand {
         line: Rc<Vec<Point>>,
         thickness: f64,
     },
-    Rectangle {
-        color: Color,
-        corner_1: Point,
-        corner_2: Point,
-    },
-    Ellipse {
-        color: Color,
-        corner_1: Point,
-        corner_2: Point,
-    },
     Circle {
         center: Point,
         radius: f64,
         color: Color,
         thickness: f64,
-    }
+    },
+    Ellipse {
+        bbox: [Point; 2],
+        thickness: f64,
+        color: Color,
+    },
 }

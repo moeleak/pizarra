@@ -1,27 +1,29 @@
+use crate::point::Point;
 use crate::draw_commands::DrawCommand;
 use super::{ShapeTrait, ShapeFinished};
 use crate::color::Color;
 use crate::ShapeType;
-use crate::point::Point;
 
 pub struct Ellipse {
-    corner_1: Point,
-    corner_2: Point,
+    bbox: [Point; 2],
+    stroke: f64,
     color: Color,
 }
 
 impl Ellipse {
-    pub fn new(color: Color, initial: Point) -> Ellipse {
+    pub fn new(color: Color, initial: Point, stroke: f64) -> Ellipse {
         Ellipse {
-            corner_1: initial,
-            corner_2: initial,
+            bbox: [initial; 2],
+            stroke,
             color,
         }
     }
 
+    /// Only used for testing
     pub fn from_corners([corner_1, corner_2]: [Point; 2]) -> Ellipse {
         Ellipse {
-            corner_1, corner_2,
+            bbox: [corner_1, corner_2],
+            stroke: 4.0,
             color: Color::green(),
         }
     }
@@ -29,38 +31,28 @@ impl Ellipse {
 
 impl ShapeTrait for Ellipse {
     fn handle_mouse_moved(&mut self, pos: Point) {
-        self.corner_2 = pos;
+        self.bbox[1] = pos;
     }
 
-    fn handle_button_pressed(&mut self, _pos: Point) {
-    }
+    fn handle_button_pressed(&mut self, _pos: Point) { }
 
     fn handle_button_released(&mut self, pos: Point) -> ShapeFinished {
-        self.corner_2 = pos;
+        self.bbox[1] = pos;
         ShapeFinished::Yes
     }
 
     fn draw_commands(&self) -> DrawCommand {
-        DrawCommand::Ellipse{
-            corner_1: self.corner_1,
-            corner_2: self.corner_2,
+        DrawCommand::Ellipse {
+            thickness: self.stroke,
             color: self.color,
+            bbox: self.bbox,
         }
     }
 
     fn bbox(&self) -> [[f64; 2]; 2] {
-        let x2 = self.corner_2.x;
-        let y2 = self.corner_2.y;
-
         [
-            [
-                self.corner_1.x.min(x2),
-                self.corner_1.y.min(y2),
-            ],
-            [
-                self.corner_1.x.max(x2),
-                self.corner_1.y.max(y2),
-            ],
+            self.bbox[0].min(self.bbox[1]).to_a(),
+            self.bbox[0].max(self.bbox[1]).to_a(),
         ]
     }
 
@@ -68,8 +60,31 @@ impl ShapeTrait for Ellipse {
         ShapeType::Ellipse
     }
 
-    fn intersects_circle(&self, _center: Point, _radius: f64) -> bool {
-        false
+    fn intersects_circle(&self, center: Point, radius: f64) -> bool {
+        let min = self.bbox[0].min(self.bbox[1]);
+        let max = self.bbox[0].max(self.bbox[1]);
+
+        let dimensions = max - min;
+        let ellipse_center = dimensions/2.0 + min;
+        let bigside = dimensions.x.max(dimensions.y);
+        let smallside = dimensions.x.min(dimensions.y);
+
+        let d = (bigside.powi(2) - smallside.powi(2)).sqrt() / 2.0;
+        let (center1, center2) = if dimensions.x > dimensions.y {
+            (ellipse_center + Point::new(d, 0.0), ellipse_center + Point::new(-d, 0.0))
+        } else {
+            (ellipse_center + Point::new(0.0, d), ellipse_center + Point::new(0.0, -d))
+        };
+
+        dbg!((center1, center2));
+
+        let ellipse_sum_of_distances = bigside;
+        dbg!(ellipse_sum_of_distances);
+        let sum_of_distances = center1.distance(center) + center2.distance(center);
+        dbg!(sum_of_distances);
+
+        sum_of_distances <= ellipse_sum_of_distances + 2.0*radius &&
+        sum_of_distances >= ellipse_sum_of_distances - 2.0*radius
     }
 
     fn color(&self) -> Color {
@@ -84,64 +99,19 @@ mod tests {
     use crate::shape::ShapeTrait;
 
     #[test]
-    fn test_bbox() {
-        let shape1 = Ellipse::from_corners([Point::new(-1.0, -2.0), Point::new(5.0, 2.0)]);
-        let shape2 = Ellipse::from_corners([Point::new(-1.0, 2.0), Point::new(5.0, -2.0)]);
+    fn test_intersects_circle() {
+        let ellipse = Ellipse::from_corners([Point::new(0.0, 0.0), Point::new(150.0, 100.0)]);
 
-        assert_eq!(shape1.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
-        assert_eq!(shape2.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
-    }
-
-    #[test]
-    fn test_bbox_extended() {
-        let rectangles = vec![
-            Ellipse::from_corners([Point::new(15.0, -48.0), Point::new(37.0, -27.0)]),
-            Ellipse::from_corners([Point::new(15.0, -27.0), Point::new(37.0, -48.0)]),
-            Ellipse::from_corners([Point::new(37.0, -48.0), Point::new(15.0, -27.0)]),
-            Ellipse::from_corners([Point::new(37.0, -27.0), Point::new(15.0, -48.0)]),
+        let cases = [
+            ((126.0, 6.0), true),
+            ((5.0, 18.0), true),
+            ((9.0, 72.0), true),
+            ((25.0, 40.0), false),
+            ((134.0, 84.0), false),
         ];
 
-        for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [[15.0, -48.0], [37.0, -27.0]]);
+        for (coords, output) in cases.iter().map(|t| *t) {
+            assert!(ellipse.intersects_circle(dbg!(Point::from(coords)) + Point::new(8.0, 8.0), 8.0) == dbg!(output));
         }
-
-        let rectangles = vec![
-            Ellipse::from_corners([Point::new(15.0, -24.0), Point::new(60.0, 6.0)]),
-            Ellipse::from_corners([Point::new(15.0, 6.0), Point::new(60.0, -24.0)]),
-            Ellipse::from_corners([Point::new(60.0, -24.0), Point::new(15.0, 6.0)]),
-            Ellipse::from_corners([Point::new(60.0, 6.0), Point::new(15.0, -24.0)]),
-        ];
-
-        for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [[15.0, -24.0], [60.0, 6.0]]);
-        }
-
-        let rectangles = vec![
-            Ellipse::from_corners([Point::new(-8.0, -32.0), Point::new(16.0, 0.0)]),
-            Ellipse::from_corners([Point::new(-8.0, 0.0), Point::new(16.0, -32.0)]),
-            Ellipse::from_corners([Point::new(16.0, -32.0), Point::new(-8.0, 0.0)]),
-            Ellipse::from_corners([Point::new(16.0, 0.0), Point::new(-8.0, -32.0)]),
-        ];
-
-        for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [[-8.0, -32.0], [16.0, 0.0]]);
-        }
-
-        let rectangles = vec![
-            Ellipse::from_corners([Point::new(48.0, -19.0), Point::new(78.0, 22.0)]),
-            Ellipse::from_corners([Point::new(48.0, 22.0), Point::new(78.0, -19.0)]),
-            Ellipse::from_corners([Point::new(78.0, -19.0), Point::new(48.0, 22.0)]),
-            Ellipse::from_corners([Point::new(78.0, 22.0), Point::new(48.0, -19.0)]),
-        ];
-
-        for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [[48.0, -19.0], [78.0, 22.0]]);
-        }
-    }
-
-    #[test]
-    #[ignore]
-    fn test_intersects() {
-        assert!(false, "intersects is implemented");
     }
 }

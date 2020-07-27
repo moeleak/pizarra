@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="70" height="60" viewBox="-35 -30 70 60" version="1.1">
+  <g id="storage">
+    <rect x="-35" y="-30" width="70" height="60" style="fill:#303633;fill-opacity:1;stroke:none;" />
+    <ellipse cx="0" cy="0" rx="15" ry="10" style="fill:none;stroke-width:3.5;stroke:#FF0000;stroke-opacity:1;stroke-miterlimit:10" />
+  </g>
+</svg>

@@ -2,12 +2,14 @@ use std::fmt;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use xml::reader::{EventReader, XmlEvent, Error as XmlError};
+use xml::{
+    attribute::OwnedAttribute, reader::{EventReader, XmlEvent, Error as XmlError}
+};
 use regex::Regex;
 use lazy_static::lazy_static;
 
 use crate::storage::Storage;
-use crate::shape::Line;
+use crate::shape::{ShapeTrait, Line, Ellipse};
 use crate::color::Color;
 use crate::consts::DEFAULT_THICKNESS;
 use crate::point::Point;
@@ -39,6 +41,7 @@ pub enum Error {
     ColorDoesntMatchRegex,
     ParseFloatError(std::num::ParseFloatError),
     PointDoesntMatchRegex,
+    MissingAttribute(String),
 }
 
 impl From<XmlError> for Error {
@@ -134,6 +137,26 @@ impl Line {
     }
 }
 
+trait Deserialize {
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeTrait>, Error>;
+}
+
+impl Deserialize for Line {
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeTrait>, Error> {
+        let styleattr = attributes.iter().find(|a| a.name.local_name == "style").ok_or(Error::MissingAttribute("style".into()))?;
+
+        let dattr = attributes.iter().find(|a| a.name.local_name == "d").ok_or(Error::MissingAttribute("d".into()))?;
+
+        Ok(Box::new(Line::from_xml_attributes(&styleattr.value, &dattr.value)?))
+    }
+}
+
+impl Deserialize for Ellipse {
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeTrait>, Error> {
+        unimplemented!()
+    }
+}
+
 impl Storage {
     pub fn from_svg(svg: &str) -> Result<Storage, Error> {
         let parser = EventReader::from_str(svg);
@@ -142,12 +165,10 @@ impl Storage {
         for e in parser {
             match e {
                 Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
-                    if let Some(styleattr) = attributes.iter().find(|a| a.name.local_name == "style") {
-                        if let Some(dattr) = attributes.iter().find(|a| a.name.local_name == "d") {
-                            storage.add(Box::new(Line::from_xml_attributes(&styleattr.value, &dattr.value)?));
-                        }
-                    } else {
-                    }
+                    storage.add(Line::deserialize(attributes)?);
+                }
+                Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
+                    storage.add(Ellipse::deserialize(attributes)?);
                 }
                 Err(e) => {
                     return Err(e.into());
@@ -182,6 +203,22 @@ mod tests {
     #[test]
     fn test_from_custom_svg() {
         let svg_data = include_str!("../res/serialize_test.svg");
+        let storage = Storage::from_svg(svg_data).unwrap();
+
+        assert_eq!(storage.shape_count(), 1);
+    }
+
+    #[test]
+    fn test_can_deserialize_circle() {
+        let svg_data = include_str!("../res/circle.svg");
+        let storage = Storage::from_svg(svg_data).unwrap();
+
+        assert_eq!(storage.shape_count(), 1);
+    }
+
+    #[test]
+    fn test_can_deserialize_ellipse() {
+        let svg_data = include_str!("../res/ellipse.svg");
         let storage = Storage::from_svg(svg_data).unwrap();
 
         assert_eq!(storage.shape_count(), 1);

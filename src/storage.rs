@@ -294,7 +294,7 @@ mod tests {
         let shapes: Vec<Box<dyn ShapeTrait>> = vec![
             Box::new(Line::new(Color::red(), Point::new(0.0, 0.0), 1.0)),
             Box::new(Rectangle::new(Color::green(), Point::new(0.0, 0.0), 1.0)),
-            Box::new(Ellipse::new(Color::blue(), Point::new(0.0, 0.0))),
+            Box::new(Ellipse::new(Color::blue(), Point::new(0.0, 0.0), 1.0)),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|shape| {
             storage.add(shape)
@@ -333,7 +333,7 @@ mod tests {
         last_shape.handle_mouse_moved(Point::new(0.0, 0.0));
         last_shape.handle_mouse_moved(Point::new(1.0, 0.0));
 
-        storage.add(Box::new(Ellipse::new(Color::blue(), Point::new(0.0, 0.0))));
+        storage.add(Box::new(Ellipse::new(Color::blue(), Point::new(0.0, 0.0), 1.0)));
 
         let last_shape = storage.last_mut().unwrap();
 

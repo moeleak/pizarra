@@ -4,18 +4,18 @@ use crate::point::Point;
 
 mod line;
 mod rectangle;
-mod ellipse;
 mod polygon;
 mod circle;
+mod ellipse;
 
 use super::color::Color;
 pub use crate::draw_commands::DrawCommand;
 
 pub use self::line::Line;
 pub use self::rectangle::Rectangle;
-pub use self::ellipse::Ellipse;
 pub use self::polygon::Polygon;
 pub use self::circle::Circle;
+pub use self::ellipse::Ellipse;
 
 /// Shapes handle input from the user, and they're responsible of notifying when
 /// they're finished, for example in the case of a polygon
@@ -30,8 +30,8 @@ pub enum ShapeType {
     Line,
     Polygon,
     Rectangle,
-    Ellipse,
     Circle,
+    Ellipse,
 }
 
 impl ShapeType {
@@ -39,9 +39,9 @@ impl ShapeType {
         match *self {
             ShapeType::Line => Box::new(Line::new(color, initial, stroke)),
             ShapeType::Rectangle => Box::new(Rectangle::new(color, initial, stroke)),
-            ShapeType::Ellipse => Box::new(Ellipse::new(color, initial)),
             ShapeType::Polygon => Box::new(Polygon::new(color, initial, stroke)),
             ShapeType::Circle => Box::new(Circle::new(color, initial, stroke)),
+            ShapeType::Ellipse => Box::new(Ellipse::new(color, initial, stroke)),
         }
     }
 }
