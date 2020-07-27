@@ -104,17 +104,21 @@ impl FromStr for Point {
     }
 }
 
+fn css_attrs_as_hashmap(attrs: &str) -> HashMap<&str, &str> {
+    attrs.split(';').filter_map(|s| {
+        let pieces: Vec<_> = s.split(':').collect();
+
+        if pieces.len() != 2 {
+            return None
+        }
+
+        Some((pieces[0].trim(), pieces[1].trim()))
+    }).collect()
+}
+
 impl Line {
     pub fn from_xml_attributes(style: &str, path: &str) -> Result<Line, Error> {
-        let attrs: HashMap<_, _> = style.split(';').filter_map(|s| {
-            let pieces: Vec<_> = s.split(':').collect();
-
-            if pieces.len() != 2 {
-                return None
-            }
-
-            Some((pieces[0].trim(), pieces[1].trim()))
-        }).collect();
+        let attrs = css_attrs_as_hashmap(style);
 
         let color = if let Some(color_str) = attrs.get("stroke") {
                 color_str.parse()?
@@ -137,6 +141,29 @@ impl Line {
     }
 }
 
+impl Ellipse {
+    pub fn from_xml_attributes(cx: &str, cy: &str, rx: &str, ry: &str, style: &str) -> Result<Ellipse, Error> {
+        let attrs = css_attrs_as_hashmap(style);
+
+        let color = if let Some(color_str) = attrs.get("stroke") {
+                color_str.parse()?
+            } else {
+                Color::white()
+            };
+
+        let thickness = if let Some(thickness_str) = attrs.get("stroke-width") {
+                thickness_str.parse()?
+            } else {
+                DEFAULT_THICKNESS
+            };
+
+        let center = Point::new(cx.parse()?, cy.parse()?);
+        let radius = Point::new(rx.parse()?, ry.parse()?).abs();
+
+        Ok(Ellipse::with_params([center-radius, center + radius], color, thickness))
+    }
+}
+
 trait Deserialize {
     fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeTrait>, Error>;
 }
@@ -144,7 +171,6 @@ trait Deserialize {
 impl Deserialize for Line {
     fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeTrait>, Error> {
         let styleattr = attributes.iter().find(|a| a.name.local_name == "style").ok_or(Error::MissingAttribute("style".into()))?;
-
         let dattr = attributes.iter().find(|a| a.name.local_name == "d").ok_or(Error::MissingAttribute("d".into()))?;
 
         Ok(Box::new(Line::from_xml_attributes(&styleattr.value, &dattr.value)?))
@@ -153,7 +179,13 @@ impl Deserialize for Line {
 
 impl Deserialize for Ellipse {
     fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeTrait>, Error> {
-        unimplemented!()
+        let cx = attributes.iter().find(|a| a.name.local_name == "cx").ok_or(Error::MissingAttribute("style".into()))?;
+        let cy = attributes.iter().find(|a| a.name.local_name == "cy").ok_or(Error::MissingAttribute("style".into()))?;
+        let rx = attributes.iter().find(|a| a.name.local_name == "rx").ok_or(Error::MissingAttribute("style".into()))?;
+        let ry = attributes.iter().find(|a| a.name.local_name == "ry").ok_or(Error::MissingAttribute("style".into()))?;
+        let styleattr = attributes.iter().find(|a| a.name.local_name == "style").ok_or(Error::MissingAttribute("style".into()))?;
+
+        Ok(Box::new(Ellipse::from_xml_attributes(&cx.value, &cy.value, &rx.value, &ry.value, &styleattr.value)?))
     }
 }
 

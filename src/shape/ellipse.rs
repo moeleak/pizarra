@@ -6,25 +6,31 @@ use crate::ShapeType;
 
 pub struct Ellipse {
     bbox: [Point; 2],
-    stroke: f64,
+    thickness: f64,
     color: Color,
 }
 
 impl Ellipse {
-    pub fn new(color: Color, initial: Point, stroke: f64) -> Ellipse {
+    pub fn new(color: Color, initial: Point, thickness: f64) -> Ellipse {
         Ellipse {
             bbox: [initial; 2],
-            stroke,
+            thickness,
             color,
         }
     }
 
-    /// Only used for testing
+    #[cfg(test)]
     pub fn from_corners([corner_1, corner_2]: [Point; 2]) -> Ellipse {
         Ellipse {
             bbox: [corner_1, corner_2],
-            stroke: 4.0,
+            thickness: 4.0,
             color: Color::green(),
+        }
+    }
+
+    pub fn with_params(bbox: [Point; 2], color: Color, thickness: f64) -> Ellipse {
+        Ellipse {
+            bbox, color, thickness,
         }
     }
 }
@@ -43,7 +49,7 @@ impl ShapeTrait for Ellipse {
 
     fn draw_commands(&self) -> DrawCommand {
         DrawCommand::Ellipse {
-            thickness: self.stroke,
+            thickness: self.thickness,
             color: self.color,
             bbox: self.bbox,
         }
@@ -76,12 +82,8 @@ impl ShapeTrait for Ellipse {
             (ellipse_center + Point::new(0.0, d), ellipse_center + Point::new(0.0, -d))
         };
 
-        dbg!((center1, center2));
-
         let ellipse_sum_of_distances = bigside;
-        dbg!(ellipse_sum_of_distances);
         let sum_of_distances = center1.distance(center) + center2.distance(center);
-        dbg!(sum_of_distances);
 
         sum_of_distances <= ellipse_sum_of_distances + 2.0*radius &&
         sum_of_distances >= ellipse_sum_of_distances - 2.0*radius
@@ -111,7 +113,7 @@ mod tests {
         ];
 
         for (coords, output) in cases.iter().map(|t| *t) {
-            assert!(ellipse.intersects_circle(dbg!(Point::from(coords)) + Point::new(8.0, 8.0), 8.0) == dbg!(output));
+            assert!(ellipse.intersects_circle(Point::from(coords) + Point::new(8.0, 8.0), 8.0) == output);
         }
     }
 }

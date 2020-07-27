@@ -606,7 +606,7 @@ mod tests {
 
     use super::{App, MouseButton};
     use crate::{
-        draw_commands::DrawCommand, point::Point, color::Color, app::SelectedTool,
+        draw_commands::DrawCommand, point::Point, app::SelectedTool,
         shape::ShapeType, consts::DEFAULT_THICKNESS,
     };
 
@@ -652,18 +652,6 @@ mod tests {
             line: Rc::new(vec![Point::new(-20.0, -15.0), Point::new(-19.5, -15.0), Point::new(-19.0, -15.0)]),
             thickness: DEFAULT_THICKNESS/2.0,
         });
-    }
-
-    #[test]
-    #[ignore]
-    fn test_draw_a_rectangle() {
-        assert!(false);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_draw_an_ellipse() {
-        assert!(false);
     }
 
     #[test]
