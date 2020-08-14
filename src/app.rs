@@ -137,7 +137,7 @@ impl App {
         };
     }
 
-    fn handle_tool_button_pressed(&mut self, point: Point) {
+    fn handle_tool_button_pressed(&mut self, point: Point) -> ShouldRedraw {
         let transformed_point = self.to_storage_coordinates(point);
 
         match self.selected_tool {
@@ -149,10 +149,15 @@ impl App {
 
                     self.storage.add(new_shape);
                 }
+
+                ShouldRedraw::Yes
             },
             SelectedTool::Eraser => {
                 if let Some(shape) = self.storage.query_circle(transformed_point, self.erase_radius / self.scale_factor).map(|id| self.storage.remove(id)).flatten() {
                     self.erased.push(shape);
+                    ShouldRedraw::Yes
+                } else {
+                    ShouldRedraw::No
                 }
             },
         }
@@ -360,21 +365,13 @@ impl App {
     pub fn handle_mouse_button_pressed(&mut self, button: MouseButton, point: Point) -> ShouldRedraw {
         let (new_board_state, should_redraw) = match self.board_state {
             current@BoardState::Idle => match button {
-                MouseButton::Left => {
-                    self.handle_tool_button_pressed(point);
-
-                    (BoardState::UsingTool, ShouldRedraw::Yes)
-                },
+                MouseButton::Left => (BoardState::UsingTool, self.handle_tool_button_pressed(point)),
                 MouseButton::Middle => (BoardState::Moving(point), ShouldRedraw::No),
                 MouseButton::Right => (current, ShouldRedraw::No),
                 MouseButton::Unknown => (current, ShouldRedraw::No),
             },
             current@BoardState::UsingTool => match button {
-                MouseButton::Left => {
-                    self.handle_tool_button_pressed(point);
-
-                    (current, ShouldRedraw::Yes)
-                },
+                MouseButton::Left => (current, self.handle_tool_button_pressed(point)),
                 MouseButton::Middle => (BoardState::MovingWhileUsingTool(point), ShouldRedraw::No),
                 MouseButton::Right => (current, ShouldRedraw::No),
                 MouseButton::Unknown => (current, ShouldRedraw::No),
