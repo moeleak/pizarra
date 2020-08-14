@@ -144,4 +144,17 @@ mod tests {
             thickness: 4.0,
         });
     }
+
+    #[test]
+    fn can_delete_single_point_polygons() {
+        let mut poly = Polygon::new(Default::default(), Point::new(0.0, 0.0), 4.0);
+
+        poly.handle_button_released(Point::new(0.0, 0.0));
+
+        if let ShapeFinished::No = poly.handle_button_released(Point::new(0.0, 0.0)) {
+            panic!("Unfinished shape");
+        }
+
+        assert!(poly.intersects_circle(Point::new(0.0, 0.0), 10.0));
+    }
 }

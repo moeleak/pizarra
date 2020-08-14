@@ -29,6 +29,12 @@ pub fn bbox_from_points<I>(points: I) -> [[f64; 2]; 2]
 
 pub fn project(point: Point, [a, b]: [Point; 2]) -> Point {
     // https://en.wikibooks.org/wiki/Linear_Algebra/Orthogonal_Projection_Onto_a_Line
+
+    // If the two points that define the segment are equal they the projection is any of them
+    if a == b {
+        return a;
+    }
+
     let v = point - a;
     let s = b - a;
 
@@ -57,5 +63,10 @@ mod tests {
     #[test]
     fn test_segment_intersects_circle() {
         assert!(segment_intersects_circle([Point::new(0.0, 0.0), Point::new(100.0, 0.0)], Point::new(50.0, 9.0), 10.0));
+    }
+
+    #[test]
+    fn test_single_point_segment_intersects_circle() {
+        assert!(segment_intersects_circle([Point::new(0.0, 0.0), Point::new(0.0, 0.0)], Point::new(0.0, 0.0), 10.0));
     }
 }
