@@ -18,6 +18,18 @@ Para el código de una aplicación que puedes ejecutar en tu escritorio visita
 * exportado en formato png
 * integración con tableta digitalizadora
 
+## Desarrollo
+
+Naturalmente, necesitas [rust](https://rust-lang.org)
+
+Corre los tests:
+
+    cargo test
+
+Publica una nueva versión en [crates.io](https://crates.io)
+
+    cargo publish
+
 ---------------------------
 1. Ok, no es tan infinito. El espacio de dibujo guarda coordenadas en números
 flotantes, entonces está sujeto a sus límites. El zoom está sujeto a los límites
