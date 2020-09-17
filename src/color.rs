@@ -9,6 +9,26 @@ pub struct Color {
 }
 
 impl Color {
+    /// Creates a color from its integer rgb codes
+    pub fn from_int_rgb(r: u8, g: u8, b: u8) -> Color {
+        Color {
+            r: r as f64 / 255.0,
+            g: g as f64 / 255.0,
+            b: b as f64 / 255.0,
+            a: 0.0,
+        }
+    }
+
+    /// Creates a color from its integer rgba codes
+    pub fn from_int_rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
+        Color {
+            r: r as f64 / 255.0,
+            g: g as f64 / 255.0,
+            b: b as f64 / 255.0,
+            a: a as f64 / 255.0,
+        }
+    }
+
     /// Creates an opaque color from rgb
     pub fn from_rgb(r: f64, g: f64, b: f64) -> Color {
         Color {
