@@ -217,7 +217,7 @@ impl FromStr for Color {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(c) = CSS_COLORS.get(s) {
+        if let Some(c) = CSS_COLORS.get(&s.to_lowercase()) {
             Ok(c.clone())
         } else {
             if let Some(captures) = COLOR_REGEX.captures(s) {
@@ -273,7 +273,11 @@ impl Line {
         let attrs = css_attrs_as_hashmap(style);
 
         let color = if let Some(color_str) = attrs.get("stroke") {
-                color_str.parse()?
+                if let Ok(c) = color_str.parse() {
+                    c
+                } else {
+                    Color::white()
+                }
             } else {
                 Color::white()
             };
