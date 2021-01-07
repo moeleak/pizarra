@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::f64;
-use std::cell::RefCell;
 
 use rstar::{RTree, RTreeObject, AABB, SelectionFunction, Envelope};
 
@@ -72,17 +71,6 @@ impl SelectionFunction<Shape> for CenterAndRadiusSelection {
     }
 }
 
-struct DrawCommandCache {
-    commands: Vec<DrawCommand>,
-    bbox: [Point; 2],
-}
-
-impl DrawCommandCache {
-    fn add(&mut self, command: DrawCommand) {
-        self.commands.push(command);
-    }
-}
-
 /// This struct handles storage and fast retrieval of shapes.
 pub struct Storage {
     ids: HashMap<ShapeId, AABB<[f64; 2]>>,
@@ -90,7 +78,6 @@ pub struct Storage {
     current: Option<Shape>,
     next_id: ShapeId,
     next_z_index: usize,
-    cache: RefCell<Option<DrawCommandCache>>,
 }
 
 /// A storage struct that organizes shapes by their zoom level and allows for
@@ -103,7 +90,6 @@ impl Storage {
             current: None,
             next_id: ShapeId::from(1),
             next_z_index: 1,
-            cache: RefCell::new(None),
         }
     }
 
@@ -138,9 +124,6 @@ impl Storage {
         self.ids.insert(shape_id, shape.envelope());
         self.shapes.insert(shape);
 
-        // Invalidate cache
-        self.cache.swap(&RefCell::new(None));
-
         shape_id
     }
 
@@ -151,14 +134,9 @@ impl Storage {
 
         if let Some(old_shape) = old_current {
             let old_id = old_shape.id();
-            let draw_command = old_shape.draw_commands();
 
             self.ids.insert(old_id, old_shape.envelope());
             self.shapes.insert(old_shape);
-
-            if let Some(cache) = self.cache.borrow_mut().as_mut() {
-                cache.add(draw_command);
-            }
 
             Some(old_id)
         } else {
@@ -170,9 +148,6 @@ impl Storage {
     pub fn remove(&mut self, id: ShapeId) -> Option<Shape> {
         if let Some(bbox) = self.ids.get(&id) {
             let maybe_shape = self.shapes.remove_with_selection_function(BBoxIdSelection::new(*bbox, id));
-
-            // Invalidate cache
-            self.cache.swap(&RefCell::new(None));
 
             maybe_shape
         } else {
@@ -215,27 +190,13 @@ impl Storage {
     /// indicated by bbox. Commands are cached to improve the performance of
     /// continuously drawing on the same portion of the screen
     pub fn draw_commands(&self, bbox: [Point; 2]) -> Vec<DrawCommand> {
-        let mut borrow = self.cache.borrow_mut();
+        self.query_commands(bbox)
+    }
 
-        let mut commands = match borrow.as_ref() {
-            Some(cache) if cache.bbox == bbox => {
-                cache.commands.clone()
-            },
-            _ => {
-                borrow.replace(DrawCommandCache {
-                    commands: self.query_commands(bbox),
-                    bbox,
-                });
-
-                borrow.as_ref().unwrap().commands.clone()
-            }
-        };
-
-        if let Some(shape) = self.current.as_ref() {
-            commands.push(shape.draw_commands());
-        }
-
-        commands
+    /// Returns the draw commands corresponding to the shape being edited, if
+    /// any
+    pub fn draw_commands_for_current_shape(&self) -> Option<DrawCommand> {
+        self.current.as_ref().map(|s| s.draw_commands())
     }
 
     /// Gets the bounding box that surrounds every shape drawn or returns None
@@ -433,27 +394,15 @@ mod tests {
 
         storage.last_mut().unwrap().handle_mouse_moved(Point::new(1.0, 0.0));
 
-        assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Line {
-            color: Color::green(),
-            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0)]),
-            thickness: 4.0,
-        }]);
+        assert_eq!(storage.draw_commands(bbox), vec![]);
 
         storage.last_mut().unwrap().handle_mouse_moved(Point::new(2.0, 0.0));
 
-        assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Line {
-            color: Color::green(),
-            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0), Point::new(2.0, 0.0)]),
-            thickness: 4.0,
-        }]);
+        assert_eq!(storage.draw_commands(bbox), vec![]);
 
         storage.last_mut().unwrap().handle_button_released(Point::new(3.0, 0.0));
 
-        assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Line {
-            color: Color::green(),
-            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0), Point::new(2.0, 0.0), Point::new(3.0, 0.0)]),
-            thickness: 4.0,
-        }]);
+        assert_eq!(storage.draw_commands(bbox), vec![]);
 
         storage.flush();
 
@@ -567,7 +516,7 @@ mod tests {
 
         let buffer = storage.draw_commands([Point::new(-2.0, -2.0), Point::new(4.0, 4.0)]);
 
-        assert_eq!(buffer.len(), 2);
+        assert_eq!(buffer.len(), 1);
 
         assert!(buffer.contains(&DrawCommand::Line{
             thickness: 4.0,
@@ -578,17 +527,6 @@ mod tests {
                 Point::new(3.0, 3.0),
                 Point::new(3.0, 1.0),
                 Point::new(1.0, 1.0),
-            ]),
-        }));
-        assert!(buffer.contains(&DrawCommand::Line{
-            thickness: 4.0,
-            color: Color::green(),
-            line: Rc::new(vec![
-                Point::new(-1.0, -1.0),
-                Point::new(-1.0, 1.0),
-                Point::new(1.0, 1.0),
-                Point::new(1.0, -1.0),
-                Point::new(-1.0, -1.0),
             ]),
         }));
     }

@@ -340,6 +340,10 @@ impl App {
         self.storage.draw_commands(bbox)
     }
 
+    pub fn draw_commands_for_current_shape(&self) -> Option<DrawCommand> {
+        self.storage.draw_commands_for_current_shape()
+    }
+
     /// p is a point in the coordinate space of the shape storage, and this function
     /// translates it to drawing area's coordinate system.
     pub fn to_screen_coordinates(&self, p: Point) -> Point {
