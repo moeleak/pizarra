@@ -421,6 +421,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_from_graph_viz_svg() {
         let svg_data = include_str!("../res/graphviz_datastruct.svg");
         let storage = Storage::from_svg(svg_data).unwrap();

@@ -39,8 +39,12 @@ enum BoardState {
 
 /// Indicates wether or not an action should trigger redraw of the canvas
 pub enum ShouldRedraw {
-    /// Something has changed and we should redraw
-    Yes,
+    /// The change was so big that it is worth repainting the whole visible
+    /// screen
+    All,
+
+    /// Only the last shape changed, no need to repaint the whole screen
+    Shape,
 
     /// Nothing has changed, don't queue a draw event
     No,
@@ -106,12 +110,6 @@ impl App {
         p / self.scale_factor + self.offset
     }
 
-    /// This function is in charge of changing the position of the canvas with respect to the
-    /// window.
-    fn handle_offset(&mut self, delta: Point) {
-        self.offset -= delta / self.scale_factor;
-    }
-
     fn conclude_action(&mut self, action: Action) {
         // this means some undos have been applied. Doing something from here
         // means effectively dropping some actions such that we're again in the
@@ -150,12 +148,18 @@ impl App {
                     self.storage.add(new_shape);
                 }
 
-                ShouldRedraw::Yes
+                ShouldRedraw::Shape
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.query_circle(transformed_point, self.erase_radius / self.scale_factor).map(|id| self.storage.remove(id)).flatten() {
+                let deleted_shape = self.storage
+                    .query_circle(transformed_point, self.erase_radius / self.scale_factor)
+                    .map(|id| self.storage.remove(id))
+                    .flatten();
+
+                if let Some(shape) = deleted_shape {
                     self.erased.push(shape);
-                    ShouldRedraw::Yes
+
+                    ShouldRedraw::All
                 } else {
                     ShouldRedraw::No
                 }
@@ -185,7 +189,12 @@ impl App {
                 }
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.query_circle(transformed_point, self.erase_radius / self.scale_factor).map(|id| self.storage.remove(id)).flatten() {
+                let deleted_shape = self.storage
+                    .query_circle(transformed_point, self.erase_radius / self.scale_factor)
+                    .map(|id| self.storage.remove(id))
+                    .flatten();
+
+                if let Some(shape) = deleted_shape {
                     self.erased.push(shape);
                 }
 
@@ -205,15 +214,20 @@ impl App {
             SelectedTool::Shape(_shape_type) => {
                 if let Some(shape) = self.storage.last_mut() {
                     shape.handle_mouse_moved(transformed_point);
-                    ShouldRedraw::Yes
+                    ShouldRedraw::Shape
                 } else {
                     ShouldRedraw::No
                 }
             },
             SelectedTool::Eraser => {
-                if let Some(shape) = self.storage.query_circle(transformed_point, self.erase_radius / self.scale_factor).map(|id| self.storage.remove(id)).flatten() {
+                let deleted_shape = self.storage
+                    .query_circle(transformed_point, self.erase_radius / self.scale_factor)
+                    .map(|id| self.storage.remove(id))
+                    .flatten();
+
+                if let Some(shape) = deleted_shape {
                     self.erased.push(shape);
-                    ShouldRedraw::Yes
+                    ShouldRedraw::All
                 } else {
                     ShouldRedraw::No
                 }
@@ -332,6 +346,11 @@ impl App {
         (p - self.offset) * self.scale_factor
     }
 
+    /// Move the canvas by this offset
+    pub fn handle_offset(&mut self, delta: Point) {
+        self.offset -= delta / self.scale_factor;
+    }
+
     /// Notify the application that the screen size has changed
     pub fn resize(&mut self, new_size: Point) {
         let delta = (self.dimensions * -1.0 + new_size) * 0.5;
@@ -392,11 +411,11 @@ impl App {
             current@BoardState::Idle => (current, ShouldRedraw::No),
             current@BoardState::UsingTool => match button {
                 MouseButton::Left => match self.handle_tool_button_released(point) {
-                    Action::Unfinished => (current, ShouldRedraw::Yes),
+                    Action::Unfinished => (current, ShouldRedraw::Shape),
                     Action::Empty => (BoardState::Idle, ShouldRedraw::No),
                     x => {
                         self.conclude_action(x);
-                        (BoardState::Idle, ShouldRedraw::Yes)
+                        (BoardState::Idle, ShouldRedraw::All)
                     }
                 },
                 MouseButton::Middle => (current, ShouldRedraw::No),
@@ -408,7 +427,7 @@ impl App {
                 MouseButton::Middle => {
                     self.handle_offset(point - old_point);
 
-                    (BoardState::Idle, ShouldRedraw::Yes)
+                    (BoardState::Idle, ShouldRedraw::All)
                 },
                 MouseButton::Right => (BoardState::Moving(old_point), ShouldRedraw::No),
                 MouseButton::Unknown => (BoardState::Moving(old_point), ShouldRedraw::No),
@@ -416,18 +435,18 @@ impl App {
             // TODO check if https://github.com/rust-lang/rust/issues/65490 is resolved
             BoardState::MovingWhileUsingTool(old_point) => match button {
                 MouseButton::Left => match self.handle_tool_button_released(point) {
-                        Action::Unfinished => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::Yes),
-                        Action::Empty => (BoardState::Moving(point), ShouldRedraw::Yes),
+                        Action::Unfinished => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::All),
+                        Action::Empty => (BoardState::Moving(point), ShouldRedraw::All),
                         x => {
                             self.conclude_action(x);
 
-                            (BoardState::Moving(point), ShouldRedraw::Yes)
+                            (BoardState::Moving(point), ShouldRedraw::All)
                         }
                 },
                 MouseButton::Middle => {
                     self.handle_offset(point - old_point);
 
-                    (BoardState::UsingTool, ShouldRedraw::Yes)
+                    (BoardState::UsingTool, ShouldRedraw::All)
                 },
                 MouseButton::Right => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::No),
                 MouseButton::Unknown => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::No),
@@ -447,12 +466,12 @@ impl App {
             BoardState::Moving(old_point) => {
                 self.handle_offset(pos - old_point);
 
-                (BoardState::Moving(pos), ShouldRedraw::Yes)
+                (BoardState::Moving(pos), ShouldRedraw::All)
             },
             BoardState::MovingWhileUsingTool(old_point) => {
                 self.handle_offset(pos - old_point);
 
-                (BoardState::MovingWhileUsingTool(pos), ShouldRedraw::Yes)
+                (BoardState::MovingWhileUsingTool(pos), ShouldRedraw::All)
             },
         };
 
