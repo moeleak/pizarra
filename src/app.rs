@@ -38,6 +38,7 @@ enum BoardState {
 }
 
 /// Indicates wether or not an action should trigger redraw of the canvas
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ShouldRedraw {
     /// The change was so big that it is worth repainting the whole visible
     /// screen
