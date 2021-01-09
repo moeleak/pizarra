@@ -1,4 +1,5 @@
 use std::fmt;
+use std::str::FromStr;
 
 use crate::point::Point;
 
@@ -42,6 +43,21 @@ impl ShapeType {
             ShapeType::Polygon => Box::new(Polygon::new(color, initial, stroke)),
             ShapeType::Circle => Box::new(Circle::new(color, initial, stroke)),
             ShapeType::Ellipse => Box::new(Ellipse::new(color, initial, stroke)),
+        }
+    }
+}
+
+impl FromStr for ShapeType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "line" => Ok(ShapeType::Line),
+            "polygon" => Ok(ShapeType::Polygon),
+            "rectangle" => Ok(ShapeType::Rectangle),
+            "circle" => Ok(ShapeType::Circle),
+            "ellipse" => Ok(ShapeType::Ellipse),
+            _ => Err(()),
         }
     }
 }

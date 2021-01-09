@@ -1,5 +1,6 @@
 use std::mem;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::Storage;
@@ -54,6 +55,17 @@ pub enum ShouldRedraw {
 pub enum SelectedTool {
     Shape(ShapeType),
     Eraser,
+}
+
+impl FromStr for SelectedTool {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "eraser" => SelectedTool::Eraser,
+            x => SelectedTool::Shape(x.parse()?),
+        })
+    }
 }
 
 /// Possible statuses of file save
