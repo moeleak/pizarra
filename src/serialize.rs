@@ -27,6 +27,20 @@ impl DrawCommand {
                     .attr("d", &d)).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
             },
+            DrawCommand::Path {
+                color, line, thickness,
+            } => {
+                let d: String = line.iter().map(|p| p.to_string()).collect();
+
+                writer.write(XmlEvent::start_element("path")
+                    .attr("style", &format!(
+                        "fill:none;stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:1;stroke-miterlimit:10;",
+                        stroke = thickness,
+                        color = color.css(),
+                    ))
+                    .attr("d", &d)).unwrap();
+                writer.write(XmlEvent::end_element()).unwrap();
+            },
             DrawCommand::Circle {
                 color, thickness, center, radius,
             } => {

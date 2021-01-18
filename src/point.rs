@@ -1,3 +1,4 @@
+use std::fmt;
 use std::ops::{Mul, Add, Sub, AddAssign, Div, SubAssign};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -15,6 +16,10 @@ impl Point {
 
     pub fn to_a(self) -> [f64; 2] {
         [self.x, self.y]
+    }
+
+    pub fn magnitude(&self) -> f64 {
+        self.distance((0.0, 0.0).into())
     }
 
     pub fn distance(&self, other: Point) -> f64 {
@@ -44,6 +49,10 @@ impl Point {
 
     pub fn dot(self, other: Point) -> f64 {
         self.x*other.x + self.y*other.y
+    }
+
+    pub fn is_nan(&self) -> bool {
+        self.x.is_nan() || self.y.is_nan()
     }
 }
 
@@ -114,6 +123,12 @@ impl From<[f64; 2]> for Point {
 impl From<(f64, f64)> for Point {
     fn from(other: (f64, f64)) -> Point {
         Point::new(other.0, other.1)
+    }
+}
+
+impl fmt::Display for Point {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.x, self.y)
     }
 }
 

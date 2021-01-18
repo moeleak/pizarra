@@ -37,8 +37,7 @@ impl ShapeTrait for Line {
         self.points.push(pos);
     }
 
-    fn handle_button_pressed(&mut self, _pos: Point) {
-    }
+    fn handle_button_pressed(&mut self, _pos: Point) { }
 
     fn handle_button_released(&mut self, pos: Point) -> ShapeFinished {
         self.points.push(pos);
@@ -60,12 +59,12 @@ impl ShapeTrait for Line {
         ], |acc, point| {
             [
                 [
-                    if point.x < acc[0][0] { point.x } else { acc[0][0] },
-                    if point.y < acc[0][1] { point.y } else { acc[0][1] },
+                    point.x.min(acc[0][0]),
+                    point.y.min(acc[0][1]),
                 ],
                 [
-                    if point.x > acc[1][0] { point.x } else { acc[1][0] },
-                    if point.y > acc[1][1] { point.y } else { acc[1][1] },
+                    point.x.max(acc[1][0]),
+                    point.y.max(acc[1][1]),
                 ],
             ]
         });
