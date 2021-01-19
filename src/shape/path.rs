@@ -68,15 +68,20 @@ fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Point) -> (PathC
 
                 let fixed_prev_handle = bis * (c.to - prev).magnitude()/-3.0 + c.to;
                 let new_pt1 = bis * (pos - c.to).magnitude()/3.0 + c.to;
+                let new_pt2 = (pos - c.to) * 2.0/3.0 + c.to;
 
-                (PathCommand::CurveTo(CubicBezierCurve {
-                    pt2: fixed_prev_handle,
-                    ..c
-                }), Some(PathCommand::CurveTo(CubicBezierCurve {
-                    pt1: new_pt1,
-                    pt2: (pos - c.to) * 2.0/3.0 + c.to,
-                    to: pos,
-                })))
+                if fixed_prev_handle.is_nan() || new_pt1.is_nan() || new_pt2.is_nan() {
+                    (last, None)
+                } else {
+                    (PathCommand::CurveTo(CubicBezierCurve {
+                        pt2: fixed_prev_handle,
+                        ..c
+                    }), Some(PathCommand::CurveTo(CubicBezierCurve {
+                        pt1: new_pt1,
+                        pt2: new_pt2,
+                        to: pos,
+                    })))
+                }
             }
         }
     }
@@ -110,6 +115,12 @@ pub struct CubicBezierCurve {
     pub to: Point,
 }
 
+impl CubicBezierCurve {
+    pub fn is_nan(&self) -> bool {
+        self.pt1.is_nan() || self.pt2.is_nan() || self.to.is_nan()
+    }
+}
+
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Sweep {
     Negative,
@@ -123,6 +134,13 @@ pub enum PathCommand {
 }
 
 impl PathCommand {
+    pub fn is_nan(&self) -> bool {
+        match self {
+            PathCommand::MoveTo(p) => p.is_nan(),
+            PathCommand::CurveTo(c) => c.is_nan(),
+        }
+    }
+
     fn min_x(&self) -> f64 {
         match self {
             PathCommand::MoveTo(p) => p.x,
