@@ -34,46 +34,50 @@ fn bisector(A: Point, B: Point, C: Point) -> Point {
 ///
 /// This means that the command at the last position before the operation must
 /// be replaced with the one provided first by this function.
-fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Point) -> (PathCommand, PathCommand) {
+fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Point) -> (PathCommand, Option<PathCommand>) {
     match last {
         PathCommand::MoveTo(p) => {
             // Second point, put pt1 and pt2 at 1/3 and 2/3 of the
             // segment, set `to` to p.
-            let (pt1, pt2) = thirds(p, pos);
+            if p == pos {
+                (last, None)
+            } else {
+                let (pt1, pt2) = thirds(p, pos);
 
-            (last, PathCommand::CurveTo(CubicBezierCurve {
-                pt1,
-                pt2,
-                to: pos,
-            }))
+                (last, Some(PathCommand::CurveTo(CubicBezierCurve {
+                    pt1,
+                    pt2,
+                    to: pos,
+                })))
+            }
         }
         PathCommand::CurveTo(c) => {
-            // calcula la bisectriz entre el punto anteanterior, el
-            // anterior y este. Calcula la perpendicular a esa bisectriz
-            // que pasa por el punto anterior. Pon el manejador de la
-            // curva anterior y el primer manejador de esta curva en esa
-            // recta.
-            //
-            // El Segundo manejador va en el segmento que conecta los
-            // dos últimos puntos
-            let prev = sec.unwrap().point();
-            let bis = bisector(prev, c.to, pos);
+            if c.to == pos {
+                (last, None)
+            } else {
+                // calcula la bisectriz entre el punto anteanterior, el
+                // anterior y este. Calcula la perpendicular a esa bisectriz
+                // que pasa por el punto anterior. Pon el manejador de la
+                // curva anterior y el primer manejador de esta curva en esa
+                // recta.
+                //
+                // El Segundo manejador va en el segmento que conecta los
+                // dos últimos puntos
+                let prev = sec.unwrap().point();
+                let bis = bisector(prev, c.to, pos);
 
-            if bis.is_nan() {
-                dbg!(prev, c.to, pos);
+                let fixed_prev_handle = bis * (c.to - prev).magnitude()/-3.0 + c.to;
+                let new_pt1 = bis * (pos - c.to).magnitude()/3.0 + c.to;
+
+                (PathCommand::CurveTo(CubicBezierCurve {
+                    pt2: fixed_prev_handle,
+                    ..c
+                }), Some(PathCommand::CurveTo(CubicBezierCurve {
+                    pt1: new_pt1,
+                    pt2: (pos - c.to) * 2.0/3.0 + c.to,
+                    to: pos,
+                })))
             }
-
-            let fixed_prev_handle = bis * (c.to - prev).magnitude()/-3.0 + prev;
-            let new_pt1 = bis * (pos - c.to).magnitude()/3.0 + prev;
-
-            (PathCommand::CurveTo(CubicBezierCurve {
-                pt2: fixed_prev_handle,
-                ..c
-            }), PathCommand::CurveTo(CubicBezierCurve {
-                pt1: new_pt1,
-                pt2: (pos - c.to) * 2.0/3.0 + c.to,
-                to: pos,
-            }))
         }
     }
 }
@@ -90,7 +94,10 @@ fn add_point(commands: &mut Vec<PathCommand>, pos: Point) {
     let (last, new) = add_smooth(sub, last, pos);
 
     commands.push(last);
-    commands.push(new);
+
+    if let Some(new) = new {
+        commands.push(new);
+    }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -152,6 +159,20 @@ impl PathCommand {
         match *self {
             PathCommand::MoveTo(p) => p,
             PathCommand::CurveTo(c) => c.to,
+        }
+    }
+
+    pub fn move_to(&self) -> Option<Point> {
+        match self {
+            PathCommand::MoveTo(p) => Some(*p),
+            PathCommand::CurveTo(_) => None,
+        }
+    }
+
+    pub fn curve_to(&self) -> Option<CubicBezierCurve> {
+        match self {
+            PathCommand::MoveTo(_) => None,
+            PathCommand::CurveTo(c) => Some(*c),
         }
     }
 }
@@ -261,8 +282,29 @@ impl ShapeTrait for Path {
 
 #[cfg(test)]
 mod tests {
-    use super::{thirds, bisector};
+    use super::{thirds, bisector, Path, PathCommand, CubicBezierCurve};
     use crate::point::Point;
+    use crate::shape::ShapeTrait;
+    use crate::color::Color;
+    use crate::draw_commands::DrawCommand;
+
+    const ERROR: f64 = 0.001;
+
+    fn is_same_variant(p1: PathCommand, p2: PathCommand) -> bool {
+        use PathCommand::*;
+
+        match (p1, p2) {
+            (MoveTo(_), MoveTo(_)) => true,
+            (CurveTo(_), CurveTo(_)) => true,
+            _ => false,
+        }
+    }
+
+    fn error(c1: CubicBezierCurve, c2: CubicBezierCurve) -> f64 {
+        c1.pt1.distance(c2.pt1)
+            .max(c1.pt2.distance(c2.pt2)
+                 .max(c1.to.distance(c2.to)))
+    }
 
     #[test]
     fn test_thirds() {
@@ -281,5 +323,95 @@ mod tests {
 
         assert!(expected_bisector.x - given_bisector.x.abs() < 0.001);
         assert!(expected_bisector.y - given_bisector.y.abs() < 0.001);
+    }
+
+    #[test]
+    fn test_path() {
+        let mut path = Path::new(Color::default(), Point::new(-0.73504638671875, -107.16925048828125), 3.0);
+
+        path.handle_mouse_moved(Point::new(-0.73504638671875, -107.16925048828125));
+        path.handle_mouse_moved(Point::new(-0.73504638671875, -107.16925048828125));
+        path.handle_mouse_moved(Point::new(-2.35595703125, -107.51025390625));
+        path.handle_mouse_moved(Point::new(-5.59783935546875, -107.73760986328125));
+        path.handle_mouse_moved(Point::new(-9.3028564453125, -107.62393188476563));
+        path.handle_mouse_moved(Point::new(-15.32354736328125, -106.14620971679688));
+        path.handle_mouse_moved(Point::new(-22.73358154296875, -102.84970092773438));
+        path.handle_mouse_moved(Point::new(-31.06988525390625, -98.07546997070313));
+        path.handle_mouse_moved(Point::new(-36.85894775390625, -92.8465576171875));
+        path.handle_mouse_moved(Point::new(-38.71148681640625, -85.23049926757813));
+        path.handle_mouse_moved(Point::new(-34.77490234375, -80.68362426757813));
+        path.handle_mouse_moved(Point::new(-28.52264404296875, -77.15975952148438));
+        path.handle_mouse_moved(Point::new(-17.176025390625, -74.65899658203125));
+        path.handle_mouse_moved(Point::new(-9.534423828125, -74.65899658203125));
+        path.handle_mouse_moved(Point::new(-8.37664794921875, -75.22735595703125));
+        path.handle_button_released(Point::new(-8.37664794921875, -75.22735595703125));
+
+        let commands = path.draw_commands();
+
+        let start = Point::new(-0.73504639,-107.16925);
+        let expected_commands = vec![PathCommand::MoveTo(start)];
+        let relative = vec![
+            (0.0,0.0, -1.07408131,-0.26467, -1.62091061,-0.341),
+            (-1.0728808,-0.14975, -2.1588103,-0.20605, -3.2418824,-0.22736),
+            (-1.2353478,-0.0243, -2.4807853,-0.0534, -3.705017,0.11368),
+            (-2.0474706,0.27951, -4.0654836,0.80882, -6.0206906,1.47772),
+            (-2.557858,0.87508, -4.998962,2.07376, -7.410035,3.29651),
+            (-2.855938,1.44836, -5.743849,2.894518, -8.336303,4.77423),
+            (-2.105172,1.526398, -4.457949,2.995131, -5.789063,5.228912),
+            (-1.337459,2.244428, -2.46721,5.076683, -1.852539,7.616059),
+            (0.471638,1.948469, 2.384362,3.278183, 3.936585,4.546875),
+            (1.852311,1.513966, 4.017614,2.669746, 6.252258,3.523864),
+            (3.617726,1.382755, 7.496401,2.081505, 11.346619,2.500763),
+            (2.532232,0.27574, 5.160421,0.576172, 7.6416012,0.0),
+            (0.4187765,-0.09725, 1.1577759,-0.568359, 1.1577759,-0.568359),
+        ];
+
+        let absolute = relative.into_iter().fold(expected_commands, |mut acc, curr| {
+            let last_coord = match acc.last().unwrap() {
+                PathCommand::MoveTo(p) => *p,
+                PathCommand::CurveTo(c) => c.to,
+            };
+
+            acc.push(PathCommand::CurveTo(CubicBezierCurve {
+                pt1: last_coord + Point::new(curr.0, curr.1),
+                pt2: last_coord + Point::new(curr.2, curr.3),
+                to: last_coord + Point::new(curr.4, curr.5),
+            }));
+
+            acc
+        });
+
+        if let DrawCommand::Path { line, .. } = commands {
+            for (i, (given, wanted)) in line.iter().zip(absolute.iter()).enumerate() {
+                assert!(is_same_variant(*given, *wanted));
+
+                match given {
+                    PathCommand::MoveTo(p) => {
+                        let wanted = wanted.move_to().unwrap();
+                        let error = p.distance(wanted);
+
+                        assert!(
+                            error < ERROR,
+                            "Error: {} | {}. expected: {} wanted: {}",
+                            error, i, p, wanted
+                        )
+                    },
+                    PathCommand::CurveTo(c) => {
+                        let wanted = wanted.curve_to().unwrap();
+                        let err = error(*c, wanted);
+
+                        assert!(
+                            err < ERROR,
+                            "Error: {} | {}. \ng: {:?}\nw: {:?}",
+                            err, i, c, wanted,
+                        );
+                    },
+                }
+            }
+
+            assert_eq!(line.len(), absolute.len());
+        } else {
+            panic!("Didn't return a path");
+        }
     }
 }
