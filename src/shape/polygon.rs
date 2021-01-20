@@ -1,8 +1,6 @@
-use std::rc::Rc;
-
 use crate::color::Color;
 use crate::point::Point;
-use crate::shape::{ShapeTrait, ShapeFinished, ShapeType};
+use crate::shape::{ShapeTrait, ShapeFinished, ShapeType, path::PathCommand};
 use crate::consts::TOUCH_RADIUS;
 use crate::draw_commands::DrawCommand;
 use crate::geom::{bbox_from_points, segment_intersects_circle};
@@ -64,14 +62,18 @@ impl ShapeTrait for Polygon {
     }
 
     fn draw_commands(&self) -> DrawCommand {
-        let mut points: Vec<_> = self.points.iter().map(|p| p.clone()).collect();
+        let mut points_iter = self.points.iter();
+        let mut commands = Vec::with_capacity(self.points.len());
+
+        commands.push(PathCommand::MoveTo(*points_iter.next().unwrap()));
+        commands.extend(points_iter.map(|p| PathCommand::LineTo(*p)));
 
         if let Some(p) = self.tip {
-            points.push(p);
+            commands.push(PathCommand::LineTo(p));
         }
 
-        DrawCommand::Line {
-            line: Rc::new(points),
+        DrawCommand::Path {
+            commands,
             thickness: self.thickness,
             color: self.color,
         }
@@ -104,10 +106,8 @@ impl ShapeTrait for Polygon {
 mod tests {
     use super::Polygon;
 
-    use std::rc::Rc;
-
     use crate::point::Point;
-    use crate::shape::{ShapeTrait, ShapeFinished};
+    use crate::shape::{ShapeTrait, ShapeFinished, path::PathCommand};
     use crate::draw_commands::DrawCommand;
 
     #[test]
@@ -138,9 +138,13 @@ mod tests {
         poly.handle_mouse_moved(Point::new(29.0, 0.0));
         assert_eq!(poly.handle_button_released(Point::new(33.0, 0.0)), ShapeFinished::Yes);
 
-        assert_eq!(poly.draw_commands(), DrawCommand::Line {
+        assert_eq!(poly.draw_commands(), DrawCommand::Path {
             color: Default::default(),
-            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(30.0, 0.0), Point::new(30.0, 0.0)]),
+            commands: vec![
+                PathCommand::MoveTo(Point::new(0.0, 0.0)),
+                PathCommand::LineTo(Point::new(30.0, 0.0)),
+                PathCommand::LineTo(Point::new(30.0, 0.0)),
+            ],
             thickness: 4.0,
         });
     }

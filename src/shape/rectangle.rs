@@ -1,8 +1,6 @@
-use std::rc::Rc;
-
 use crate::point::Point;
 use crate::draw_commands::DrawCommand;
-use super::{ShapeTrait, ShapeFinished};
+use super::{ShapeTrait, ShapeFinished, path::PathCommand};
 use crate::color::Color;
 use crate::ShapeType;
 
@@ -56,10 +54,15 @@ impl ShapeTrait for Rectangle {
     }
 
     fn draw_commands(&self) -> DrawCommand {
-        let data = self.all_four_corners().iter().map(|p| *p).cycle().take(5).collect();
+        let corners = self.all_four_corners();
+        let mut points_iter = corners.iter().cycle().take(5);
+        let mut commands = Vec::with_capacity(4);
 
-        DrawCommand::Line {
-            line: Rc::new(data),
+        commands.push(PathCommand::MoveTo(*points_iter.next().unwrap()));
+        commands.extend(points_iter.map(|p| PathCommand::LineTo(*p)));
+
+        DrawCommand::Path {
+            commands,
             thickness: self.stroke,
             color: self.color,
         }

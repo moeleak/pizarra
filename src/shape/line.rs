@@ -102,29 +102,4 @@ mod tests {
     use crate::shape::ShapeTrait;
     use crate::color::Color;
     use crate::point::Point;
-
-    #[test]
-    fn test_bbox() {
-        let mut line = Line {
-            points: Vec::new(),
-            thickness: 4.0,
-            color: Color::green(),
-        };
-
-        line.handle_mouse_moved(Point::new(1.0, 0.0));
-        line.handle_mouse_moved(Point::new(0.0, 1.0));
-
-        assert_eq!(line.bbox(), [[0.0, 0.0], [1.0, 1.0]]);
-    }
-
-    #[test]
-    fn test_bbox_twisted_line() {
-        let mut line = Line::new(Color::green(), Point::new(-12.0, -1.0), 1.0);
-
-        line.handle_mouse_moved(Point::new(-5.0, 0.0));
-        line.handle_mouse_moved(Point::new(-2.0, 7.0));
-        line.handle_mouse_moved(Point::new(2.0, -8.0));
-
-        assert_eq!(line.bbox(), [[-12.0, -8.0], [2.0, 7.0]]);
-    }
 }

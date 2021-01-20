@@ -240,11 +240,12 @@ impl <'a> Iterator for ShapeIterator<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Rc;
-
     use super::Storage;
 
-    use crate::shape::{ShapeType, ShapeTrait, ShapeId, Line, Rectangle, Ellipse};
+    use crate::shape::{
+        ShapeType, ShapeTrait, ShapeId, Path, Rectangle, Ellipse,
+        path::PathCommand,
+    };
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;
     use crate::point::Point;
@@ -253,7 +254,7 @@ mod tests {
     fn test_add_shapes_at_zoom() {
         let mut storage = Storage::new();
         let shapes: Vec<Box<dyn ShapeTrait>> = vec![
-            Box::new(Line::new(Color::red(), Point::new(0.0, 0.0), 1.0)),
+            Box::new(Path::new(Color::red(), Point::new(0.0, 0.0), 1.0)),
             Box::new(Rectangle::new(Color::green(), Point::new(0.0, 0.0), 1.0)),
             Box::new(Ellipse::new(Color::blue(), Point::new(0.0, 0.0), 1.0)),
         ];
@@ -276,11 +277,11 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Box::new(Line::new(Color::blue(), Point::new(0.0, 0.0), 1.0)));
+        storage.add(Box::new(Path::new(Color::blue(), Point::new(0.0, 0.0), 1.0)));
 
         let last_shape = storage.last_mut().unwrap();
 
-        assert_eq!(last_shape.shape_type(), ShapeType::Line);
+        assert_eq!(last_shape.shape_type(), ShapeType::Path);
 
         last_shape.handle_mouse_moved(Point::new(0.0, 0.0));
         last_shape.handle_mouse_moved(Point::new(1.0, 0.0));
@@ -310,7 +311,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Box::new(Line::new(Color::blue(), Point::new(0.0, 0.0), 1.0)));
+        storage.add(Box::new(Path::new(Color::blue(), Point::new(0.0, 0.0), 1.0)));
 
         assert!(storage.last_mut().is_some());
 
@@ -323,7 +324,7 @@ mod tests {
     fn test_remove_line() {
         let mut storage = Storage::new();
 
-        let mut line = Line::new(Color::green(), Point::new(0.0, -1.0), 1.0);
+        let mut line = Path::new(Color::green(), Point::new(0.0, -1.0), 1.0);
 
         line.handle_mouse_moved(Point::new(0.0, 0.0));
         line.handle_mouse_moved(Point::new(1.0, 0.0));
@@ -345,8 +346,8 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let obj_to_remove = Box::new(Line::new(Color::green(), Point::new(1.0, 1.0), 1.0));
-        let obj_to_interfere = Box::new(Line::new(Color::blue(), Point::new(0.0, 1.0), 1.0));
+        let obj_to_remove = Box::new(Path::new(Color::green(), Point::new(1.0, 1.0), 1.0));
+        let obj_to_interfere = Box::new(Path::new(Color::blue(), Point::new(0.0, 1.0), 1.0));
 
         let id_to_remove = storage.add(obj_to_remove);
         let _id_to_interfere = storage.add(obj_to_interfere);
@@ -368,8 +369,8 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let obj_to_remove = Box::new(Line::new(Color::green(), Point::new(1.0, 1.0), 1.0));
-        let obj_to_interfere = Box::new(Line::new(Color::blue(), Point::new(0.0, 1.0), 1.0));
+        let obj_to_remove = Box::new(Path::new(Color::green(), Point::new(1.0, 1.0), 1.0));
+        let obj_to_interfere = Box::new(Path::new(Color::blue(), Point::new(0.0, 1.0), 1.0));
 
         let _id_to_interfere = storage.add(obj_to_interfere);
         let id_to_remove = storage.add(obj_to_remove);
@@ -390,7 +391,7 @@ mod tests {
         let mut storage = Storage::new();
         let bbox = [Point::new(-40.0, -40.0), Point::new(40.0, 40.0)];
 
-        storage.add(Box::new(Line::new(Color::green(), Point::new(0.0, 0.0), 4.0)));
+        storage.add(Box::new(Path::new(Color::green(), Point::new(0.0, 0.0), 4.0)));
 
         storage.last_mut().unwrap().handle_mouse_moved(Point::new(1.0, 0.0));
 
@@ -406,11 +407,7 @@ mod tests {
 
         storage.flush();
 
-        assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Line {
-            color: Color::green(),
-            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0), Point::new(2.0, 0.0), Point::new(3.0, 0.0)]),
-            thickness: 4.0,
-        }]);
+        assert_eq!(storage.draw_commands(bbox).len(), 1);
     }
 
     #[test]
@@ -418,16 +415,25 @@ mod tests {
         let mut storage = Storage::new();
         let bbox = [Point::new(-40.0, -40.0), Point::new(40.0, 40.0)];
 
-        storage.add(Box::new(Line::with_params(Color::green(), vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0)], 4.0)));
-        storage.add(Box::new(Line::with_params(Color::green(), vec![Point::new(0.0, 1.0), Point::new(1.0, 1.0)], 4.0)));
+        storage.add(Box::new(Path::with_params(Color::green(), vec![
+            PathCommand::MoveTo(Point::new(0.0, 0.0)),
+            PathCommand::LineTo(Point::new(1.0, 0.0)),
+        ], 4.0)));
+        storage.add(Box::new(Path::with_params(Color::green(), vec![
+            PathCommand::MoveTo(Point::new(0.0, 1.0)),
+            PathCommand::LineTo(Point::new(1.0, 1.0)),
+        ], 4.0)));
 
         let id = storage.flush().unwrap();
 
         storage.remove(id);
 
-        assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Line {
+        assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Path {
             color: Color::green(),
-            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(1.0, 0.0)]),
+            commands: vec![
+                PathCommand::MoveTo(Point::new(0.0, 0.0)),
+                PathCommand::LineTo(Point::new(1.0, 0.0)),
+            ],
             thickness: 4.0,
         }]);
     }
@@ -457,44 +463,44 @@ mod tests {
         assert_eq!(buffer.len(), 3);
 
         assert!(buffer.contains(
-            &DrawCommand::Line {
+            &DrawCommand::Path {
                 thickness: 4.0,
                 color: Color::green(),
-                line: Rc::new(vec![
-                    Point::new(0.25, -0.5),
-                    Point::new(0.25, -0.25),
-                    Point::new(0.5, -0.25),
-                    Point::new(0.5, -0.5),
-                    Point::new(0.25, -0.5),
-                ]),
+                commands: vec![
+                    PathCommand::MoveTo(Point::new(0.25, -0.5)),
+                    PathCommand::LineTo(Point::new(0.25, -0.25)),
+                    PathCommand::LineTo(Point::new(0.5, -0.25)),
+                    PathCommand::LineTo(Point::new(0.5, -0.5)),
+                    PathCommand::LineTo(Point::new(0.25, -0.5)),
+                ],
             }
         ));
 
         assert!(buffer.contains(
-            &DrawCommand::Line {
+            &DrawCommand::Path {
                 thickness: 4.0,
                 color: Color::green(),
-                line: Rc::new(vec![
-                    Point::new(-1.5, 0.5),
-                    Point::new(-1.5, 1.5),
-                    Point::new(-0.5, 1.5),
-                    Point::new(-0.5, 0.5),
-                    Point::new(-1.5, 0.5),
-                ]),
+                commands: vec![
+                    PathCommand::MoveTo(Point::new(-1.5, 0.5)),
+                    PathCommand::LineTo(Point::new(-1.5, 1.5)),
+                    PathCommand::LineTo(Point::new(-0.5, 1.5)),
+                    PathCommand::LineTo(Point::new(-0.5, 0.5)),
+                    PathCommand::LineTo(Point::new(-1.5, 0.5)),
+                ],
             }
         ));
 
         assert!(buffer.contains(
-            &DrawCommand::Line {
+            &DrawCommand::Path {
                 thickness: 4.0,
                 color: Color::green(),
-                line: Rc::new(vec![
-                    Point::new(-1.1, -1.1),
-                    Point::new(-1.1, 1.1),
-                    Point::new(1.1, 1.1),
-                    Point::new(1.1, -1.1),
-                    Point::new(-1.1, -1.1),
-                ]),
+                commands: vec![
+                    PathCommand::MoveTo(Point::new(-1.1, -1.1)),
+                    PathCommand::LineTo(Point::new(-1.1, 1.1)),
+                    PathCommand::LineTo(Point::new(1.1, 1.1)),
+                    PathCommand::LineTo(Point::new(1.1, -1.1)),
+                    PathCommand::LineTo(Point::new(-1.1, -1.1)),
+                ],
             }
         ));
 
@@ -518,16 +524,16 @@ mod tests {
 
         assert_eq!(buffer.len(), 1);
 
-        assert!(buffer.contains(&DrawCommand::Line{
+        assert!(buffer.contains(&DrawCommand::Path{
             thickness: 4.0,
             color: Color::green(),
-            line: Rc::new(vec![
-                Point::new(1.0, 1.0),
-                Point::new(1.0, 3.0),
-                Point::new(3.0, 3.0),
-                Point::new(3.0, 1.0),
-                Point::new(1.0, 1.0),
-            ]),
+            commands: vec![
+                PathCommand::MoveTo(Point::new(1.0, 1.0)),
+                PathCommand::LineTo(Point::new(1.0, 3.0)),
+                PathCommand::LineTo(Point::new(3.0, 3.0)),
+                PathCommand::LineTo(Point::new(3.0, 1.0)),
+                PathCommand::LineTo(Point::new(1.0, 1.0)),
+            ],
         }));
     }
 
@@ -547,8 +553,14 @@ mod tests {
     fn test_draw_oder_is_respected() {
         let mut storage = Storage::new();
 
-        storage.add(Box::new(Line::with_params(Color::red(), vec![Point::new(0.0, 0.0), Point::new(0.0, 2.0)], 4.0)));
-        storage.add(Box::new(Line::with_params(Color::green(), vec![Point::new(0.0, 0.0), Point::new(0.0, 1.0)], 4.0)));
+        storage.add(Box::new(Path::with_params(Color::red(), vec![
+            PathCommand::MoveTo(Point::new(0.0, 0.0)),
+            PathCommand::LineTo(Point::new(0.0, 2.0)),
+        ], 4.0)));
+        storage.add(Box::new(Path::with_params(Color::green(), vec![
+            PathCommand::MoveTo(Point::new(0.0, 0.0)),
+            PathCommand::LineTo(Point::new(0.0, 1.0)),
+        ], 4.0)));
 
         storage.flush();
 
@@ -556,15 +568,7 @@ mod tests {
 
         assert_eq!(commands.len(), 2);
 
-        assert_eq!(commands[0], DrawCommand::Line {
-            color: Color::red(),
-            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(0.0, 2.0)]),
-            thickness: 4.0,
-        });
-        assert_eq!(commands[1], DrawCommand::Line {
-            color: Color::green(),
-            line: Rc::new(vec![Point::new(0.0, 0.0), Point::new(0.0, 1.0)]),
-            thickness: 4.0,
-        });
+        assert_eq!(commands[0].color(), Color::red());
+        assert_eq!(commands[1].color(), Color::green());
     }
 }

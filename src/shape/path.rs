@@ -36,7 +36,7 @@ fn bisector(A: Point, B: Point, C: Point) -> Point {
 /// be replaced with the one provided first by this function.
 fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Point) -> (PathCommand, Option<PathCommand>) {
     match last {
-        PathCommand::MoveTo(p) => {
+        PathCommand::MoveTo(p) | PathCommand::LineTo(p) => {
             // Second point, put pt1 and pt2 at 1/3 and 2/3 of the
             // segment, set `to` to p.
             if p == pos {
@@ -130,6 +130,7 @@ pub enum Sweep {
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum PathCommand {
     MoveTo(Point),
+    LineTo(Point),
     CurveTo(CubicBezierCurve),
 }
 
@@ -137,6 +138,7 @@ impl PathCommand {
     pub fn is_nan(&self) -> bool {
         match self {
             PathCommand::MoveTo(p) => p.is_nan(),
+            PathCommand::LineTo(p) => p.is_nan(),
             PathCommand::CurveTo(c) => c.is_nan(),
         }
     }
@@ -144,6 +146,7 @@ impl PathCommand {
     fn min_x(&self) -> f64 {
         match self {
             PathCommand::MoveTo(p) => p.x,
+            PathCommand::LineTo(p) => p.x,
             PathCommand::CurveTo(c) => c.pt1.x.min(c.pt2.x).min(c.to.x),
         }
     }
@@ -151,6 +154,7 @@ impl PathCommand {
     fn min_y(&self) -> f64 {
         match self {
             PathCommand::MoveTo(p) => p.y,
+            PathCommand::LineTo(p) => p.y,
             PathCommand::CurveTo(c) => c.pt1.y.min(c.pt2.y).min(c.to.y),
         }
     }
@@ -158,6 +162,7 @@ impl PathCommand {
     fn max_x(&self) -> f64 {
         match self {
             PathCommand::MoveTo(p) => p.x,
+            PathCommand::LineTo(p) => p.x,
             PathCommand::CurveTo(c) => c.pt1.x.max(c.pt2.x).max(c.to.x),
         }
     }
@@ -165,6 +170,7 @@ impl PathCommand {
     fn max_y(&self) -> f64 {
         match self {
             PathCommand::MoveTo(p) => p.y,
+            PathCommand::LineTo(p) => p.y,
             PathCommand::CurveTo(c) => c.pt1.y.max(c.pt2.y).max(c.to.y),
         }
     }
@@ -176,6 +182,7 @@ impl PathCommand {
     pub fn point(&self) -> Point {
         match *self {
             PathCommand::MoveTo(p) => p,
+            PathCommand::LineTo(p) => p,
             PathCommand::CurveTo(c) => c.to,
         }
     }
@@ -183,6 +190,7 @@ impl PathCommand {
     pub fn move_to(&self) -> Option<Point> {
         match self {
             PathCommand::MoveTo(p) => Some(*p),
+            PathCommand::LineTo(p) => Some(*p),
             PathCommand::CurveTo(_) => None,
         }
     }
@@ -190,6 +198,7 @@ impl PathCommand {
     pub fn curve_to(&self) -> Option<CubicBezierCurve> {
         match self {
             PathCommand::MoveTo(_) => None,
+            PathCommand::LineTo(_) => None,
             PathCommand::CurveTo(c) => Some(*c),
         }
     }
@@ -199,11 +208,13 @@ impl fmt::Display for PathCommand {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PathCommand::MoveTo(p) => write!(f, "M {} ", p),
+            PathCommand::LineTo(p) => write!(f, "L {} ", p),
             PathCommand::CurveTo(c) => write!(f, "C {}, {}, {} ", c.pt1, c.pt2, c.to),
         }
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Path {
     commands: Vec<PathCommand>,
     thickness: f64,
@@ -212,14 +223,20 @@ pub struct Path {
 
 impl Path {
     pub fn new(color: Color, initial: Point, thickness: f64) -> Path {
-        let mut init_vec = Vec::with_capacity(1000);
+        let mut commands = Vec::with_capacity(1000);
 
-        init_vec.push(PathCommand::MoveTo(initial));
+        commands.push(PathCommand::MoveTo(initial));
 
         Path {
-            commands: init_vec,
+            commands,
             thickness,
             color,
+        }
+    }
+
+    pub fn with_params(color: Color, commands: Vec<PathCommand>, thickness: f64) -> Path {
+        Path {
+            commands, color, thickness,
         }
     }
 }
@@ -247,7 +264,7 @@ impl ShapeTrait for Path {
 
     fn draw_commands(&self) -> DrawCommand {
         DrawCommand::Path {
-            line: self.commands.clone(),
+            commands: self.commands.clone(),
             thickness: self.thickness,
             color: self.color,
         }
@@ -300,7 +317,9 @@ impl ShapeTrait for Path {
 
 #[cfg(test)]
 mod tests {
-    use super::{thirds, bisector};
+    use super::{Path, thirds, bisector};
+    use crate::shape::ShapeTrait;
+    use crate::color::Color;
     use crate::point::Point;
 
     #[test]
@@ -320,5 +339,25 @@ mod tests {
 
         assert!(expected_bisector.x - given_bisector.x.abs() < 0.001);
         assert!(expected_bisector.y - given_bisector.y.abs() < 0.001);
+    }
+
+    #[test]
+    fn test_bbox() {
+        let mut line = Path::new(Color::green(), Point::new(1.0, 0.0), 4.0);
+
+        line.handle_mouse_moved(Point::new(0.0, 1.0));
+
+        assert_eq!(line.bbox(), [[0.0, 0.0], [1.0, 1.0]]);
+    }
+
+    #[test]
+    fn test_bbox_twisted_line() {
+        let mut line = Path::new(Color::green(), Point::new(-12.0, -1.0), 1.0);
+
+        line.handle_mouse_moved(Point::new(-5.0, 0.0));
+        line.handle_mouse_moved(Point::new(-2.0, 7.0));
+        line.handle_mouse_moved(Point::new(2.0, -8.0));
+
+        assert_eq!(line.bbox(), [[-12.0, -8.0], [3.161263886380917, 7.182987048373279]]);
     }
 }

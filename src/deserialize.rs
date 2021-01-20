@@ -9,10 +9,14 @@ use regex::Regex;
 use lazy_static::lazy_static;
 
 use crate::storage::Storage;
-use crate::shape::{ShapeTrait, Line, Ellipse};
+use crate::shape::{ShapeTrait, Path, Ellipse};
 use crate::color::Color;
 use crate::consts::DEFAULT_THICKNESS;
 use crate::point::Point;
+
+mod path;
+
+use path::parse_path_commands;
 
 lazy_static! {
     static ref CSS_COLOR_REGEX: Regex = Regex::new(r"(?x)#
@@ -268,8 +272,8 @@ fn css_attrs_as_hashmap(attrs: &str) -> HashMap<&str, &str> {
     }).collect()
 }
 
-impl Line {
-    pub fn from_xml_attributes(style: &str, path: &str) -> Result<Line, Error> {
+impl Path {
+    pub fn from_xml_attributes(style: &str, path: &str) -> Result<Path, Error> {
         let attrs = css_attrs_as_hashmap(style);
 
         let color = if let Some(color_str) = attrs.get("stroke") {
@@ -288,12 +292,7 @@ impl Line {
                 DEFAULT_THICKNESS
             };
 
-        let points = path
-            .split('L')
-            .map(|point_str| point_str.parse())
-            .collect::<Result<Vec<Point>, _>>()?;
-
-        Ok(Line::with_params(color, points, thickness))
+        Ok(Path::with_params(color, parse_path_commands(path)?, thickness))
     }
 }
 
@@ -324,12 +323,12 @@ trait Deserialize {
     fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeTrait>, Error>;
 }
 
-impl Deserialize for Line {
+impl Deserialize for Path {
     fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeTrait>, Error> {
         let styleattr = attributes.iter().find(|a| a.name.local_name == "style").ok_or(Error::MissingAttribute("style".into()))?;
         let dattr = attributes.iter().find(|a| a.name.local_name == "d").ok_or(Error::MissingAttribute("d".into()))?;
 
-        Ok(Box::new(Line::from_xml_attributes(&styleattr.value, &dattr.value)?))
+        Ok(Box::new(Path::from_xml_attributes(&styleattr.value, &dattr.value)?))
     }
 }
 
@@ -353,7 +352,7 @@ impl Storage {
         for e in parser {
             match e {
                 Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
-                    storage.add(Line::deserialize(attributes)?);
+                    storage.add(Path::deserialize(attributes)?);
                 }
                 Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
                     storage.add(Ellipse::deserialize(attributes)?);
@@ -373,10 +372,8 @@ impl Storage {
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Rc;
-
     use crate::storage::Storage;
-    use crate::shape::{Line, DrawCommand, ShapeTrait};
+    use crate::shape::{Path, DrawCommand, ShapeTrait, path::PathCommand};
     use crate::color::Color;
     use crate::point::Point;
 
@@ -435,15 +432,31 @@ mod tests {
 
     #[test]
     fn test_line_from_xml_attributes() {
-        let line = Line::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(53.90625%,88.28125%,20.3125%);stroke-opacity:1;stroke-miterlimit:10;", "M 147.570312 40.121094 L 146.9375 40.121094 L 145.296875 40.460938 L 142.519531 41.710938 L 139.613281 43.304688 L 138.097656 44.894531 L 137.339844 46.714844 L 138.097656 47.621094 L 139.992188 47.851562 L 142.898438 47.621094 L 146.179688 47.167969 L 150.097656 47.964844 L 151.738281 49.667969 L 152.496094 51.714844 L 152.875 53.191406 ").unwrap();
+        let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(53.90625%,88.28125%,20.3125%);stroke-opacity:1;stroke-miterlimit:10;", "M 147.570312 40.121094 L 146.9375 40.121094 L 145.296875 40.460938 L 142.519531 41.710938 L 139.613281 43.304688 L 138.097656 44.894531 L 137.339844 46.714844 L 138.097656 47.621094 L 139.992188 47.851562 L 142.898438 47.621094 L 146.179688 47.167969 L 150.097656 47.964844 L 151.738281 49.667969 L 152.496094 51.714844 L 152.875 53.191406 ").unwrap();
 
-        if let DrawCommand::Line {
+        if let DrawCommand::Path {
             color,
-            line,
+            commands,
             thickness,
         } = line.draw_commands() {
             assert_eq!(color, Color::from_rgb(0.5390625, 0.8828125, 0.203125));
-            assert_eq!(line, Rc::new(vec![Point::new(147.570312, 40.121094), Point::new(146.9375, 40.121094), Point::new(145.296875, 40.460938), Point::new(142.519531, 41.710938), Point::new(139.613281, 43.304688), Point::new(138.097656, 44.894531), Point::new(137.339844, 46.714844), Point::new(138.097656, 47.621094), Point::new(139.992188, 47.851562), Point::new(142.898438, 47.621094), Point::new(146.179688, 47.167969), Point::new(150.097656, 47.964844), Point::new(151.738281, 49.667969), Point::new(152.496094, 51.714844), Point::new(152.875, 53.191406)]));
+            assert_eq!(commands, vec![
+                PathCommand::MoveTo(Point::new(147.570312, 40.121094)),
+                PathCommand::LineTo(Point::new(146.9375, 40.121094)),
+                PathCommand::LineTo(Point::new(145.296875, 40.460938)),
+                PathCommand::LineTo(Point::new(142.519531, 41.710938)),
+                PathCommand::LineTo(Point::new(139.613281, 43.304688)),
+                PathCommand::LineTo(Point::new(138.097656, 44.894531)),
+                PathCommand::LineTo(Point::new(137.339844, 46.714844)),
+                PathCommand::LineTo(Point::new(138.097656, 47.621094)),
+                PathCommand::LineTo(Point::new(139.992188, 47.851562)),
+                PathCommand::LineTo(Point::new(142.898438, 47.621094)),
+                PathCommand::LineTo(Point::new(146.179688, 47.167969)),
+                PathCommand::LineTo(Point::new(150.097656, 47.964844)),
+                PathCommand::LineTo(Point::new(151.738281, 49.667969)),
+                PathCommand::LineTo(Point::new(152.496094, 51.714844)),
+                PathCommand::LineTo(Point::new(152.875, 53.191406)),
+            ]);
             assert_eq!(thickness, 3.0);
         } else {
             panic!();

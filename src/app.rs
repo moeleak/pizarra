@@ -286,7 +286,7 @@ impl App {
     pub fn new(dimensions: Point) -> App {
         App {
             storage: Storage::new(),
-            selected_tool: SelectedTool::Shape(ShapeType::Line),
+            selected_tool: SelectedTool::Shape(ShapeType::Path),
             bgcolor: Color::black(),
             stroke: DEFAULT_THICKNESS,
             erase_radius: TOUCH_RADIUS,
@@ -617,7 +617,7 @@ impl App {
     /// drawing again.
     pub fn reset(&mut self) {
         self.storage = Storage::new();
-        self.selected_tool = SelectedTool::Shape(ShapeType::Line);
+        self.selected_tool = SelectedTool::Shape(ShapeType::Path);
         self.offset = self.dimensions * -0.5;
         self.scale_factor = 1.0;
         self.undo_state = UndoState::Reset;
@@ -635,19 +635,19 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Rc;
-
     use super::{App, MouseButton};
     use crate::{
         draw_commands::DrawCommand, point::Point, app::SelectedTool,
         shape::ShapeType, consts::DEFAULT_THICKNESS,
+        shape::path::{PathCommand, CubicBezierCurve},
     };
+    use PathCommand::*;
 
     #[test]
     fn test_draw_a_line() {
         let mut app = App::new(Point::new(80.0, 60.0));
 
-        app.set_tool(SelectedTool::Shape(ShapeType::Line));
+        app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
         app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 0.0));
         app.handle_mouse_move(Point::new(1.0, 0.0));
@@ -657,9 +657,16 @@ mod tests {
 
         let commands = app.draw_commands_for_screen();
 
-        assert_eq!(commands[0], DrawCommand::Line {
+        assert_eq!(commands[0], DrawCommand::Path {
             color: Default::default(),
-            line: Rc::new(vec![Point::new(-40.0, -30.0), Point::new(-39.0, -30.0), Point::new(-38.0, -30.0)]),
+            commands: vec![
+                MoveTo(Point { x: -40.0, y: -30.0 }),
+                CurveTo(CubicBezierCurve {
+                    pt1: Point { x: -39.666666666666664, y: -30.0 },
+                    pt2: Point { x: -39.333333333333336, y: -30.0 },
+                    to: Point { x: -39.0, y: -30.0 }
+                }),
+            ],
             thickness: DEFAULT_THICKNESS,
         });
     }
@@ -668,7 +675,7 @@ mod tests {
     fn test_draw_a_line_in_zoom() {
         let mut app = App::new(Point::new(80.0, 60.0));
 
-        app.set_tool(SelectedTool::Shape(ShapeType::Line));
+        app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
         app.zoom_in();
 
@@ -680,9 +687,16 @@ mod tests {
 
         let commands = app.draw_commands_for_screen();
 
-        assert_eq!(commands[0], DrawCommand::Line {
+        assert_eq!(commands[0], DrawCommand::Path {
             color: Default::default(),
-            line: Rc::new(vec![Point::new(-20.0, -15.0), Point::new(-19.5, -15.0), Point::new(-19.0, -15.0)]),
+            commands: vec![
+                MoveTo(Point { x: -20.0, y: -15.0 }),
+                CurveTo(CubicBezierCurve {
+                    pt1: Point { x: -19.833333333333332, y: -15.0 },
+                    pt2: Point { x: -19.666666666666668, y: -15.0 },
+                    to: Point { x: -19.5, y: -15.0 }
+                }),
+            ],
             thickness: DEFAULT_THICKNESS/2.0,
         });
     }
@@ -691,7 +705,7 @@ mod tests {
     fn test_erase() {
         let mut app = App::new(Point::new(80.0, 60.0));
 
-        app.set_tool(SelectedTool::Shape(ShapeType::Line));
+        app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
         app.handle_mouse_button_pressed(MouseButton::Left, Point::new(10.0, 10.0));
         app.handle_mouse_move(Point::new(15.0, 10.0));
@@ -713,7 +727,7 @@ mod tests {
     fn test_erase_with_zoom() {
         let mut app = App::new(Point::new(4.0, 4.0));
 
-        app.set_tool(SelectedTool::Shape(ShapeType::Line));
+        app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
         app.handle_mouse_button_pressed(MouseButton::Left, Point::new(2.0, 1.0));
         app.handle_mouse_move(Point::new(2.0, 1.5));
@@ -872,7 +886,7 @@ mod tests {
 
         assert_eq!(app.visible_extent(), [Point::new(-40.0, -30.0), Point::new(40.0, 30.0)]);
 
-        app.set_tool(SelectedTool::Shape(ShapeType::Line));
+        app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
         app.handle_mouse_button_pressed(MouseButton::Left, Point::new(10.0, 10.0));
         app.handle_mouse_move(Point::new(20.0, 10.0));
@@ -889,15 +903,22 @@ mod tests {
 
         assert_eq!(commands.len(), 1);
 
-        assert_eq!(commands[0], DrawCommand::Line {
+        assert_eq!(commands[0], DrawCommand::Path {
             color: Default::default(),
             thickness: DEFAULT_THICKNESS,
-            line: Rc::new(vec![
-                Point::new(-30.0, -20.0),
-                Point::new(-20.0, -20.0),
-                Point::new(-10.0, -20.0),
-                Point::new(-10.0, -20.0),
-            ]),
+            commands: vec![
+                MoveTo(Point { x: -30.0, y: -20.0 }),
+                CurveTo(CubicBezierCurve {
+                    pt1: Point { x: -26.666666666666668, y: -20.0 },
+                    pt2: Point { x: -23.333333333333332, y: -20.0 },
+                    to: Point { x: -20.0, y: -20.0 }
+                }),
+                CurveTo(CubicBezierCurve {
+                    pt1: Point { x: -16.666666666666668, y: -20.0 },
+                    pt2: Point { x: -13.333333333333332, y: -20.0 },
+                    to: Point { x: -10.0, y: -20.0 }
+                }),
+            ],
         });
     }
 

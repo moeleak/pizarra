@@ -8,29 +8,10 @@ use crate::app::App;
 impl DrawCommand {
     fn serialize(self, writer: &mut EventWriter<&mut Vec<u8>>) {
         match self {
-            DrawCommand::Line {
-                color, line, thickness,
-            } => {
-                let mut points_iter = line.iter();
-                let first = points_iter.next().unwrap();
-                let mut d = format!("M {} {} ", first.x, first.y);
-
-                let rest: String = points_iter.map(|p| format!("L {} {} ", p.x, p.y)).collect();
-                d.push_str(&rest);
-
-                writer.write(XmlEvent::start_element("path")
-                    .attr("style", &format!(
-                        "fill:none;stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:1;stroke-miterlimit:10;",
-                        stroke = thickness,
-                        color = color.css(),
-                    ))
-                    .attr("d", &d)).unwrap();
-                writer.write(XmlEvent::end_element()).unwrap();
-            },
             DrawCommand::Path {
-                color, line, thickness,
+                color, commands, thickness,
             } => {
-                let d: String = line.iter().map(|p| p.to_string()).collect();
+                let d: String = commands.iter().map(|p| p.to_string()).collect();
 
                 writer.write(XmlEvent::start_element("path")
                     .attr("style", &format!(
@@ -141,10 +122,10 @@ mod tests {
     use crate::shape::ShapeType;
 
     #[test]
-    fn serialize() {
+    fn test_serialize() {
         let mut app = App::new(Point::new(40.0, 40.0));
 
-        app.set_tool(SelectedTool::Shape(ShapeType::Line));
+        app.set_tool(SelectedTool::Shape(ShapeType::Path));
         app.set_color(Color::red());
         app.set_stroke(3.5);
 

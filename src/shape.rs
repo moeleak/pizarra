@@ -3,7 +3,6 @@ use std::str::FromStr;
 
 use crate::point::Point;
 
-mod line;
 pub mod path;
 mod rectangle;
 mod polygon;
@@ -13,7 +12,6 @@ mod ellipse;
 use super::color::Color;
 pub use crate::draw_commands::DrawCommand;
 
-pub use self::line::Line;
 pub use self::path::Path;
 pub use self::rectangle::Rectangle;
 pub use self::polygon::Polygon;
@@ -30,7 +28,6 @@ pub enum ShapeFinished {
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum ShapeType {
-    Line,
     Path,
     Polygon,
     Rectangle,
@@ -42,7 +39,6 @@ impl ShapeType {
     pub fn start(&self, color: Color, initial: Point, stroke: f64) -> Box<dyn ShapeTrait> {
         match *self {
             ShapeType::Path => Box::new(Path::new(color, initial, stroke)),
-            ShapeType::Line => Box::new(Line::new(color, initial, stroke)),
             ShapeType::Rectangle => Box::new(Rectangle::new(color, initial, stroke)),
             ShapeType::Polygon => Box::new(Polygon::new(color, initial, stroke)),
             ShapeType::Circle => Box::new(Circle::new(color, initial, stroke)),
@@ -56,7 +52,7 @@ impl FromStr for ShapeType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "line" => Ok(ShapeType::Line),
+            "path" => Ok(ShapeType::Path),
             "polygon" => Ok(ShapeType::Polygon),
             "rectangle" => Ok(ShapeType::Rectangle),
             "circle" => Ok(ShapeType::Circle),
