@@ -7,8 +7,6 @@ use std::str::Bytes;
 use crate::shape::path::{PathCommand::{self, *}, CubicBezierCurve};
 use crate::point::Point;
 
-use super::Error;
-
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Token {
     // pub to allow benchmarking
@@ -47,19 +45,6 @@ impl<'a> Lexer<'_> {
             current,
             flags_required: 0,
         }
-    }
-
-    // The way Flag tokens work is a little annoying. We don't have
-    // any way to distinguish between numbers and flags without context
-    // from the parser. The only time we need to return flags is within the
-    // argument sequence of an elliptical arc, and then we need 2 in a row
-    // or it's an error. So, when the parser gets to that point, it calls
-    // this method and we switch from our usual mode of handling digits as
-    // numbers to looking for two 'flag' characters (either 0 or 1) in a row
-    // (with optional intervening whitespace, and possibly comma tokens.)
-    // Every time we find a flag we decrement flags_required.
-    pub fn require_flags(&mut self) {
-        self.flags_required = 2;
     }
 
     fn current_pos(&mut self) -> usize {
@@ -329,34 +314,6 @@ impl<'b> PathParser<'b> {
         result
     }
 
-    fn match_number_and_flags(&mut self) -> Result<(f64, bool, bool), ParseError> {
-        // We can't just do self.match_number() here, because we have to
-        // tell the lexer, if we do find a number, to switch to looking for flags
-        // before we advance it to the next token. Otherwise it will treat the flag
-        // characters as numbers.
-        //
-        // So, first we do the guts of match_number...
-        let n = match &self.current_pos_and_token {
-            Some((_, Ok(Number(n)))) => Ok(*n),
-            Some((pos, Ok(t))) => Err(ParseError::new(*pos, UnexpectedToken(*t))),
-            Some((pos, Err(e))) => Err(ParseError::new(*pos, LexError(*e))),
-            None => Err(ParseError::new(self.tokens.input.len(), UnexpectedEof)),
-        }?;
-
-        // Then we tell the lexer that we're going to need to find Flag tokens,
-        // *then* we can advance the token stream.
-        self.tokens.require_flags();
-        self.current_pos_and_token = self.tokens.next();
-
-        self.eat_optional_comma();
-        let f1 = self.match_flag()?;
-
-        self.eat_optional_comma();
-        let f2 = self.match_flag()?;
-
-        Ok((n, f1, f2))
-    }
-
     fn match_comma(&mut self) -> Result<(), ParseError> {
         let result = match &self.current_pos_and_token {
             Some((_, Ok(Comma))) => Ok(()),
@@ -378,19 +335,6 @@ impl<'b> PathParser<'b> {
     fn match_comma_number(&mut self) -> Result<f64, ParseError> {
         self.eat_optional_comma();
         self.match_number()
-    }
-
-    fn match_flag(&mut self) -> Result<bool, ParseError> {
-        let result = match self.current_pos_and_token {
-            Some((_, Ok(Flag(f)))) => Ok(f),
-            Some((pos, Ok(t))) => Err(ParseError::new(pos, UnexpectedToken(t))),
-            Some((pos, Err(e))) => Err(ParseError::new(pos, LexError(e))),
-            None => Err(ParseError::new(self.tokens.input.len(), UnexpectedEof)),
-        };
-        if result.is_ok() {
-            self.current_pos_and_token = self.tokens.next();
-        }
-        result
     }
 
     // peek_* methods are the twins of match_*, but don't consume the token, and so
@@ -823,8 +767,6 @@ impl ParseError {
         }
     }
 }
-
-use ErrorKind::*;
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
