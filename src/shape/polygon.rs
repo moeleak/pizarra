@@ -65,11 +65,17 @@ impl ShapeTrait for Polygon {
         let mut points_iter = self.points.iter();
         let mut commands = Vec::with_capacity(self.points.len());
 
-        commands.push(PathCommand::MoveTo(*points_iter.next().unwrap()));
-        commands.extend(points_iter.map(|p| PathCommand::LineTo(*p)));
+        if let Some(p) = points_iter.next() {
+            commands.push(PathCommand::MoveTo(*p));
+            commands.extend(points_iter.map(|p| PathCommand::LineTo(*p)));
+        }
 
         if let Some(p) = self.tip {
-            commands.push(PathCommand::LineTo(p));
+            commands.push(if commands.len() == 0 {
+                PathCommand::MoveTo(p)
+            } else {
+                PathCommand::LineTo(p)
+            });
         }
 
         DrawCommand::Path {
@@ -160,5 +166,18 @@ mod tests {
         }
 
         assert!(poly.intersects_circle(Point::new(0.0, 0.0), 10.0));
+    }
+
+    #[test]
+    fn can_render_first_point() {
+        let poly = Polygon::new(Default::default(), Point::new(0.0, 0.0), 3.0);
+
+        assert_eq!(poly.draw_commands(), DrawCommand::Path {
+            color: Default::default(),
+            commands: vec![
+                PathCommand::MoveTo(Point::new(0.0, 0.0)),
+            ],
+            thickness: 3.0,
+        });
     }
 }
