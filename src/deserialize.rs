@@ -16,7 +16,7 @@ use crate::point::Point;
 
 mod path;
 
-use path::parse_path_commands;
+use path::{parse_path, PathBuilder};
 
 lazy_static! {
     static ref CSS_COLOR_REGEX: Regex = Regex::new(r"(?x)#
@@ -194,6 +194,13 @@ pub enum Error {
     ParseFloatError(std::num::ParseFloatError),
     PointDoesntMatchRegex,
     MissingAttribute(String),
+    PathParseError(path::ParseError),
+}
+
+impl From<path::ParseError> for Error {
+    fn from(error: path::ParseError) -> Error {
+        Error::PathParseError(error)
+    }
 }
 
 impl From<XmlError> for Error {
@@ -292,7 +299,11 @@ impl Path {
                 DEFAULT_THICKNESS
             };
 
-        Ok(Path::with_params(color, parse_path_commands(path)?, thickness))
+        let mut builder = PathBuilder::new();
+
+        parse_path(path, &mut builder)?;
+
+        Ok(Path::with_params(color, builder.into_path(), thickness))
     }
 }
 
