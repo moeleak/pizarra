@@ -9,6 +9,13 @@ pub struct Color {
 }
 
 impl Color {
+    pub fn with_alpha(self, alpha: f64) -> Color {
+        Color {
+            a: alpha,
+            ..self
+        }
+    }
+
     /// Creates a color from its integer rgb codes
     pub fn from_int_rgb(r: u8, g: u8, b: u8) -> Color {
         Color {
@@ -57,7 +64,7 @@ impl Color {
             r: 1.0,
             g: 0.0,
             b: 0.0,
-            a: 0.0,
+            a: 1.0,
         }
     }
 
@@ -66,7 +73,7 @@ impl Color {
             r: 0.0,
             g: 0.0,
             b: 1.0,
-            a: 0.0,
+            a: 1.0,
         }
     }
 
@@ -75,7 +82,7 @@ impl Color {
             r: 1.0,
             g: 1.0,
             b: 1.0,
-            a: 0.0,
+            a: 1.0,
         }
     }
 

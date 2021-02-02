@@ -92,6 +92,7 @@ pub struct App {
     selected_color: Color,
     bgcolor: Color,
     stroke: f64,
+    alpha: f64,
     erase_radius: f64,
 
     /// This value represents the coordinate of the drwing space that is currently
@@ -156,7 +157,7 @@ impl App {
                 if let Some(shape) = self.storage.last_mut() {
                     shape.handle_button_pressed(transformed_point);
                 } else {
-                    let new_shape = shape.start(self.selected_color, transformed_point, self.stroke * 1.0 / self.scale_factor);
+                    let new_shape = shape.start(self.selected_color.with_alpha(self.alpha), transformed_point, self.stroke * 1.0 / self.scale_factor);
 
                     self.storage.add(new_shape);
                 }
@@ -289,6 +290,7 @@ impl App {
             selected_tool: SelectedTool::Shape(ShapeType::Path),
             bgcolor: Color::black(),
             stroke: DEFAULT_THICKNESS,
+            alpha: 1.0,
             erase_radius: TOUCH_RADIUS,
 
             /// a vector from the top-left corner of the screen to the origin
@@ -384,6 +386,10 @@ impl App {
     /// Set a new stroke that will be used in next shapes
     pub fn set_stroke(&mut self, stroke: f64) {
         self.stroke = stroke;
+    }
+
+    pub fn set_alpha(&mut self, alpha: f64) {
+        self.alpha = alpha;
     }
 
     /// Set the background color of the drawing

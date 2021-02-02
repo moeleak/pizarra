@@ -5,10 +5,13 @@ Pizarra
 
 Nada más que eso, una pizarra. En este repositorio vive solamente el backend, es
 decir la biblioteca con las funciones necesarias para implementar una pizarra en
-algún frontend (como gtk).
+algún frontend (como [gtk](https://gitlab.com/categulario/pizarra-gtk) o
+[webassembly](https://gitlab.com/categulario/pizarra-wasm)).
 
 Para el código de una aplicación que puedes ejecutar en tu escritorio visita
 [pizarra-gtk](https://gitlab.com/categulario/pizarra-gtk)
+
+Para usar la versión web visita https://pizarra.categulario.tk
 
 ## Características
 
