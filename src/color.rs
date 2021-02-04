@@ -26,7 +26,7 @@ impl Color {
             r: r as f64 / 255.0,
             g: g as f64 / 255.0,
             b: b as f64 / 255.0,
-            a: 0.0,
+            a: 1.0,
         }
     }
 
@@ -43,7 +43,7 @@ impl Color {
     /// Creates an opaque color from rgb
     pub fn from_rgb(r: f64, g: f64, b: f64) -> Color {
         Color {
-            r, g, b, a: 0.0,
+            r, g, b, a: 1.0,
         }
     }
 

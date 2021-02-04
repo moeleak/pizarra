@@ -299,11 +299,17 @@ impl Path {
                 DEFAULT_THICKNESS
             };
 
+        let alpha = if let Some(alpha_str) = attrs.get("stroke-opacity") {
+                alpha_str.parse()?
+            } else {
+                1.0
+            };
+
         let mut builder = PathBuilder::new();
 
         parse_path(path, &mut builder)?;
 
-        Ok(Path::with_params(color, builder.into_path(), thickness))
+        Ok(Path::with_params(color.with_alpha(alpha), builder.into_path(), thickness))
     }
 }
 
@@ -323,10 +329,16 @@ impl Ellipse {
                 DEFAULT_THICKNESS
             };
 
+        let alpha = if let Some(alpha_str) = attrs.get("stroke-opacity") {
+                alpha_str.parse()?
+            } else {
+                1.0
+            };
+
         let center = Point::new(cx.parse()?, cy.parse()?);
         let radius = Point::new(rx.parse()?, ry.parse()?).abs();
 
-        Ok(Ellipse::with_params([center-radius, center + radius], color, thickness))
+        Ok(Ellipse::with_params([center-radius, center + radius], color.with_alpha(alpha), thickness))
     }
 }
 
@@ -497,5 +509,12 @@ mod tests {
         let p = " 152.496094 51.714844 ";
 
         assert_eq!(p.parse::<Point>().unwrap(), Point::new(152.496094, 51.714844));
+    }
+
+    #[test]
+    fn test_parse_alpha() {
+        let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:#FF0000;stroke-opacity:0.8;stroke-miterlimit:10;", "M 10 10 L 20 20").unwrap();
+
+        assert_eq!(line.color(), "#FF0000".parse::<Color>().unwrap().with_alpha(0.8));
     }
 }
