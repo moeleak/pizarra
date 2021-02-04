@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="-10 -10 40 40" version="1.1">
+  <g id="storage">
+    <rect x="-10" y="-10" width="40" height="40" style="fill:#303633;fill-opacity:1;stroke:none;" />
+    <path style="fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:#8AE234;stroke-opacity:0.5;stroke-miterlimit:10;" d="M 10 10 L 10 10 " />
+  </g>
+</svg>

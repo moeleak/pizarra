@@ -16,6 +16,10 @@ impl Color {
         }
     }
 
+    pub fn alpha(self) -> f64 {
+        self.a
+    }
+
     /// Creates a color from its integer rgb codes
     pub fn from_int_rgb(r: u8, g: u8, b: u8) -> Color {
         Color {

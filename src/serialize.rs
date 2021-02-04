@@ -15,9 +15,10 @@ impl DrawCommand {
 
                 writer.write(XmlEvent::start_element("path")
                     .attr("style", &format!(
-                        "fill:none;stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:1;stroke-miterlimit:10;",
+                        "fill:none;stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
                         stroke = thickness,
                         color = color.css(),
+                        alpha = color.alpha(),
                     ))
                     .attr("d", &d)).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
@@ -31,9 +32,10 @@ impl DrawCommand {
                     .attr("rx", &radius.to_string())
                     .attr("ry", &radius.to_string())
                     .attr("style", &format!(
-                        "fill:none;stroke-width:{stroke};stroke:{color};stroke-opacity:1;stroke-miterlimit:10",
+                        "fill:none;stroke-width:{stroke};stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10",
                         stroke = thickness,
                         color = color.css(),
+                        alpha = color.alpha(),
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
@@ -54,9 +56,10 @@ impl DrawCommand {
                     .attr("rx", &half.x.to_string())
                     .attr("ry", &half.y.to_string())
                     .attr("style", &format!(
-                        "fill:none;stroke-width:{stroke};stroke:{color};stroke-opacity:1;stroke-miterlimit:10",
+                        "fill:none;stroke-width:{stroke};stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10",
                         stroke = thickness,
                         color = color.css(),
+                        alpha = color.alpha(),
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
@@ -147,5 +150,20 @@ mod tests {
         app.handle_mouse_button_released(MouseButton::Left, Point::new(35.0, 30.0));
 
         assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_ellipse.svg"));
+    }
+
+    #[test]
+    fn test_serialize_color_with_alpha() {
+        let mut app = App::new(Point::new(40.0, 40.0));
+
+        app.set_tool(SelectedTool::Shape(ShapeType::Polygon));
+        app.set_color(Color::green());
+        app.set_alpha(0.5);
+
+        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(10.0, 10.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(30.0, 30.0));
+        app.handle_mouse_button_released(MouseButton::Left, Point::new(30.0, 30.0));
+
+        assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_alpha.svg"));
     }
 }
