@@ -441,19 +441,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn test_from_graph_viz_svg() {
-        let svg_data = include_str!("../res/graphviz_datastruct.svg");
-        let storage = Storage::from_svg(svg_data).unwrap();
-
-        for cmd in storage.draw_commands(storage.get_bounds().unwrap()) {
-            println!("{:?}", cmd);
-        }
-
-        assert_eq!(storage.shape_count(), 5);
-    }
-
-    #[test]
     fn test_line_from_xml_attributes() {
         let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(53.90625%,88.28125%,20.3125%);stroke-opacity:1;stroke-miterlimit:10;", "M 147.570312 40.121094 L 146.9375 40.121094 L 145.296875 40.460938 L 142.519531 41.710938 L 139.613281 43.304688 L 138.097656 44.894531 L 137.339844 46.714844 L 138.097656 47.621094 L 139.992188 47.851562 L 142.898438 47.621094 L 146.179688 47.167969 L 150.097656 47.964844 L 151.738281 49.667969 L 152.496094 51.714844 L 152.875 53.191406 ").unwrap();
 
