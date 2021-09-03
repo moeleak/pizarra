@@ -1,7 +1,7 @@
 use xml::writer::{EmitterConfig, XmlEvent, EventWriter};
 
 use crate::consts::EXPORT_PADDING;
-use crate::point::Point;
+use crate::point::Vec2DDrawing;
 use crate::draw_commands::DrawCommand;
 use crate::app::App;
 
@@ -76,7 +76,7 @@ impl App {
                 .perform_indent(true)
                 .create_writer(&mut output);
 
-            let svg_dimensions = (bbox[0] - bbox[1]).abs() + Point::new(EXPORT_PADDING*2.0, EXPORT_PADDING*2.0);
+            let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2DDrawing::new(EXPORT_PADDING*2.0, EXPORT_PADDING*2.0);
             let width = svg_dimensions.x.to_string();
             let height = svg_dimensions.y.to_string();
             let min = bbox[0].min(bbox[1]);
@@ -120,49 +120,49 @@ impl App {
 #[cfg(test)]
 mod tests {
     use crate::color::Color;
-    use crate::point::Point;
+    use crate::point::Vec2DScreen;
     use crate::app::{App, MouseButton, SelectedTool};
     use crate::shape::ShapeType;
 
     #[test]
     fn test_serialize() {
-        let mut app = App::new(Point::new(40.0, 40.0));
+        let mut app = App::new(Vec2DScreen::new(40.0, 40.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
         app.set_color(Color::red());
         app.set_stroke(3.5);
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(20.0, 20.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(21.0, 20.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(20.0, 20.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(21.0, 20.0));
 
         assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_test.svg"));
     }
 
     #[test]
     fn serialize_ellipse() {
-        let mut app = App::new(Point::new(40.0, 40.0));
+        let mut app = App::new(Vec2DScreen::new(40.0, 40.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Ellipse));
         app.set_color(Color::red());
         app.set_stroke(3.5);
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(5.0, 10.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(35.0, 30.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(5.0, 10.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(35.0, 30.0));
 
         assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_ellipse.svg"));
     }
 
     #[test]
     fn test_serialize_color_with_alpha() {
-        let mut app = App::new(Point::new(40.0, 40.0));
+        let mut app = App::new(Vec2DScreen::new(40.0, 40.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Polygon));
         app.set_color(Color::green());
         app.set_alpha(0.5);
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(10.0, 10.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(30.0, 30.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(30.0, 30.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(10.0, 10.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(30.0, 30.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(30.0, 30.0));
 
         assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_alpha.svg"));
     }

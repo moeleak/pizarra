@@ -5,7 +5,7 @@ use std::str;
 use std::str::Bytes;
 
 use crate::shape::path::{PathCommand::{self, *}, CubicBezierCurve};
-use crate::point::Point;
+use crate::point::Vec2DDrawing;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Token {
@@ -192,18 +192,18 @@ impl PathBuilder {
     }
 
     fn move_to(&mut self, x: f64, y: f64) {
-        self.commands.push(MoveTo(Point::new(x, y)));
+        self.commands.push(MoveTo(Vec2DDrawing::new(x, y)));
     }
 
     fn line_to(&mut self, x: f64, y: f64) {
-        self.commands.push(LineTo(Point::new(x, y)));
+        self.commands.push(LineTo(Vec2DDrawing::new(x, y)));
     }
 
     fn curve_to(&mut self, pt1x: f64, pt1y: f64, pt2x: f64, pt2y: f64, tox: f64, toy: f64) {
         self.commands.push(CurveTo(CubicBezierCurve {
-            pt1: Point::new(pt1x, pt1y),
-            pt2: Point::new(pt2x, pt2y),
-            to: Point::new(tox, toy),
+            pt1: Vec2DDrawing::new(pt1x, pt1y),
+            pt2: Vec2DDrawing::new(pt2x, pt2y),
+            to: Vec2DDrawing::new(tox, toy),
         }));
     }
 }
@@ -827,18 +827,18 @@ mod tests {
     }
 
     fn moveto(x: f64, y: f64) -> PathCommand {
-        PathCommand::MoveTo(Point::new(x, y))
+        PathCommand::MoveTo(Vec2DDrawing::new(x, y))
     }
 
     fn lineto(x: f64, y: f64) -> PathCommand {
-        PathCommand::LineTo(Point::new(x, y))
+        PathCommand::LineTo(Vec2DDrawing::new(x, y))
     }
 
     fn curveto(x2: f64, y2: f64, x3: f64, y3: f64, x4: f64, y4: f64) -> PathCommand {
         PathCommand::CurveTo(CubicBezierCurve {
-            pt1: Point::new(x2, y2),
-            pt2: Point::new(x3, y3),
-            to: Point::new(x4, y4),
+            pt1: Vec2DDrawing::new(x2, y2),
+            pt2: Vec2DDrawing::new(x3, y3),
+            to: Vec2DDrawing::new(x4, y4),
         })
     }
 

@@ -1,7 +1,7 @@
-use crate::point::Point;
+use crate::point::Vec2DDrawing;
 
 pub fn bbox_from_points<I>(points: I) -> [[f64; 2]; 2]
-    where I: Iterator<Item=Point>
+    where I: Iterator<Item=Vec2DDrawing>
 {
     let bbox = points.fold([
         [std::f64::INFINITY, std::f64::INFINITY], // bottom-left corner
@@ -27,7 +27,7 @@ pub fn bbox_from_points<I>(points: I) -> [[f64; 2]; 2]
     bbox
 }
 
-pub fn project(point: Point, [a, b]: [Point; 2]) -> Point {
+pub fn project(point: Vec2DDrawing, [a, b]: [Vec2DDrawing; 2]) -> Vec2DDrawing {
     // https://en.wikibooks.org/wiki/Linear_Algebra/Orthogonal_Projection_Onto_a_Line
 
     // If the two points that define the segment are equal they the projection is any of them
@@ -41,7 +41,7 @@ pub fn project(point: Point, [a, b]: [Point; 2]) -> Point {
     s * (v.dot(s) / s.dot(s)) + a
 }
 
-pub fn is_within(point: Point, a: Point, b: Point) -> bool {
+pub fn is_within(point: Vec2DDrawing, a: Vec2DDrawing, b: Vec2DDrawing) -> bool {
     let min = a.min(b);
     let max = a.max(b);
 
@@ -49,7 +49,7 @@ pub fn is_within(point: Point, a: Point, b: Point) -> bool {
     point.y >= min.y && point.y <= max.y
 }
 
-pub fn segment_intersects_circle([a, b]: [Point; 2], center: Point, radius: f64) -> bool {
+pub fn segment_intersects_circle([a, b]: [Vec2DDrawing; 2], center: Vec2DDrawing, radius: f64) -> bool {
     let proj = project(center, [a, b]);
 
     proj.distance(center) < radius && is_within(proj, a, b)
@@ -58,15 +58,15 @@ pub fn segment_intersects_circle([a, b]: [Point; 2], center: Point, radius: f64)
 #[cfg(test)]
 mod tests {
     use super::segment_intersects_circle;
-    use crate::point::Point;
+    use crate::point::Vec2DDrawing;
 
     #[test]
     fn test_segment_intersects_circle() {
-        assert!(segment_intersects_circle([Point::new(0.0, 0.0), Point::new(100.0, 0.0)], Point::new(50.0, 9.0), 10.0));
+        assert!(segment_intersects_circle([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(100.0, 0.0)], Vec2DDrawing::new(50.0, 9.0), 10.0));
     }
 
     #[test]
     fn test_single_point_segment_intersects_circle() {
-        assert!(segment_intersects_circle([Point::new(0.0, 0.0), Point::new(0.0, 0.0)], Point::new(0.0, 0.0), 10.0));
+        assert!(segment_intersects_circle([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(0.0, 0.0)], Vec2DDrawing::new(0.0, 0.0), 10.0));
     }
 }

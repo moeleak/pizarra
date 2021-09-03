@@ -1,15 +1,36 @@
 use std::fmt;
-use std::ops::{Mul, Add, Sub, AddAssign, Div, SubAssign};
+use std::ops::{Mul, Add, Sub, Div};
 
+/// A 2D (unitless) vector
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub struct Point {
+pub struct Vec2D {
     pub x: f64,
     pub y: f64,
 }
 
-impl Point {
-    pub fn new(x: f64, y: f64) -> Point {
-        Point {
+/// A point in the storage as X Y coordinates.
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub struct Vec2DDrawing {
+    pub x: f64,
+    pub y: f64,
+}
+
+/// A point as read from the screen in X Y coordinates
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub struct Vec2DScreen {
+    pub x: f64,
+    pub y: f64,
+}
+
+impl Vec2D {
+    pub fn new(x: f64, y: f64) -> Vec2D {
+        Vec2D { x, y }
+    }
+}
+
+impl Vec2DDrawing {
+    pub fn new(x: f64, y: f64) -> Vec2DDrawing {
+        Vec2DDrawing {
             x, y,
         }
     }
@@ -18,36 +39,43 @@ impl Point {
         [self.x, self.y]
     }
 
+    pub fn to_vec2d(self) -> Vec2D {
+        Vec2D {
+            x: self.x,
+            y: self.y,
+        }
+    }
+
     pub fn magnitude(&self) -> f64 {
         self.distance((0.0, 0.0).into())
     }
 
-    pub fn distance(&self, other: Point) -> f64 {
+    pub fn distance(&self, other: Vec2DDrawing) -> f64 {
         ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()
     }
 
-    pub fn abs(self) -> Point {
-        Point {
+    pub fn abs(self) -> Vec2DDrawing {
+        Vec2DDrawing {
             x: self.x.abs(),
             y: self.y.abs(),
         }
     }
 
-    pub fn min(self, other: Point) -> Point {
-        Point {
+    pub fn min(self, other: Vec2DDrawing) -> Vec2DDrawing {
+        Vec2DDrawing {
             x: self.x.min(other.x),
             y: self.y.min(other.y),
         }
     }
 
-    pub fn max(self, other: Point) -> Point {
-        Point {
+    pub fn max(self, other: Vec2DDrawing) -> Vec2DDrawing {
+        Vec2DDrawing {
             x: self.x.max(other.x),
             y: self.y.max(other.y),
         }
     }
 
-    pub fn dot(self, other: Point) -> f64 {
+    pub fn dot(self, other: Vec2DDrawing) -> f64 {
         self.x*other.x + self.y*other.y
     }
 
@@ -56,77 +84,202 @@ impl Point {
     }
 }
 
-impl Mul<f64> for Point {
-    type Output = Point;
+impl Vec2DScreen {
+    pub fn new(x: f64, y: f64) -> Vec2DScreen {
+        Vec2DScreen {
+            x, y,
+        }
+    }
+
+    pub fn to_vec2d(self) -> Vec2D {
+        Vec2D {
+            x: self.x,
+            y: self.y,
+        }
+    }
+}
+
+impl Mul<f64> for Vec2D {
+    type Output = Vec2D;
 
     fn mul(self, rhs: f64) -> Self::Output {
-        Point {
+        Vec2D {
             x: self.x * rhs,
             y: self.y * rhs,
         }
     }
 }
 
-impl Add for Point {
-    type Output = Point;
+impl Add for Vec2D {
+    type Output = Vec2D;
 
-    fn add(self, rhs: Point) -> Point {
-        Point {
+    fn add(self, rhs: Vec2D) -> Vec2D {
+        Vec2D {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
         }
     }
 }
 
-impl Sub for Point {
-    type Output = Point;
+impl Sub for Vec2D {
+    type Output = Vec2D;
 
-    fn sub(self, rhs: Point) -> Point {
-        Point {
+    fn sub(self, rhs: Vec2D) -> Vec2D {
+        Vec2D {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
         }
     }
 }
 
-impl AddAssign for Point {
-    fn add_assign(&mut self, rhs: Point) {
-        self.x += rhs.x;
-        self.y += rhs.y;
-    }
-}
+impl Div<f64> for Vec2D {
+    type Output = Vec2D;
 
-impl Div<f64> for Point {
-    type Output = Point;
-
-    fn div(self, rhs: f64) -> Point {
-        Point {
+    fn div(self, rhs: f64) -> Vec2D {
+        Vec2D {
             x: self.x / rhs,
             y: self.y / rhs,
         }
     }
 }
 
-impl SubAssign for Point {
-    fn sub_assign(&mut self, rhs: Point) {
-        self.x -= rhs.x;
-        self.y -= rhs.y;
+impl Mul<f64> for Vec2DDrawing {
+    type Output = Vec2DDrawing;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Vec2DDrawing {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
     }
 }
 
-impl From<[f64; 2]> for Point {
-    fn from(other: [f64; 2]) -> Point {
-        Point::new(other[0], other[1])
+impl Add for Vec2DDrawing {
+    type Output = Vec2DDrawing;
+
+    fn add(self, rhs: Vec2DDrawing) -> Vec2DDrawing {
+        Vec2DDrawing {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
     }
 }
 
-impl From<(f64, f64)> for Point {
-    fn from(other: (f64, f64)) -> Point {
-        Point::new(other.0, other.1)
+impl Sub for Vec2DDrawing {
+    type Output = Vec2DDrawing;
+
+    fn sub(self, rhs: Vec2DDrawing) -> Vec2DDrawing {
+        Vec2DDrawing {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
     }
 }
 
-impl fmt::Display for Point {
+impl Div<f64> for Vec2DDrawing {
+    type Output = Vec2DDrawing;
+
+    fn div(self, rhs: f64) -> Vec2DDrawing {
+        Vec2DDrawing {
+            x: self.x / rhs,
+            y: self.y / rhs,
+        }
+    }
+}
+
+impl Mul<f64> for Vec2DScreen {
+    type Output = Vec2DScreen;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Vec2DScreen {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
+    }
+}
+
+impl Add for Vec2DScreen {
+    type Output = Vec2DScreen;
+
+    fn add(self, rhs: Vec2DScreen) -> Vec2DScreen {
+        Vec2DScreen {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Sub for Vec2DScreen {
+    type Output = Vec2DScreen;
+
+    fn sub(self, rhs: Vec2DScreen) -> Vec2DScreen {
+        Vec2DScreen {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+impl Div<f64> for Vec2DScreen {
+    type Output = Vec2DScreen;
+
+    fn div(self, rhs: f64) -> Vec2DScreen {
+        Vec2DScreen {
+            x: self.x / rhs,
+            y: self.y / rhs,
+        }
+    }
+}
+
+impl From<[f64; 2]> for Vec2DDrawing {
+    fn from(other: [f64; 2]) -> Vec2DDrawing {
+        Vec2DDrawing::new(other[0], other[1])
+    }
+}
+
+impl From<(f64, f64)> for Vec2DDrawing {
+    fn from(other: (f64, f64)) -> Vec2DDrawing {
+        Vec2DDrawing::new(other.0, other.1)
+    }
+}
+
+impl From<Vec2D> for Vec2DDrawing {
+    fn from(point: Vec2D) -> Vec2DDrawing {
+        Vec2DDrawing {
+            x: point.x,
+            y: point.y,
+        }
+    }
+}
+
+impl From<Vec2D> for Vec2DScreen {
+    fn from(point: Vec2D) -> Vec2DScreen {
+        Vec2DScreen {
+            x: point.x,
+            y: point.y,
+        }
+    }
+}
+
+impl From<Vec2DScreen> for Vec2D {
+    fn from(point: Vec2DScreen) -> Vec2D {
+        Vec2D::new(point.x, point.y)
+    }
+}
+
+impl fmt::Display for Vec2D {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.x, self.y)
+    }
+}
+
+impl fmt::Display for Vec2DDrawing {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.x, self.y)
+    }
+}
+
+impl fmt::Display for Vec2DScreen {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} {}", self.x, self.y)
     }
@@ -134,12 +287,12 @@ impl fmt::Display for Point {
 
 #[cfg(test)]
 mod tests {
-    use super::Point;
+    use super::Vec2DDrawing;
 
     #[test]
     fn distance() {
-        let p1 = Point::new(0.0, 0.0);
-        let p2 = Point::new(3.0, 4.0);
+        let p1 = Vec2DDrawing::new(0.0, 0.0);
+        let p2 = Vec2DDrawing::new(3.0, 4.0);
 
         assert_eq!(p1.distance(p2), 5.0);
     }

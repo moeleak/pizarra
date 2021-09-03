@@ -7,7 +7,7 @@ use crate::storage::Storage;
 use crate::shape::{Shape, ShapeType, ShapeFinished};
 use crate::color::Color;
 use crate::action::Action;
-use crate::point::Point;
+use crate::point::{Vec2DDrawing, Vec2DScreen};
 use crate::transform::Transform;
 use crate::consts::{DEFAULT_THICKNESS, TOUCH_RADIUS};
 use crate::deserialize;
@@ -34,8 +34,8 @@ enum UndoState {
 enum BoardState {
     Idle,
     UsingTool,
-    Moving(Point),
-    MovingWhileUsingTool(Point),
+    Moving(Vec2DScreen),
+    MovingWhileUsingTool(Vec2DScreen),
 }
 
 /// Indicates wether or not an action should trigger redraw of the canvas
@@ -97,9 +97,8 @@ pub struct App {
 
     /// This value represents the coordinate of the drwing space that is currently
     /// at the top-left corner of the screen.
-    offset: Point,
-    scale_factor: f64,
-    dimensions: Point,
+    transform: Transform,
+    dimensions: Vec2DScreen,
 
     /// Stores erased shapes temporarily while being erased
     erased: Vec<Shape>,
@@ -120,9 +119,6 @@ impl App {
     /// p is a point in the coordinate space of the drawing area. This function
     /// converts p's coordinates to storage coordinates given the current zoom
     /// and offset.
-    fn to_storage_coordinates(&self, p: Point) -> Point {
-        p / self.scale_factor + self.offset
-    }
 
     fn conclude_action(&mut self, action: Action) {
         // this means some undos have been applied. Doing something from here
@@ -149,15 +145,15 @@ impl App {
         };
     }
 
-    fn handle_tool_button_pressed(&mut self, point: Point) -> ShouldRedraw {
-        let transformed_point = self.to_storage_coordinates(point);
+    fn handle_tool_button_pressed(&mut self, point: Vec2DScreen) -> ShouldRedraw {
+        let transformed_point = self.transform.to_storage_coordinates(point);
 
         match self.selected_tool {
             SelectedTool::Shape(shape) => {
                 if let Some(shape) = self.storage.last_mut() {
                     shape.handle_button_pressed(transformed_point);
                 } else {
-                    let new_shape = shape.start(self.selected_color.with_alpha(self.alpha), transformed_point, self.stroke * 1.0 / self.scale_factor);
+                    let new_shape = shape.start(self.selected_color.with_alpha(self.alpha), transformed_point, self.stroke * 1.0 / self.transform.scale_factor());
 
                     self.storage.add(new_shape);
                 }
@@ -166,7 +162,7 @@ impl App {
             },
             SelectedTool::Eraser => {
                 let deleted_shape = self.storage
-                    .query_circle(transformed_point, self.erase_radius / self.scale_factor)
+                    .query_circle(transformed_point, self.erase_radius / self.transform.scale_factor())
                     .map(|id| self.storage.remove(id))
                     .flatten();
 
@@ -181,8 +177,8 @@ impl App {
         }
     }
 
-    fn handle_tool_button_released(&mut self, point: Point) -> Action {
-        let transformed_point = self.to_storage_coordinates(point);
+    fn handle_tool_button_released(&mut self, point: Vec2DScreen) -> Action {
+        let transformed_point = self.transform.to_storage_coordinates(point);
 
         match self.selected_tool {
             SelectedTool::Shape(_shape) => {
@@ -204,7 +200,7 @@ impl App {
             },
             SelectedTool::Eraser => {
                 let deleted_shape = self.storage
-                    .query_circle(transformed_point, self.erase_radius / self.scale_factor)
+                    .query_circle(transformed_point, self.erase_radius / self.transform.scale_factor())
                     .map(|id| self.storage.remove(id))
                     .flatten();
 
@@ -221,8 +217,8 @@ impl App {
         }
     }
 
-    fn handle_tool_mouse_move(&mut self, point: Point) -> ShouldRedraw {
-        let transformed_point = self.to_storage_coordinates(point);
+    fn handle_tool_mouse_move(&mut self, point: Vec2DScreen) -> ShouldRedraw {
+        let transformed_point = self.transform.to_storage_coordinates(point);
 
         match self.selected_tool {
             SelectedTool::Shape(_shape_type) => {
@@ -235,7 +231,7 @@ impl App {
             },
             SelectedTool::Eraser => {
                 let deleted_shape = self.storage
-                    .query_circle(transformed_point, self.erase_radius / self.scale_factor)
+                    .query_circle(transformed_point, self.erase_radius / self.transform.scale_factor())
                     .map(|id| self.storage.remove(id))
                     .flatten();
 
@@ -284,7 +280,7 @@ impl App {
     /// Create a new instance of Pizarra's controller. Only one is needed and it
     /// can be put inside an Rc<RefCell<_>> to use it inside event callbacks in
     /// UI implementations.
-    pub fn new(dimensions: Point) -> App {
+    pub fn new(dimensions: Vec2DScreen) -> App {
         App {
             storage: Storage::new(),
             selected_tool: SelectedTool::Shape(ShapeType::Path),
@@ -295,8 +291,7 @@ impl App {
 
             /// a vector from the top-left corner of the screen to the origin
             /// of coordinates in the storage
-            offset: dimensions * -0.5,
-            scale_factor: 1.0,
+            transform: Transform::new((dimensions * -0.5).into(), 1.0),
             dimensions,
 
             erased: Vec::new(),
@@ -315,20 +310,20 @@ impl App {
     /// Returns a transform object needed for proper rendering. This object can
     /// translate a point from storage coordinates to screen coordinates.
     pub fn get_transform(&self) -> Transform {
-        Transform::new(self.offset, self.scale_factor)
+        self.transform
     }
 
     /// Compute the bounds of what is visible in the board according to current
     /// offset and zoom level
-    pub fn visible_extent(&self) -> [Point; 2] {
+    pub fn visible_extent(&self) -> [Vec2DDrawing; 2] {
         [
-            self.offset,
-            self.offset + self.dimensions / self.scale_factor
+            self.transform.offset().into(),
+            (self.transform.offset() + (self.dimensions.to_vec2d() / self.transform.scale_factor())).into()
         ]
     }
 
     /// Returns the dimensions of the screen
-    pub fn get_dimensions(&self) -> Point {
+    pub fn get_dimensions(&self) -> Vec2DScreen {
         self.dimensions
     }
 
@@ -349,7 +344,7 @@ impl App {
         let bbox = if let Some(bbox) = self.get_bounds() {
             bbox
         } else {
-            [Point::new(0.0, 0.0), Point::new(0.0, 0.0)]
+            [Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(0.0, 0.0)]
         };
 
         self.storage.draw_commands(bbox)
@@ -359,22 +354,16 @@ impl App {
         self.storage.draw_commands_for_current_shape()
     }
 
-    /// p is a point in the coordinate space of the shape storage, and this function
-    /// translates it to drawing area's coordinate system.
-    pub fn to_screen_coordinates(&self, p: Point) -> Point {
-        (p - self.offset) * self.scale_factor
-    }
-
     /// Move the canvas by this offset
-    pub fn handle_offset(&mut self, delta: Point) {
-        self.offset -= delta / self.scale_factor;
+    pub fn translate(&mut self, delta: Vec2DScreen) {
+        self.transform.translate_screen(delta);
     }
 
     /// Notify the application that the screen size has changed
-    pub fn resize(&mut self, new_size: Point) {
+    pub fn resize(&mut self, new_size: Vec2DScreen) {
         let delta = (self.dimensions * -1.0 + new_size) * 0.5;
 
-        self.handle_offset(delta);
+        self.translate(delta.into());
         self.dimensions = new_size;
     }
 
@@ -404,7 +393,7 @@ impl App {
 
     /// Public method that the UI must call whenever a button of the mouse or pen
     /// is pressed.
-    pub fn handle_mouse_button_pressed(&mut self, button: MouseButton, point: Point) -> ShouldRedraw {
+    pub fn handle_mouse_button_pressed(&mut self, button: MouseButton, point: Vec2DScreen) -> ShouldRedraw {
         let (new_board_state, should_redraw) = match self.board_state {
             current@BoardState::Idle => match button {
                 MouseButton::Left => (BoardState::UsingTool, self.handle_tool_button_pressed(point)),
@@ -429,7 +418,7 @@ impl App {
 
     /// Public method that the UI must call whenever a button of the mouse or pen
     /// is released.
-    pub fn handle_mouse_button_released(&mut self, button: MouseButton, point: Point) -> ShouldRedraw {
+    pub fn handle_mouse_button_released(&mut self, button: MouseButton, point: Vec2DScreen) -> ShouldRedraw {
         let (new_board_state, should_redraw) = match self.board_state {
             current@BoardState::Idle => (current, ShouldRedraw::No),
             current@BoardState::UsingTool => match button {
@@ -448,7 +437,7 @@ impl App {
             BoardState::Moving(old_point) => match button {
                 MouseButton::Left => (BoardState::Moving(old_point), ShouldRedraw::No),
                 MouseButton::Middle => {
-                    self.handle_offset(point - old_point);
+                    self.translate(point - old_point);
 
                     (BoardState::Idle, ShouldRedraw::All)
                 },
@@ -467,7 +456,7 @@ impl App {
                         }
                 },
                 MouseButton::Middle => {
-                    self.handle_offset(point - old_point);
+                    self.translate(point - old_point);
 
                     (BoardState::UsingTool, ShouldRedraw::All)
                 },
@@ -482,17 +471,17 @@ impl App {
     }
 
     /// Public methid that the UI must call with updates on the cursor position
-    pub fn handle_mouse_move(&mut self, pos: Point) -> ShouldRedraw {
+    pub fn handle_mouse_move(&mut self, pos: Vec2DScreen) -> ShouldRedraw {
         let (new_board_state, should_redraw) = match self.board_state {
             BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
             BoardState::UsingTool => (BoardState::UsingTool, self.handle_tool_mouse_move(pos)),
             BoardState::Moving(old_point) => {
-                self.handle_offset(pos - old_point);
+                self.translate(pos - old_point);
 
                 (BoardState::Moving(pos), ShouldRedraw::All)
             },
             BoardState::MovingWhileUsingTool(old_point) => {
-                self.handle_offset(pos - old_point);
+                self.translate(pos - old_point);
 
                 (BoardState::MovingWhileUsingTool(pos), ShouldRedraw::All)
             },
@@ -506,21 +495,18 @@ impl App {
     /// Zooms in the current view, so objects are bigger and the visible portion
     /// of the drawing gets reduced
     pub fn zoom_in(&mut self) {
-        self.offset += (self.dimensions / self.scale_factor) * 0.25;
-        self.scale_factor *= 2.0;
+        self.transform.zoom_in(2.0, self.dimensions);
     }
 
     /// Zooms out the current view, so objects are smaller and the visible portion
     /// of the drawing increases
     pub fn zoom_out(&mut self) {
-        self.offset -= (self.dimensions / self.scale_factor) * 0.5;
-        self.scale_factor /= 2.0;
+        self.transform.zoom_out(2.0, self.dimensions);
     }
 
     /// Resets the center and zoom level of the view to its original place
     pub fn go_home(&mut self) {
-        self.offset = self.dimensions * -0.5;
-        self.scale_factor = 1.0;
+        self.transform.go_home(self.dimensions / 2.0);
     }
 
     /// Sets the color for the new shapes
@@ -605,7 +591,7 @@ impl App {
     }
 
     /// Returns the bounding box that contains all the shapes in the drawing
-    pub fn get_bounds(&self) -> Option<[Point; 2]> {
+    pub fn get_bounds(&self) -> Option<[Vec2DDrawing; 2]> {
         self.storage.get_bounds()
     }
 
@@ -624,8 +610,7 @@ impl App {
     pub fn reset(&mut self) {
         self.storage = Storage::new();
         self.selected_tool = SelectedTool::Shape(ShapeType::Path);
-        self.offset = self.dimensions * -0.5;
-        self.scale_factor = 1.0;
+        self.transform = Transform::new(self.dimensions.to_vec2d() * -0.5, 1.0);
         self.undo_state = UndoState::Reset;
         self.undo_queue = Vec::new();
         self.save_status = SaveStatus::NewAndEmpty;
@@ -641,9 +626,9 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    use super::{App, MouseButton};
+    use super::*;
     use crate::{
-        draw_commands::DrawCommand, point::Point, app::SelectedTool,
+        draw_commands::DrawCommand, app::SelectedTool,
         shape::ShapeType, consts::DEFAULT_THICKNESS,
         shape::path::{PathCommand, CubicBezierCurve},
     };
@@ -651,13 +636,13 @@ mod tests {
 
     #[test]
     fn test_draw_a_line() {
-        let mut app = App::new(Point::new(80.0, 60.0));
+        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 0.0));
-        app.handle_mouse_move(Point::new(1.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(2.0, 0.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 0.0));
+        app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(2.0, 0.0));
 
         assert_eq!(app.shape_count(), 1);
 
@@ -666,11 +651,11 @@ mod tests {
         assert_eq!(commands[0], DrawCommand::Path {
             color: Default::default(),
             commands: vec![
-                MoveTo(Point { x: -40.0, y: -30.0 }),
+                MoveTo(Vec2DDrawing { x: -40.0, y: -30.0 }),
                 CurveTo(CubicBezierCurve {
-                    pt1: Point { x: -39.666666666666664, y: -30.0 },
-                    pt2: Point { x: -39.333333333333336, y: -30.0 },
-                    to: Point { x: -39.0, y: -30.0 }
+                    pt1: Vec2DDrawing { x: -39.666666666666664, y: -30.0 },
+                    pt2: Vec2DDrawing { x: -39.333333333333336, y: -30.0 },
+                    to: Vec2DDrawing { x: -39.0, y: -30.0 }
                 }),
             ],
             thickness: DEFAULT_THICKNESS,
@@ -679,15 +664,15 @@ mod tests {
 
     #[test]
     fn test_draw_a_line_in_zoom() {
-        let mut app = App::new(Point::new(80.0, 60.0));
+        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
         app.zoom_in();
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 0.0));
-        app.handle_mouse_move(Point::new(1.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(2.0, 0.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 0.0));
+        app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(2.0, 0.0));
 
         assert_eq!(app.shape_count(), 1);
 
@@ -696,11 +681,11 @@ mod tests {
         assert_eq!(commands[0], DrawCommand::Path {
             color: Default::default(),
             commands: vec![
-                MoveTo(Point { x: -20.0, y: -15.0 }),
+                MoveTo(Vec2DDrawing { x: -20.0, y: -15.0 }),
                 CurveTo(CubicBezierCurve {
-                    pt1: Point { x: -19.833333333333332, y: -15.0 },
-                    pt2: Point { x: -19.666666666666668, y: -15.0 },
-                    to: Point { x: -19.5, y: -15.0 }
+                    pt1: Vec2DDrawing { x: -19.833333333333332, y: -15.0 },
+                    pt2: Vec2DDrawing { x: -19.666666666666668, y: -15.0 },
+                    to: Vec2DDrawing { x: -19.5, y: -15.0 }
                 }),
             ],
             thickness: DEFAULT_THICKNESS/2.0,
@@ -709,37 +694,37 @@ mod tests {
 
     #[test]
     fn test_erase() {
-        let mut app = App::new(Point::new(80.0, 60.0));
+        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(10.0, 10.0));
-        app.handle_mouse_move(Point::new(15.0, 10.0));
-        app.handle_mouse_move(Point::new(15.0, 15.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(10.0, 15.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(10.0, 10.0));
+        app.handle_mouse_move(Vec2DScreen::new(15.0, 10.0));
+        app.handle_mouse_move(Vec2DScreen::new(15.0, 15.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(10.0, 15.0));
 
         assert_eq!(app.shape_count(), 1);
 
         app.set_tool(SelectedTool::Eraser);
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(10.0, 10.0));
-        app.handle_mouse_move(Point::new(15.0, 10.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(15.0, 10.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(10.0, 10.0));
+        app.handle_mouse_move(Vec2DScreen::new(15.0, 10.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(15.0, 10.0));
 
         assert_eq!(app.shape_count(), 0);
     }
 
     #[test]
     fn test_erase_with_zoom() {
-        let mut app = App::new(Point::new(4.0, 4.0));
+        let mut app = App::new(Vec2DScreen::new(4.0, 4.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(2.0, 1.0));
-        app.handle_mouse_move(Point::new(2.0, 1.5));
-        app.handle_mouse_move(Point::new(2.0, 2.0));
-        app.handle_mouse_move(Point::new(2.0, 2.5));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(2.0, 3.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(2.0, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(2.0, 1.5));
+        app.handle_mouse_move(Vec2DScreen::new(2.0, 2.0));
+        app.handle_mouse_move(Vec2DScreen::new(2.0, 2.5));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(2.0, 3.0));
 
         assert_eq!(app.shape_count(), 1);
 
@@ -748,39 +733,39 @@ mod tests {
         app.set_tool(SelectedTool::Eraser);
         app.set_erase_radius(0.5);
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(2.6, 0.0));
-        app.handle_mouse_move(Point::new(2.6, 1.0));
-        app.handle_mouse_move(Point::new(2.6, 3.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(2.6, 4.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(2.6, 0.0));
+        app.handle_mouse_move(Vec2DScreen::new(2.6, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(2.6, 3.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(2.6, 4.0));
 
         assert_eq!(app.shape_count(), 1);
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(2.24, 0.0));
-        app.handle_mouse_move(Point::new(2.4, 1.0));
-        app.handle_mouse_move(Point::new(2.4, 3.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(2.24, 4.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(2.24, 0.0));
+        app.handle_mouse_move(Vec2DScreen::new(2.4, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(2.4, 3.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(2.24, 4.0));
 
         assert_eq!(app.shape_count(), 0);
     }
 
     #[test]
     fn test_do_do_do_undo_redo_redo_undo() {
-        let mut app = App::new(Point::new(800.0, 600.0));
+        let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
-        app.handle_mouse_move(Point::new(1.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
 
         // Do
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
-        app.handle_mouse_move(Point::new(1.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
 
         // Do
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
-        app.handle_mouse_move(Point::new(1.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(0.0, 1.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
 
         app.undo();
 
@@ -794,12 +779,12 @@ mod tests {
 
     #[test]
     fn test_do_undo_redo_undo() {
-        let mut app = App::new(Point::new(800.0, 600.0));
+        let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
-        app.handle_mouse_move(Point::new(1.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(1.0, 1.0));
 
         app.undo();
 
@@ -812,24 +797,24 @@ mod tests {
 
     #[test]
     fn test_do_undo_do_do_undo() {
-        let mut app = App::new(Point::new(800.0, 600.0));
+        let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
-        app.handle_mouse_move(Point::new(1.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(1.0, 1.0));
 
         app.undo();
 
         // Do
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
-        app.handle_mouse_move(Point::new(1.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(1.0, 1.0));
 
         // Do
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
-        app.handle_mouse_move(Point::new(1.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(1.0, 1.0));
 
         app.undo();
 
@@ -838,19 +823,19 @@ mod tests {
 
     #[test]
     fn test_do_undo_do_undo_undo() {
-        let mut app = App::new(Point::new(800.0, 600.0));
+        let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
-        app.handle_mouse_move(Point::new(1.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(1.0, 1.0));
 
         app.undo();
 
         // Do
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(0.0, 1.0));
-        app.handle_mouse_move(Point::new(1.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(1.0, 1.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
+        app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(1.0, 1.0));
 
         app.undo();
         app.undo();
@@ -860,49 +845,49 @@ mod tests {
 
     #[test]
     fn test_move() {
-        let mut app = App::new(Point::new(80.0, 60.0));
+        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_extent(), [Point::new(-40.0, -30.0), Point::new(40.0, 30.0)]);
+        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
-        app.handle_mouse_button_pressed(MouseButton::Middle, Point::new(0.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Middle, Point::new(-1.0, 0.0));
+        app.handle_mouse_button_pressed(MouseButton::Middle, Vec2DScreen::new(0.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Middle, Vec2DScreen::new(-1.0, 0.0));
 
-        assert_eq!(app.visible_extent(), [Point::new(-39.0, -30.0), Point::new(41.0, 30.0)]);
+        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-39.0, -30.0), Vec2DDrawing::new(41.0, 30.0)]);
     }
 
     #[test]
     fn move_while_in_zoom_is_coherent() {
-        let mut app = App::new(Point::new(80.0, 60.0));
+        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_extent(), [Point::new(-40.0, -30.0), Point::new(40.0, 30.0)]);
+        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
         app.zoom_in();
 
-        assert_eq!(app.visible_extent(), [Point::new(-20.0, -15.0), Point::new(20.0, 15.0)]);
+        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-20.0, -15.0), Vec2DDrawing::new(20.0, 15.0)]);
 
-        app.handle_mouse_button_pressed(MouseButton::Middle, Point::new(0.0, 0.0));
-        app.handle_mouse_button_released(MouseButton::Middle, Point::new(-1.0, 0.0));
+        app.handle_mouse_button_pressed(MouseButton::Middle, Vec2DScreen::new(0.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Middle, Vec2DScreen::new(-1.0, 0.0));
 
-        assert_eq!(app.visible_extent(), [Point::new(-19.5, -15.0), Point::new(20.5, 15.0)]);
+        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-19.5, -15.0), Vec2DDrawing::new(20.5, 15.0)]);
     }
 
     #[test]
     fn test_move_while_drawing() {
-        let mut app = App::new(Point::new(80.0, 60.0));
+        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_extent(), [Point::new(-40.0, -30.0), Point::new(40.0, 30.0)]);
+        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(10.0, 10.0));
-        app.handle_mouse_move(Point::new(20.0, 10.0));
-        app.handle_mouse_button_pressed(MouseButton::Middle, Point::new(20.0, 10.0));
-        app.handle_mouse_move(Point::new(30.0, 10.0));
-        app.handle_mouse_button_released(MouseButton::Middle, Point::new(30.0, 10.0));
-        app.handle_mouse_move(Point::new(40.0, 10.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(40.0, 10.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(10.0, 10.0));
+        app.handle_mouse_move(Vec2DScreen::new(20.0, 10.0));
+        app.handle_mouse_button_pressed(MouseButton::Middle, Vec2DScreen::new(20.0, 10.0));
+        app.handle_mouse_move(Vec2DScreen::new(30.0, 10.0));
+        app.handle_mouse_button_released(MouseButton::Middle, Vec2DScreen::new(30.0, 10.0));
+        app.handle_mouse_move(Vec2DScreen::new(40.0, 10.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(40.0, 10.0));
 
-        assert_eq!(app.visible_extent(), [Point::new(-50.0, -30.0), Point::new(30.0, 30.0)]);
+        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-50.0, -30.0), Vec2DDrawing::new(30.0, 30.0)]);
         assert_eq!(app.shape_count(), 1);
 
         let commands = app.draw_commands_for_screen();
@@ -913,16 +898,16 @@ mod tests {
             color: Default::default(),
             thickness: DEFAULT_THICKNESS,
             commands: vec![
-                MoveTo(Point { x: -30.0, y: -20.0 }),
+                MoveTo(Vec2DDrawing { x: -30.0, y: -20.0 }),
                 CurveTo(CubicBezierCurve {
-                    pt1: Point { x: -26.666666666666668, y: -20.0 },
-                    pt2: Point { x: -23.333333333333332, y: -20.0 },
-                    to: Point { x: -20.0, y: -20.0 }
+                    pt1: Vec2DDrawing { x: -26.666666666666668, y: -20.0 },
+                    pt2: Vec2DDrawing { x: -23.333333333333332, y: -20.0 },
+                    to: Vec2DDrawing { x: -20.0, y: -20.0 }
                 }),
                 CurveTo(CubicBezierCurve {
-                    pt1: Point { x: -16.666666666666668, y: -20.0 },
-                    pt2: Point { x: -13.333333333333332, y: -20.0 },
-                    to: Point { x: -10.0, y: -20.0 }
+                    pt1: Vec2DDrawing { x: -16.666666666666668, y: -20.0 },
+                    pt2: Vec2DDrawing { x: -13.333333333333332, y: -20.0 },
+                    to: Vec2DDrawing { x: -10.0, y: -20.0 }
                 }),
             ],
         });
@@ -930,48 +915,48 @@ mod tests {
 
     #[test]
     fn test_zoom_must_be_idempotent() {
-        let mut app = App::new(Point::new(80.0, 60.0));
+        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_extent(), [Point::new(-40.0, -30.0), Point::new(40.0, 30.0)]);
-
-        app.zoom_in();
-
-        assert_eq!(app.visible_extent(), [Point::new(-20.0, -15.0), Point::new(20.0, 15.0)]);
+        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
         app.zoom_in();
 
-        assert_eq!(app.visible_extent(), [Point::new(-10.0, -7.5), Point::new(10.0, 7.5)]);
+        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-20.0, -15.0), Vec2DDrawing::new(20.0, 15.0)]);
+
+        app.zoom_in();
+
+        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-10.0, -7.5), Vec2DDrawing::new(10.0, 7.5)]);
     }
 
     #[test]
     fn test_cache_invalidation_on_ctrl_z() {
-        let mut app = App::new(Point::new(10.0, 10.0));
+        let mut app = App::new(Vec2DScreen::new(10.0, 10.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Rectangle));
 
         // draw a shape
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(5.0, 5.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(6.0, 6.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(5.0, 5.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(6.0, 6.0));
 
         assert_eq!(app.draw_commands_for_screen().len(), 1);
 
         // move the screen
-        app.handle_mouse_button_pressed(MouseButton::Middle, Point::new(10.0, 5.0));
-        app.handle_mouse_move(Point::new(5.0, 5.0));
-        app.handle_mouse_move(Point::new(0.0, 5.0));
-        app.handle_mouse_button_released(MouseButton::Middle, Point::new(0.0, 5.0));
+        app.handle_mouse_button_pressed(MouseButton::Middle, Vec2DScreen::new(10.0, 5.0));
+        app.handle_mouse_move(Vec2DScreen::new(5.0, 5.0));
+        app.handle_mouse_move(Vec2DScreen::new(0.0, 5.0));
+        app.handle_mouse_button_released(MouseButton::Middle, Vec2DScreen::new(0.0, 5.0));
 
         assert_eq!(app.draw_commands_for_screen().len(), 0);
 
         // draw another shape
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(5.0, 5.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(6.0, 6.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(5.0, 5.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(6.0, 6.0));
 
         assert_eq!(app.draw_commands_for_screen().len(), 1);
 
         // and draw a third shape
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(6.0, 6.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(7.0, 7.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(6.0, 6.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(7.0, 7.0));
 
         assert_eq!(app.draw_commands_for_screen().len(), 2);
 
@@ -981,10 +966,10 @@ mod tests {
         assert_eq!(app.draw_commands_for_screen().len(), 1);
 
         // move back to where the first shape was
-        app.handle_mouse_button_pressed(MouseButton::Middle, Point::new(0.0, 5.0));
-        app.handle_mouse_move(Point::new(5.0, 5.0));
-        app.handle_mouse_move(Point::new(10.0, 5.0));
-        app.handle_mouse_button_released(MouseButton::Middle, Point::new(10.0, 5.0));
+        app.handle_mouse_button_pressed(MouseButton::Middle, Vec2DScreen::new(0.0, 5.0));
+        app.handle_mouse_move(Vec2DScreen::new(5.0, 5.0));
+        app.handle_mouse_move(Vec2DScreen::new(10.0, 5.0));
+        app.handle_mouse_button_released(MouseButton::Middle, Vec2DScreen::new(10.0, 5.0));
 
         assert_eq!(app.draw_commands_for_screen().len(), 1);
     }
@@ -998,23 +983,23 @@ mod tests {
         // it gets erased
         //
         // it's expeceted for the eraser not to erase the shape
-        let mut app = App::new(Point::new(100.0, 100.0));
+        let mut app = App::new(Vec2DScreen::new(100.0, 100.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Rectangle));
 
         // draw a shape
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(5.0, 5.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(6.0, 6.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(5.0, 5.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(6.0, 6.0));
 
         app.set_tool(SelectedTool::Eraser);
 
         // erase nothing
-        app.handle_mouse_button_pressed(MouseButton::Left, Point::new(90.0, 90.0));
-        app.handle_mouse_move(Point::new(91.0, 91.0));
-        app.handle_mouse_button_released(MouseButton::Left, Point::new(92.0, 92.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(90.0, 90.0));
+        app.handle_mouse_move(Vec2DScreen::new(91.0, 91.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(92.0, 92.0));
 
         // move to where the shape is
-        app.handle_mouse_move(Point::new(5.0, 5.0));
+        app.handle_mouse_move(Vec2DScreen::new(5.0, 5.0));
 
         assert_eq!(app.shape_count(), 1);
     }

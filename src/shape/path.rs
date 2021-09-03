@@ -5,11 +5,11 @@ use super::{ShapeTrait, ShapeFinished};
 use crate::draw_commands::DrawCommand;
 use crate::color::Color;
 use crate::ShapeType;
-use crate::point::Point;
+use crate::point::Vec2DDrawing;
 
 /// Given two points return the points in their 1/3 and 2/3 of the segment from
 /// a to b.
-fn thirds(a: Point, b: Point) -> (Point, Point) {
+fn thirds(a: Vec2DDrawing, b: Vec2DDrawing) -> (Vec2DDrawing, Vec2DDrawing) {
     let v = b - a;
 
     (v*1.0/3.0 + a, v*2.0/3.0 + a)
@@ -19,7 +19,7 @@ fn thirds(a: Point, b: Point) -> (Point, Point) {
 /// of the angle described by the three given points.
 ///
 /// B is the vertex of the angle. The returned vector points towads C
-fn bisector(A: Point, B: Point, C: Point) -> Point {
+fn bisector(A: Vec2DDrawing, B: Vec2DDrawing, C: Vec2DDrawing) -> Vec2DDrawing {
     let Ap = (A - B) * -1.0 + B;
     let (a, b, c) = (B.distance(C), A.distance(C), A.distance(B));
     let incenter = (Ap * a + B * b + C * c) / (a + b + c);
@@ -34,7 +34,7 @@ fn bisector(A: Point, B: Point, C: Point) -> Point {
 ///
 /// This means that the command at the last position before the operation must
 /// be replaced with the one provided first by this function.
-fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Point) -> (PathCommand, Option<PathCommand>) {
+fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Vec2DDrawing) -> (PathCommand, Option<PathCommand>) {
     match last {
         PathCommand::MoveTo(p) | PathCommand::LineTo(p) => {
             // Second point, put pt1 and pt2 at 1/3 and 2/3 of the
@@ -87,7 +87,7 @@ fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Point) -> (PathC
     }
 }
 
-fn add_point(commands: &mut Vec<PathCommand>, pos: Point) {
+fn add_point(commands: &mut Vec<PathCommand>, pos: Vec2DDrawing) {
     let sub = commands
         .len()
         .checked_sub(2)
@@ -108,11 +108,11 @@ fn add_point(commands: &mut Vec<PathCommand>, pos: Point) {
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct CubicBezierCurve {
     /// The (x, y) coordinates of the first control point.
-    pub pt1: Point,
+    pub pt1: Vec2DDrawing,
     /// The (x, y) coordinates of the second control point.
-    pub pt2: Point,
+    pub pt2: Vec2DDrawing,
     /// The (x, y) coordinates of the end point of this path segment.
-    pub to: Point,
+    pub to: Vec2DDrawing,
 }
 
 impl CubicBezierCurve {
@@ -129,8 +129,8 @@ pub enum Sweep {
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum PathCommand {
-    MoveTo(Point),
-    LineTo(Point),
+    MoveTo(Vec2DDrawing),
+    LineTo(Vec2DDrawing),
     CurveTo(CubicBezierCurve),
 }
 
@@ -175,11 +175,11 @@ impl PathCommand {
         }
     }
 
-    fn distance(&self, p: Point) -> f64 {
+    fn distance(&self, p: Vec2DDrawing) -> f64 {
         self.point().distance(p)
     }
 
-    pub fn point(&self) -> Point {
+    pub fn point(&self) -> Vec2DDrawing {
         match *self {
             PathCommand::MoveTo(p) => p,
             PathCommand::LineTo(p) => p,
@@ -187,7 +187,7 @@ impl PathCommand {
         }
     }
 
-    pub fn move_to(&self) -> Option<Point> {
+    pub fn move_to(&self) -> Option<Vec2DDrawing> {
         match self {
             PathCommand::MoveTo(p) => Some(*p),
             PathCommand::LineTo(p) => Some(*p),
@@ -222,7 +222,7 @@ pub struct Path {
 }
 
 impl Path {
-    pub fn new(color: Color, initial: Point, thickness: f64) -> Path {
+    pub fn new(color: Color, initial: Vec2DDrawing, thickness: f64) -> Path {
         let mut commands = Vec::with_capacity(1000);
 
         commands.push(PathCommand::MoveTo(initial));
@@ -252,13 +252,13 @@ impl ShapeTrait for Path {
     //    control point respecting its length. It sets correctly the length of
     //    its two control points but the last one sits in the segment between
     //    the last two points.
-    fn handle_mouse_moved(&mut self, pos: Point) {
+    fn handle_mouse_moved(&mut self, pos: Vec2DDrawing) {
         add_point(&mut self.commands, pos);
     }
 
-    fn handle_button_pressed(&mut self, _pos: Point) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2DDrawing) { }
 
-    fn handle_button_released(&mut self, _pos: Point) -> ShapeFinished {
+    fn handle_button_released(&mut self, _pos: Vec2DDrawing) -> ShapeFinished {
         ShapeFinished::Yes
     }
 
@@ -300,7 +300,7 @@ impl ShapeTrait for Path {
         ShapeType::Path
     }
 
-    fn intersects_circle(&self, center: Point, radius: f64) -> bool {
+    fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
         for c in self.commands.iter() {
             if c.distance(center) <= radius {
                 return true;
@@ -320,13 +320,13 @@ mod tests {
     use super::{Path, thirds, bisector};
     use crate::shape::ShapeTrait;
     use crate::color::Color;
-    use crate::point::Point;
+    use crate::point::Vec2DDrawing;
 
     #[test]
     fn test_thirds() {
-        assert_eq!(thirds(Point::new(3.0, 0.0), Point::new(6.0, 0.0)), (Point::new(4.0, 0.0), Point::new(5.0, 0.0)));
-        assert_eq!(thirds(Point::new(0.0, 0.0), Point::new(6.0, 6.0)), (Point::new(2.0, 2.0), Point::new(4.0, 4.0)));
-        assert_eq!(thirds(Point::new(-15.0, 30.0), Point::new(-18.0, 27.0)), (Point::new(-16.0, 29.0), Point::new(-17.0, 28.0)));
+        assert_eq!(thirds(Vec2DDrawing::new(3.0, 0.0), Vec2DDrawing::new(6.0, 0.0)), (Vec2DDrawing::new(4.0, 0.0), Vec2DDrawing::new(5.0, 0.0)));
+        assert_eq!(thirds(Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(6.0, 6.0)), (Vec2DDrawing::new(2.0, 2.0), Vec2DDrawing::new(4.0, 4.0)));
+        assert_eq!(thirds(Vec2DDrawing::new(-15.0, 30.0), Vec2DDrawing::new(-18.0, 27.0)), (Vec2DDrawing::new(-16.0, 29.0), Vec2DDrawing::new(-17.0, 28.0)));
     }
 
     #[test]
@@ -334,7 +334,7 @@ mod tests {
         let a = (-2.0, 3.0).into();
         let b = (1.0, 6.0).into();
         let c = (5.0, 2.0).into();
-        let expected_bisector = Point::new(1.0, 0.0);
+        let expected_bisector = Vec2DDrawing::new(1.0, 0.0);
         let given_bisector = bisector(a, b, c);
 
         assert!(expected_bisector.x - given_bisector.x.abs() < 0.001);
@@ -343,20 +343,20 @@ mod tests {
 
     #[test]
     fn test_bbox() {
-        let mut line = Path::new(Color::green(), Point::new(1.0, 0.0), 4.0);
+        let mut line = Path::new(Color::green(), Vec2DDrawing::new(1.0, 0.0), 4.0);
 
-        line.handle_mouse_moved(Point::new(0.0, 1.0));
+        line.handle_mouse_moved(Vec2DDrawing::new(0.0, 1.0));
 
         assert_eq!(line.bbox(), [[0.0, 0.0], [1.0, 1.0]]);
     }
 
     #[test]
     fn test_bbox_twisted_line() {
-        let mut line = Path::new(Color::green(), Point::new(-12.0, -1.0), 1.0);
+        let mut line = Path::new(Color::green(), Vec2DDrawing::new(-12.0, -1.0), 1.0);
 
-        line.handle_mouse_moved(Point::new(-5.0, 0.0));
-        line.handle_mouse_moved(Point::new(-2.0, 7.0));
-        line.handle_mouse_moved(Point::new(2.0, -8.0));
+        line.handle_mouse_moved(Vec2DDrawing::new(-5.0, 0.0));
+        line.handle_mouse_moved(Vec2DDrawing::new(-2.0, 7.0));
+        line.handle_mouse_moved(Vec2DDrawing::new(2.0, -8.0));
 
         assert_eq!(line.bbox(), [[-12.0, -8.0], [3.161263886380917, 7.182987048373279]]);
     }

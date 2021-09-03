@@ -12,7 +12,7 @@ use crate::storage::Storage;
 use crate::shape::{ShapeTrait, Path, Ellipse};
 use crate::color::Color;
 use crate::consts::DEFAULT_THICKNESS;
-use crate::point::Point;
+use crate::point::Vec2DDrawing;
 
 mod path;
 
@@ -252,12 +252,12 @@ impl FromStr for Color {
     }
 }
 
-impl FromStr for Point {
+impl FromStr for Vec2DDrawing {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(captures) = POINT_REGEX.captures(s) {
-            Ok(Point::new(
+            Ok(Vec2DDrawing::new(
                 captures["x"].parse::<f64>()?,
                 captures["y"].parse::<f64>()?,
             ))
@@ -335,8 +335,8 @@ impl Ellipse {
                 1.0
             };
 
-        let center = Point::new(cx.parse()?, cy.parse()?);
-        let radius = Point::new(rx.parse()?, ry.parse()?).abs();
+        let center = Vec2DDrawing::new(cx.parse()?, cy.parse()?);
+        let radius = Vec2DDrawing::new(rx.parse()?, ry.parse()?).abs();
 
         Ok(Ellipse::with_params([center-radius, center + radius], color.with_alpha(alpha), thickness))
     }
@@ -398,7 +398,7 @@ mod tests {
     use crate::storage::Storage;
     use crate::shape::{Path, DrawCommand, ShapeTrait, path::PathCommand};
     use crate::color::Color;
-    use crate::point::Point;
+    use crate::point::Vec2DDrawing;
 
     #[test]
     fn test_from_svg() {
@@ -451,21 +451,21 @@ mod tests {
         } = line.draw_commands() {
             assert_eq!(color, Color::from_rgb(0.5390625, 0.8828125, 0.203125));
             assert_eq!(commands, vec![
-                PathCommand::MoveTo(Point::new(147.570312, 40.121094)),
-                PathCommand::LineTo(Point::new(146.9375, 40.121094)),
-                PathCommand::LineTo(Point::new(145.296875, 40.460938)),
-                PathCommand::LineTo(Point::new(142.519531, 41.710938)),
-                PathCommand::LineTo(Point::new(139.613281, 43.304688)),
-                PathCommand::LineTo(Point::new(138.097656, 44.894531)),
-                PathCommand::LineTo(Point::new(137.339844, 46.714844)),
-                PathCommand::LineTo(Point::new(138.097656, 47.621094)),
-                PathCommand::LineTo(Point::new(139.992188, 47.851562)),
-                PathCommand::LineTo(Point::new(142.898438, 47.621094)),
-                PathCommand::LineTo(Point::new(146.179688, 47.167969)),
-                PathCommand::LineTo(Point::new(150.097656, 47.964844)),
-                PathCommand::LineTo(Point::new(151.738281, 49.667969)),
-                PathCommand::LineTo(Point::new(152.496094, 51.714844)),
-                PathCommand::LineTo(Point::new(152.875, 53.191406)),
+                PathCommand::MoveTo(Vec2DDrawing::new(147.570312, 40.121094)),
+                PathCommand::LineTo(Vec2DDrawing::new(146.9375, 40.121094)),
+                PathCommand::LineTo(Vec2DDrawing::new(145.296875, 40.460938)),
+                PathCommand::LineTo(Vec2DDrawing::new(142.519531, 41.710938)),
+                PathCommand::LineTo(Vec2DDrawing::new(139.613281, 43.304688)),
+                PathCommand::LineTo(Vec2DDrawing::new(138.097656, 44.894531)),
+                PathCommand::LineTo(Vec2DDrawing::new(137.339844, 46.714844)),
+                PathCommand::LineTo(Vec2DDrawing::new(138.097656, 47.621094)),
+                PathCommand::LineTo(Vec2DDrawing::new(139.992188, 47.851562)),
+                PathCommand::LineTo(Vec2DDrawing::new(142.898438, 47.621094)),
+                PathCommand::LineTo(Vec2DDrawing::new(146.179688, 47.167969)),
+                PathCommand::LineTo(Vec2DDrawing::new(150.097656, 47.964844)),
+                PathCommand::LineTo(Vec2DDrawing::new(151.738281, 49.667969)),
+                PathCommand::LineTo(Vec2DDrawing::new(152.496094, 51.714844)),
+                PathCommand::LineTo(Vec2DDrawing::new(152.875, 53.191406)),
             ]);
             assert_eq!(thickness, 3.0);
         } else {
@@ -495,7 +495,7 @@ mod tests {
     fn test_parse_point() {
         let p = " 152.496094 51.714844 ";
 
-        assert_eq!(p.parse::<Point>().unwrap(), Point::new(152.496094, 51.714844));
+        assert_eq!(p.parse::<Vec2DDrawing>().unwrap(), Vec2DDrawing::new(152.496094, 51.714844));
     }
 
     #[test]

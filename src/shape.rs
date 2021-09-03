@@ -1,7 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::point::Point;
+use crate::point::Vec2DDrawing;
 
 pub mod path;
 mod rectangle;
@@ -36,7 +36,7 @@ pub enum ShapeType {
 }
 
 impl ShapeType {
-    pub fn start(&self, color: Color, initial: Point, stroke: f64) -> Box<dyn ShapeTrait> {
+    pub fn start(&self, color: Color, initial: Vec2DDrawing, stroke: f64) -> Box<dyn ShapeTrait> {
         match *self {
             ShapeType::Path => Box::new(Path::new(color, initial, stroke)),
             ShapeType::Rectangle => Box::new(Rectangle::new(color, initial, stroke)),
@@ -66,11 +66,11 @@ pub trait ShapeTrait {
     /// Must handle new coordinates given to this shape. If this method is
     /// called it means that the shape is being modified (thus this is the most
     /// recently added shape
-    fn handle_mouse_moved(&mut self, pos: Point);
+    fn handle_mouse_moved(&mut self, pos: Vec2DDrawing);
 
-    fn handle_button_pressed(&mut self, pos: Point);
+    fn handle_button_pressed(&mut self, pos: Vec2DDrawing);
 
-    fn handle_button_released(&mut self, pos: Point) -> ShapeFinished;
+    fn handle_button_released(&mut self, pos: Vec2DDrawing) -> ShapeFinished;
 
     /// Must return the necessary commands to display this shape on the screen
     fn draw_commands(&self) -> DrawCommand;
@@ -82,7 +82,7 @@ pub trait ShapeTrait {
     fn shape_type(&self) -> ShapeType;
 
     /// does this circle intersect this shape? Used by the eraser
-    fn intersects_circle(&self, center: Point, radius: f64) -> bool;
+    fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool;
 
     /// returns the color of this shape
     fn color(&self) -> Color;
@@ -148,19 +148,19 @@ impl Shape {
         self.shape_impl.bbox()
     }
 
-    pub fn intersects_circle(&self, center: Point, radius: f64) -> bool {
+    pub fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
         self.shape_impl.intersects_circle(center, radius)
     }
 
-    pub fn handle_mouse_moved(&mut self, val: Point) {
+    pub fn handle_mouse_moved(&mut self, val: Vec2DDrawing) {
         self.shape_impl.handle_mouse_moved(val);
     }
 
-    pub fn handle_button_pressed(&mut self, point: Point) {
+    pub fn handle_button_pressed(&mut self, point: Vec2DDrawing) {
         self.shape_impl.handle_button_pressed(point);
     }
 
-    pub fn handle_button_released(&mut self, point: Point) -> ShapeFinished {
+    pub fn handle_button_released(&mut self, point: Vec2DDrawing) -> ShapeFinished {
         self.shape_impl.handle_button_released(point)
     }
 }

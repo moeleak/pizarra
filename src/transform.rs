@@ -1,13 +1,13 @@
-use crate::point::Point;
+use crate::point::{Vec2D, Vec2DDrawing, Vec2DScreen};
 
 #[derive(Copy, Clone)]
 pub struct Transform {
     scale_factor: f64,
-    offset: Point,
+    offset: Vec2D,
 }
 
 impl Transform {
-    pub fn new(offset: Point, scale_factor: f64) -> Transform {
+    pub fn new(offset: Vec2D, scale_factor: f64) -> Transform {
         Transform {
             offset,
             scale_factor,
@@ -18,7 +18,38 @@ impl Transform {
         self.scale_factor
     }
 
-    pub fn to_screen_coordinates(&self, p: Point) -> Point {
-        (p - self.offset) * self.scale_factor
+    pub fn set_scale_factor(&mut self, scale_factor: f64) {
+        self.scale_factor = scale_factor;
+    }
+
+    pub fn offset(&self) -> Vec2D {
+        self.offset
+    }
+
+    pub fn translate_screen(&mut self, delta: Vec2DScreen) {
+        self.offset = self.offset - delta.to_vec2d() / self.scale_factor;
+    }
+
+    pub fn zoom_in(&mut self, factor: f64, dimensions: Vec2DScreen) {
+        self.offset = self.offset + ((dimensions / self.scale_factor) * 0.25).to_vec2d();
+        self.scale_factor *= factor;
+    }
+
+    pub fn zoom_out(&mut self, factor: f64, dimensions: Vec2DScreen) {
+        self.offset = self.offset - ((dimensions / self.scale_factor) * 0.5).to_vec2d();
+        self.scale_factor /= factor;
+    }
+
+    pub fn go_home(&mut self, center: Vec2DScreen) {
+        self.offset = (center * -0.5).into();
+        self.scale_factor = 1.0;
+    }
+
+    pub fn to_screen_coordinates(&self, p: Vec2DDrawing) -> Vec2DScreen {
+        ((p.to_vec2d() - self.offset) * self.scale_factor).into()
+    }
+
+    pub fn to_storage_coordinates(&self, p: Vec2DScreen) -> Vec2DDrawing {
+        (p.to_vec2d() / self.scale_factor + self.offset).into()
     }
 }

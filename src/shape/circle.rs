@@ -1,17 +1,17 @@
 use crate::color::Color;
-use crate::point::Point;
+use crate::point::Vec2DDrawing;
 use crate::shape::{ShapeTrait, ShapeFinished, ShapeType};
 use crate::draw_commands::DrawCommand;
 
 pub struct Circle {
-    center: Point,
+    center: Vec2DDrawing,
     radius: f64,
     thickness: f64,
     color: Color,
 }
 
 impl Circle {
-    pub fn new(color: Color, initial: Point, thickness: f64) -> Circle {
+    pub fn new(color: Color, initial: Vec2DDrawing, thickness: f64) -> Circle {
         Circle {
             center: initial,
             thickness,
@@ -22,13 +22,13 @@ impl Circle {
 }
 
 impl ShapeTrait for Circle {
-    fn handle_mouse_moved(&mut self, pos: Point) {
+    fn handle_mouse_moved(&mut self, pos: Vec2DDrawing) {
         self.radius = self.center.distance(pos);
     }
 
-    fn handle_button_pressed(&mut self, _pos: Point) {}
+    fn handle_button_pressed(&mut self, _pos: Vec2DDrawing) {}
 
-    fn handle_button_released(&mut self, pos: Point) -> ShapeFinished {
+    fn handle_button_released(&mut self, pos: Vec2DDrawing) -> ShapeFinished {
         self.handle_mouse_moved(pos);
 
         ShapeFinished::Yes
@@ -54,7 +54,7 @@ impl ShapeTrait for Circle {
         ShapeType::Circle
     }
 
-    fn intersects_circle(&self, center: Point, radius: f64) -> bool {
+    fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
         let d = self.center.distance(center);
 
         (d <= self.radius + radius) && (d >= self.radius - radius)

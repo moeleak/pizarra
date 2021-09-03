@@ -131,4 +131,12 @@ mod tests {
 
         assert_eq!(c.css(), "#FF0000");
     }
+
+    #[test]
+    fn test_with_alpha() {
+        let c = Color::red();
+
+        assert_eq!(c.alpha(), 1.0);
+        assert_eq!(c.with_alpha(0.8).alpha(), 0.8);
+    }
 }

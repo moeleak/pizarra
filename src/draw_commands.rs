@@ -1,4 +1,4 @@
-use crate::point::Point;
+use crate::point::Vec2DDrawing;
 use crate::color::Color;
 use crate::shape::path::PathCommand;
 
@@ -11,13 +11,13 @@ pub enum DrawCommand {
         thickness: f64,
     },
     Circle {
-        center: Point,
+        center: Vec2DDrawing,
         radius: f64,
         color: Color,
         thickness: f64,
     },
     Ellipse {
-        bbox: [Point; 2],
+        bbox: [Vec2DDrawing; 2],
         thickness: f64,
         color: Color,
     },
