@@ -97,6 +97,20 @@ impl Vec2DScreen {
             y: self.y,
         }
     }
+
+    pub fn min(self, other: Vec2DScreen) -> Vec2DScreen {
+        Vec2DScreen {
+            x: self.x.min(other.x),
+            y: self.y.min(other.y),
+        }
+    }
+
+    pub fn max(self, other: Vec2DScreen) -> Vec2DScreen {
+        Vec2DScreen {
+            x: self.x.max(other.x),
+            y: self.y.max(other.y),
+        }
+    }
 }
 
 impl Mul<f64> for Vec2D {
@@ -258,6 +272,12 @@ impl From<Vec2D> for Vec2DScreen {
             x: point.x,
             y: point.y,
         }
+    }
+}
+
+impl From<(f64, f64)> for Vec2DScreen {
+    fn from(other: (f64, f64)) -> Vec2DScreen {
+        Vec2DScreen::new(other.0, other.1)
     }
 }
 
