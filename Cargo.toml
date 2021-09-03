@@ -9,7 +9,7 @@ description = "The backend for a simple vector hand-drawing application"
 documentation = "https://docs.rs/pizarra"
 readme = "README.md"
 repository = "https://gitlab.com/categulario/pizarra"
-version = "0.9.3"
+version = "0.10.0"
 
 [dependencies]
 rstar = "0.7.1"
