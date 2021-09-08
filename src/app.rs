@@ -317,8 +317,8 @@ impl App {
     /// offset and zoom level
     pub fn visible_extent(&self) -> [Vec2DDrawing; 2] {
         [
-            self.transform.offset().into(),
-            (self.transform.offset() + (self.dimensions.to_vec2d() / self.transform.scale_factor())).into()
+            self.transform.to_storage_coordinates(Vec2DScreen::new(0.0, 0.0)),
+            self.transform.to_storage_coordinates(self.dimensions),
         ]
     }
 
