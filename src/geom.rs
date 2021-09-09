@@ -1,28 +1,28 @@
 use crate::point::Vec2DDrawing;
 
-pub fn bbox_from_points<I>(points: I) -> [[f64; 2]; 2]
+pub fn bbox_from_points<I>(points: I) -> [Vec2DDrawing; 2]
     where I: Iterator<Item=Vec2DDrawing>
 {
     let bbox = points.fold([
-        [std::f64::INFINITY, std::f64::INFINITY], // bottom-left corner
-        [std::f64::NEG_INFINITY, std::f64::NEG_INFINITY], // top right corner
+        Vec2DDrawing::new(std::f64::INFINITY, std::f64::INFINITY), // bottom-left corner
+        Vec2DDrawing::new(std::f64::NEG_INFINITY, std::f64::NEG_INFINITY), // top right corner
     ], |acc, point| {
         [
-            [
-                if point.x < acc[0][0] { point.x } else { acc[0][0] },
-                if point.y < acc[0][1] { point.y } else { acc[0][1] },
-            ],
-            [
-                if point.x > acc[1][0] { point.x } else { acc[1][0] },
-                if point.y > acc[1][1] { point.y } else { acc[1][1] },
-            ],
+            Vec2DDrawing::new(
+                if point.x < acc[0].x { point.x } else { acc[0].x },
+                if point.y < acc[0].y { point.y } else { acc[0].y },
+            ),
+            Vec2DDrawing::new(
+                if point.x > acc[1].x { point.x } else { acc[1].x },
+                if point.y > acc[1].y { point.y } else { acc[1].y },
+            ),
         ]
     });
 
-    assert_ne!(bbox[0][0], std::f64::INFINITY);
-    assert_ne!(bbox[0][1], std::f64::INFINITY);
-    assert_ne!(bbox[1][0], std::f64::NEG_INFINITY);
-    assert_ne!(bbox[1][1], std::f64::NEG_INFINITY);
+    assert_ne!(bbox[0].x, std::f64::INFINITY);
+    assert_ne!(bbox[0].y, std::f64::INFINITY);
+    assert_ne!(bbox[1].x, std::f64::NEG_INFINITY);
+    assert_ne!(bbox[1].y, std::f64::NEG_INFINITY);
 
     bbox
 }

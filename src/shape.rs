@@ -76,7 +76,7 @@ pub trait ShapeTrait {
     fn draw_commands(&self) -> DrawCommand;
 
     /// Must know its bbox
-    fn bbox(&self) -> [[f64; 2]; 2];
+    fn bbox(&self) -> [Vec2DDrawing; 2];
 
     /// Returns the current shape type
     fn shape_type(&self) -> ShapeType;
@@ -144,7 +144,7 @@ impl Shape {
         self.shape_impl.color()
     }
 
-    pub fn bbox(&self) -> [[f64; 2]; 2] {
+    pub fn bbox(&self) -> [Vec2DDrawing; 2] {
         self.shape_impl.bbox()
     }
 

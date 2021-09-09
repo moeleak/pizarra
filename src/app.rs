@@ -11,6 +11,7 @@ use crate::point::{Vec2DDrawing, Vec2DScreen};
 use crate::transform::Transform;
 use crate::consts::{DEFAULT_THICKNESS, TOUCH_RADIUS};
 use crate::deserialize;
+use crate::geom::bbox_from_points;
 
 #[derive(Copy,Clone,Debug)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -314,12 +315,21 @@ impl App {
     }
 
     /// Compute the bounds of what is visible in the board according to current
-    /// offset and zoom level
-    pub fn visible_extent(&self) -> [Vec2DDrawing; 2] {
+    /// offset, zoom level and rotation. Return value is an array of the
+    /// top-left, top-right, bottom-right, and bottom-left corners.
+    pub fn visible_extent(&self) -> [Vec2DDrawing; 4] {
         [
             self.transform.to_storage_coordinates(Vec2DScreen::new(0.0, 0.0)),
+            self.transform.to_storage_coordinates(Vec2DScreen::new(self.dimensions.x, 0.0)),
             self.transform.to_storage_coordinates(self.dimensions),
+            self.transform.to_storage_coordinates(Vec2DScreen::new(0.0, self.dimensions.y)),
         ]
+    }
+
+    /// return the axis-aligned bounding box of the visible portion of the
+    /// screen.
+    pub fn visible_bbox(&self) -> [Vec2DDrawing; 2] {
+        bbox_from_points(self.visible_extent().into_iter().map(|a| *a))
     }
 
     /// Returns the dimensions of the screen
@@ -335,7 +345,7 @@ impl App {
     /// Returns an iterator over the draw commands required to render the visible
     /// portion of the drawing
     pub fn draw_commands_for_screen(&self) -> Vec<DrawCommand> {
-        self.storage.draw_commands(self.visible_extent())
+        self.storage.draw_commands(self.visible_bbox())
     }
 
     /// Returns an interator over the draw commands required to render the wole
@@ -847,35 +857,35 @@ mod tests {
     fn test_move() {
         let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
         app.handle_mouse_button_pressed(MouseButton::Middle, Vec2DScreen::new(0.0, 0.0));
         app.handle_mouse_button_released(MouseButton::Middle, Vec2DScreen::new(-1.0, 0.0));
 
-        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-39.0, -30.0), Vec2DDrawing::new(41.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-39.0, -30.0), Vec2DDrawing::new(41.0, 30.0)]);
     }
 
     #[test]
     fn move_while_in_zoom_is_coherent() {
         let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
         app.zoom_in();
 
-        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-20.0, -15.0), Vec2DDrawing::new(20.0, 15.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-20.0, -15.0), Vec2DDrawing::new(20.0, 15.0)]);
 
         app.handle_mouse_button_pressed(MouseButton::Middle, Vec2DScreen::new(0.0, 0.0));
         app.handle_mouse_button_released(MouseButton::Middle, Vec2DScreen::new(-1.0, 0.0));
 
-        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-19.5, -15.0), Vec2DDrawing::new(20.5, 15.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-19.5, -15.0), Vec2DDrawing::new(20.5, 15.0)]);
     }
 
     #[test]
     fn test_move_while_drawing() {
         let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
@@ -887,7 +897,7 @@ mod tests {
         app.handle_mouse_move(Vec2DScreen::new(40.0, 10.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(40.0, 10.0));
 
-        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-50.0, -30.0), Vec2DDrawing::new(30.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-50.0, -30.0), Vec2DDrawing::new(30.0, 30.0)]);
         assert_eq!(app.shape_count(), 1);
 
         let commands = app.draw_commands_for_screen();
@@ -917,15 +927,15 @@ mod tests {
     fn test_zoom_must_be_idempotent() {
         let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
         app.zoom_in();
 
-        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-20.0, -15.0), Vec2DDrawing::new(20.0, 15.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-20.0, -15.0), Vec2DDrawing::new(20.0, 15.0)]);
 
         app.zoom_in();
 
-        assert_eq!(app.visible_extent(), [Vec2DDrawing::new(-10.0, -7.5), Vec2DDrawing::new(10.0, 7.5)]);
+        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-10.0, -7.5), Vec2DDrawing::new(10.0, 7.5)]);
     }
 
     #[test]

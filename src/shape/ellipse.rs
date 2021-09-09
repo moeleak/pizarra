@@ -55,11 +55,11 @@ impl ShapeTrait for Ellipse {
         }
     }
 
-    fn bbox(&self) -> [[f64; 2]; 2] {
         [
             self.bbox[0].min(self.bbox[1]).to_a(),
             self.bbox[0].max(self.bbox[1]).to_a(),
         ]
+    fn bbox(&self) -> [Vec2DDrawing; 2] {
     }
 
     fn shape_type(&self) -> ShapeType {

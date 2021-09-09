@@ -271,27 +271,27 @@ impl ShapeTrait for Path {
     }
 
     // The bounding box of the path needs to consider the beizer handles
-    fn bbox(&self) -> [[f64; 2]; 2] {
+    fn bbox(&self) -> [Vec2DDrawing; 2] {
         let bbox = self.commands.iter().fold([
-            [std::f64::INFINITY, std::f64::INFINITY], // bottom-left corner
-            [std::f64::NEG_INFINITY, std::f64::NEG_INFINITY], // top right corner
+            Vec2DDrawing::new(std::f64::INFINITY, std::f64::INFINITY), // bottom-left corner
+            Vec2DDrawing::new(std::f64::NEG_INFINITY, std::f64::NEG_INFINITY), // top right corner
         ], |acc, cmd| {
             [
-                [
-                    cmd.min_x().min(acc[0][0]),
-                    cmd.min_y().min(acc[0][1]),
-                ],
-                [
-                    cmd.max_x().max(acc[1][0]),
-                    cmd.max_y().max(acc[1][1]),
-                ],
+                Vec2DDrawing::new(
+                    cmd.min_x().min(acc[0].x),
+                    cmd.min_y().min(acc[0].y),
+                ),
+                Vec2DDrawing::new(
+                    cmd.max_x().max(acc[1].x),
+                    cmd.max_y().max(acc[1].y),
+                ),
             ]
         });
 
-        assert_ne!(bbox[0][0], std::f64::INFINITY);
-        assert_ne!(bbox[0][1], std::f64::INFINITY);
-        assert_ne!(bbox[1][0], std::f64::NEG_INFINITY);
-        assert_ne!(bbox[1][1], std::f64::NEG_INFINITY);
+        assert_ne!(bbox[0].x, std::f64::INFINITY);
+        assert_ne!(bbox[0].y, std::f64::INFINITY);
+        assert_ne!(bbox[1].x, std::f64::NEG_INFINITY);
+        assert_ne!(bbox[1].y, std::f64::NEG_INFINITY);
 
         bbox
     }
@@ -347,7 +347,7 @@ mod tests {
 
         line.handle_mouse_moved(Vec2DDrawing::new(0.0, 1.0));
 
-        assert_eq!(line.bbox(), [[0.0, 0.0], [1.0, 1.0]]);
+        assert_eq!(line.bbox(), [Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(1.0, 1.0)]);
     }
 
     #[test]
@@ -358,6 +358,6 @@ mod tests {
         line.handle_mouse_moved(Vec2DDrawing::new(-2.0, 7.0));
         line.handle_mouse_moved(Vec2DDrawing::new(2.0, -8.0));
 
-        assert_eq!(line.bbox(), [[-12.0, -8.0], [3.161263886380917, 7.182987048373279]]);
+        assert_eq!(line.bbox(), [Vec2DDrawing::new(-12.0, -8.0), Vec2DDrawing::new(3.161263886380917, 7.182987048373279)]);
     }
 }

@@ -68,7 +68,6 @@ impl ShapeTrait for Rectangle {
         }
     }
 
-    fn bbox(&self) -> [[f64; 2]; 2] {
         let x2 = self.corner_2.x;
         let y2 = self.corner_2.y;
 
@@ -82,6 +81,7 @@ impl ShapeTrait for Rectangle {
                 self.corner_1.y.max(y2),
             ],
         ]
+    fn bbox(&self) -> [Vec2DDrawing; 2] {
     }
 
     fn shape_type(&self) -> ShapeType {
@@ -126,8 +126,8 @@ mod tests {
         let shape1 = Rectangle::from_corners([Vec2DDrawing::new(-1.0, -2.0), Vec2DDrawing::new(5.0, 2.0)]);
         let shape2 = Rectangle::from_corners([Vec2DDrawing::new(-1.0, 2.0), Vec2DDrawing::new(5.0, -2.0)]);
 
-        assert_eq!(shape1.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
-        assert_eq!(shape2.bbox(), [[-1.0, -2.0], [5.0, 2.0]]);
+        assert_eq!(shape1.bbox(), [Vec2DDrawing::new(-1.0, -2.0), Vec2DDrawing::new(5.0, 2.0)]);
+        assert_eq!(shape2.bbox(), [Vec2DDrawing::new(-1.0, -2.0), Vec2DDrawing::new(5.0, 2.0)]);
     }
 
     #[test]
@@ -140,7 +140,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [[15.0, -48.0], [37.0, -27.0]]);
+            assert_eq!(rectangle.bbox(), [Vec2DDrawing::new(15.0, -48.0), Vec2DDrawing::new(37.0, -27.0)]);
         }
 
         let rectangles = vec![
@@ -151,7 +151,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [[15.0, -24.0], [60.0, 6.0]]);
+            assert_eq!(rectangle.bbox(), [Vec2DDrawing::new(15.0, -24.0), Vec2DDrawing::new(60.0, 6.0)]);
         }
 
         let rectangles = vec![
@@ -162,7 +162,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [[-8.0, -32.0], [16.0, 0.0]]);
+            assert_eq!(rectangle.bbox(), [Vec2DDrawing::new(-8.0, -32.0), Vec2DDrawing::new(16.0, 0.0)]);
         }
 
         let rectangles = vec![
@@ -173,7 +173,7 @@ mod tests {
         ];
 
         for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [[48.0, -19.0], [78.0, 22.0]]);
+            assert_eq!(rectangle.bbox(), [Vec2DDrawing::new(48.0, -19.0), Vec2DDrawing::new(78.0, 22.0)]);
         }
     }
 }

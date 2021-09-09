@@ -85,7 +85,7 @@ impl ShapeTrait for Polygon {
         }
     }
 
-    fn bbox(&self) -> [[f64; 2]; 2] {
+    fn bbox(&self) -> [Vec2DDrawing; 2] {
         bbox_from_points(self.points.iter().map(|p| *p))
     }
 

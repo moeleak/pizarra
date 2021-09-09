@@ -43,10 +43,10 @@ impl ShapeTrait for Circle {
         }
     }
 
-    fn bbox(&self) -> [[f64; 2]; 2] {
+    fn bbox(&self) -> [Vec2DDrawing; 2] {
         [
-            [self.center.x - self.radius, self.center.y - self.radius],
-            [self.center.x + self.radius, self.center.y + self.radius],
+            Vec2DDrawing::new(self.center.x - self.radius, self.center.y - self.radius),
+            Vec2DDrawing::new(self.center.x + self.radius, self.center.y + self.radius),
         ]
     }
 

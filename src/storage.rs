@@ -13,7 +13,7 @@ impl RTreeObject for Shape {
     fn envelope(&self) -> Self::Envelope {
         let [p1, p2] = self.bbox();
 
-        AABB::from_corners(p1, p2)
+        AABB::from_corners(p1.to_a(), p2.to_a())
     }
 }
 
