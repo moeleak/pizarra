@@ -1,11 +1,13 @@
 #![allow(non_snake_case)]
 use std::fmt;
 
-use super::{ShapeTrait, ShapeFinished};
 use crate::draw_commands::DrawCommand;
 use crate::color::Color;
 use crate::ShapeType;
-use crate::point::Vec2DDrawing;
+use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
+use crate::transform::Transform;
+
+use super::{ShapeTrait, ShapeFinished};
 
 /// Given two points return the points in their 1/3 and 2/3 of the segment from
 /// a to b.
@@ -252,13 +254,13 @@ impl ShapeTrait for Path {
     //    control point respecting its length. It sets correctly the length of
     //    its two control points but the last one sits in the segment between
     //    the last two points.
-    fn handle_mouse_moved(&mut self, pos: Vec2DDrawing) {
-        add_point(&mut self.commands, pos);
+    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
+        add_point(&mut self.commands, t.to_storage_coordinates(pos));
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DDrawing) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, t: Transform) { }
 
-    fn handle_button_released(&mut self, _pos: Vec2DDrawing) -> ShapeFinished {
+    fn handle_button_released(&mut self, _pos: Vec2DScreen, t: Transform) -> ShapeFinished {
         ShapeFinished::Yes
     }
 
@@ -317,7 +319,8 @@ impl ShapeTrait for Path {
 
 #[cfg(test)]
 mod tests {
-    use super::{Path, thirds, bisector};
+    use super::*;
+
     use crate::shape::ShapeTrait;
     use crate::color::Color;
     use crate::point::Vec2DDrawing;
@@ -344,8 +347,9 @@ mod tests {
     #[test]
     fn test_bbox() {
         let mut line = Path::new(Color::green(), Vec2DDrawing::new(1.0, 0.0), 4.0);
+        let t = Default::default();
 
-        line.handle_mouse_moved(Vec2DDrawing::new(0.0, 1.0));
+        line.handle_mouse_moved(Vec2DScreen::new(0.0, 1.0), t);
 
         assert_eq!(line.bbox(), [Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(1.0, 1.0)]);
     }
@@ -353,10 +357,11 @@ mod tests {
     #[test]
     fn test_bbox_twisted_line() {
         let mut line = Path::new(Color::green(), Vec2DDrawing::new(-12.0, -1.0), 1.0);
+        let t = Default::default();
 
-        line.handle_mouse_moved(Vec2DDrawing::new(-5.0, 0.0));
-        line.handle_mouse_moved(Vec2DDrawing::new(-2.0, 7.0));
-        line.handle_mouse_moved(Vec2DDrawing::new(2.0, -8.0));
+        line.handle_mouse_moved(Vec2DScreen::new(-5.0, 0.0), t);
+        line.handle_mouse_moved(Vec2DScreen::new(-2.0, 7.0), t);
+        line.handle_mouse_moved(Vec2DScreen::new(2.0, -8.0), t);
 
         assert_eq!(line.bbox(), [Vec2DDrawing::new(-12.0, -8.0), Vec2DDrawing::new(3.161263886380917, 7.182987048373279)]);
     }

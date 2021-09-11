@@ -1,6 +1,7 @@
 use crate::point::Vec2DDrawing;
 use crate::color::Color;
 use crate::shape::path::PathCommand;
+use crate::geom::Rad;
 
 /// The draw command as returned by the shape: adds the color
 #[derive(Debug, PartialEq, Clone)]
@@ -10,14 +11,18 @@ pub enum DrawCommand {
         commands: Vec<PathCommand>,
         thickness: f64,
     },
+
     Circle {
         center: Vec2DDrawing,
         radius: f64,
         color: Color,
         thickness: f64,
     },
+
     Ellipse {
-        bbox: [Vec2DDrawing; 2],
+        center: Vec2DDrawing,
+        dimensions: Vec2DDrawing,
+        angle: Rad,
         thickness: f64,
         color: Color,
     },

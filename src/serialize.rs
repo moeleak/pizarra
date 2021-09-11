@@ -1,7 +1,7 @@
 use xml::writer::{EmitterConfig, XmlEvent, EventWriter};
 
 use crate::consts::EXPORT_PADDING;
-use crate::point::Vec2DDrawing;
+use crate::point::{Point, Vec2DDrawing};
 use crate::draw_commands::DrawCommand;
 use crate::app::App;
 
@@ -41,25 +41,26 @@ impl DrawCommand {
                 writer.write(XmlEvent::end_element()).unwrap();
             },
             DrawCommand::Ellipse {
-                bbox, thickness, color,
+                thickness, color, center, dimensions, angle,
             } => {
-                let min = bbox[0].min(bbox[1]);
-                let max = bbox[0].max(bbox[1]);
-
-                let bounds = max - min;
-                let half = bounds/2.0;
-                let center = half + min;
-
                 writer.write(XmlEvent::start_element("ellipse")
                     .attr("cx", &center.x.to_string())
                     .attr("cy", &center.y.to_string())
-                    .attr("rx", &half.x.to_string())
-                    .attr("ry", &half.y.to_string())
-                    .attr("style", &format!(
-                        "fill:none;stroke-width:{stroke};stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10",
+                    .attr("rx", &dimensions.x.to_string())
+                    .attr("ry", &dimensions.y.to_string())
+                    .attr("style", &format!("\
+                            fill:none;\
+                            stroke-width:{stroke};\
+                            stroke:{color};\
+                            stroke-opacity:{alpha};\
+                            stroke-miterlimit:10;\
+                            transform:rotate({degs} {cx} {cy})",
                         stroke = thickness,
                         color = color.css(),
                         alpha = color.alpha(),
+                        degs = &angle.degrees().to_string(),
+                        cx = center.x,
+                        cy = center.y,
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
@@ -119,6 +120,8 @@ impl App {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use crate::color::Color;
     use crate::point::Vec2DScreen;
     use crate::app::{App, MouseButton, SelectedTool};
@@ -165,5 +168,10 @@ mod tests {
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(30.0, 30.0));
 
         assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_alpha.svg"));
+    }
+
+    #[test]
+    fn can_serialize_rotated_ellipse() {
+        assert!(false);
     }
 }

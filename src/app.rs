@@ -7,7 +7,7 @@ use crate::storage::Storage;
 use crate::shape::{Shape, ShapeType, ShapeFinished};
 use crate::color::Color;
 use crate::action::Action;
-use crate::point::{Vec2DDrawing, Vec2DScreen};
+use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
 use crate::transform::Transform;
 use crate::consts::{DEFAULT_THICKNESS, TOUCH_RADIUS};
 use crate::deserialize;
@@ -152,7 +152,7 @@ impl App {
         match self.selected_tool {
             SelectedTool::Shape(shape) => {
                 if let Some(shape) = self.storage.last_mut() {
-                    shape.handle_button_pressed(transformed_point);
+                    shape.handle_button_pressed(point, self.transform);
                 } else {
                     let new_shape = shape.start(self.selected_color.with_alpha(self.alpha), transformed_point, self.stroke * 1.0 / self.transform.scale_factor());
 
@@ -184,7 +184,7 @@ impl App {
         match self.selected_tool {
             SelectedTool::Shape(_shape) => {
                 let finished = if let Some(shape) = self.storage.last_mut() {
-                    shape.handle_button_released(transformed_point)
+                    shape.handle_button_released(point, self.transform)
                 } else {
                     ShapeFinished::No
                 };
@@ -224,7 +224,7 @@ impl App {
         match self.selected_tool {
             SelectedTool::Shape(_shape_type) => {
                 if let Some(shape) = self.storage.last_mut() {
-                    shape.handle_mouse_moved(transformed_point);
+                    shape.handle_mouse_moved(point, self.transform);
                     ShouldRedraw::Shape
                 } else {
                     ShouldRedraw::No

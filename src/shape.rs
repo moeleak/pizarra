@@ -1,7 +1,8 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::point::Vec2DDrawing;
+use crate::point::{Vec2DDrawing, Vec2DScreen};
+use crate::transform::Transform;
 
 pub mod path;
 mod rectangle;
@@ -66,11 +67,11 @@ pub trait ShapeTrait {
     /// Must handle new coordinates given to this shape. If this method is
     /// called it means that the shape is being modified (thus this is the most
     /// recently added shape
-    fn handle_mouse_moved(&mut self, pos: Vec2DDrawing);
+    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, transform: Transform);
 
-    fn handle_button_pressed(&mut self, pos: Vec2DDrawing);
+    fn handle_button_pressed(&mut self, pos: Vec2DScreen, transform: Transform);
 
-    fn handle_button_released(&mut self, pos: Vec2DDrawing) -> ShapeFinished;
+    fn handle_button_released(&mut self, pos: Vec2DScreen, transform: Transform) -> ShapeFinished;
 
     /// Must return the necessary commands to display this shape on the screen
     fn draw_commands(&self) -> DrawCommand;
@@ -152,16 +153,16 @@ impl Shape {
         self.shape_impl.intersects_circle(center, radius)
     }
 
-    pub fn handle_mouse_moved(&mut self, val: Vec2DDrawing) {
-        self.shape_impl.handle_mouse_moved(val);
+    pub fn handle_mouse_moved(&mut self, val: Vec2DScreen, transform: Transform) {
+        self.shape_impl.handle_mouse_moved(val, transform);
     }
 
-    pub fn handle_button_pressed(&mut self, point: Vec2DDrawing) {
-        self.shape_impl.handle_button_pressed(point);
+    pub fn handle_button_pressed(&mut self, point: Vec2DScreen, transform: Transform) {
+        self.shape_impl.handle_button_pressed(point, transform);
     }
 
-    pub fn handle_button_released(&mut self, point: Vec2DDrawing) -> ShapeFinished {
-        self.shape_impl.handle_button_released(point)
+    pub fn handle_button_released(&mut self, point: Vec2DScreen, transform: Transform) -> ShapeFinished {
+        self.shape_impl.handle_button_released(point, transform)
     }
 }
 

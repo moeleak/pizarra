@@ -3,9 +3,10 @@ use std::f64;
 
 use rstar::{RTree, RTreeObject, AABB, SelectionFunction, Envelope};
 
+use crate::point::{Point, Vec2DDrawing};
+
 use super::shape::{Shape, ShapeId, ShapeTrait};
 use super::draw_commands::DrawCommand;
-use crate::point::Vec2DDrawing;
 
 impl RTreeObject for Shape {
     type Envelope = AABB<[f64; 2]>;
@@ -240,7 +241,7 @@ impl <'a> Iterator for ShapeIterator<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::Storage;
+    use super::*;
 
     use crate::shape::{
         ShapeType, ShapeTrait, ShapeId, Path, Rectangle, Ellipse,
@@ -248,7 +249,7 @@ mod tests {
     };
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;
-    use crate::point::Vec2DDrawing;
+    use crate::point::{Vec2DDrawing, Vec2DScreen};
 
     #[test]
     fn test_add_shapes_at_zoom() {
@@ -274,6 +275,7 @@ mod tests {
     #[test]
     fn test_last_mut() {
         let mut storage = Storage::new();
+        let t = Default::default();
 
         assert!(storage.last_mut().is_none());
 
@@ -283,8 +285,8 @@ mod tests {
 
         assert_eq!(last_shape.shape_type(), ShapeType::Path);
 
-        last_shape.handle_mouse_moved(Vec2DDrawing::new(0.0, 0.0));
-        last_shape.handle_mouse_moved(Vec2DDrawing::new(1.0, 0.0));
+        last_shape.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
+        last_shape.handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
 
         storage.add(Box::new(Rectangle::from_corners([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(0.0, 0.0)])));
 
@@ -292,8 +294,8 @@ mod tests {
 
         assert_eq!(last_shape.shape_type(), ShapeType::Rectangle);
 
-        last_shape.handle_mouse_moved(Vec2DDrawing::new(0.0, 0.0));
-        last_shape.handle_mouse_moved(Vec2DDrawing::new(1.0, 0.0));
+        last_shape.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
+        last_shape.handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
 
         storage.add(Box::new(Ellipse::new(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)));
 
@@ -301,8 +303,8 @@ mod tests {
 
         assert_eq!(last_shape.shape_type(), ShapeType::Ellipse);
 
-        last_shape.handle_mouse_moved(Vec2DDrawing::new(0.0, 0.0));
-        last_shape.handle_mouse_moved(Vec2DDrawing::new(1.0, 0.0));
+        last_shape.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
+        last_shape.handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
     }
 
     #[test]
@@ -323,13 +325,14 @@ mod tests {
     #[test]
     fn test_remove_line() {
         let mut storage = Storage::new();
+        let t = Default::default();
 
         let mut line = Path::new(Color::green(), Vec2DDrawing::new(0.0, -1.0), 1.0);
 
-        line.handle_mouse_moved(Vec2DDrawing::new(0.0, 0.0));
-        line.handle_mouse_moved(Vec2DDrawing::new(1.0, 0.0));
-        line.handle_mouse_moved(Vec2DDrawing::new(1.0, 1.0));
-        line.handle_mouse_moved(Vec2DDrawing::new(0.0, 1.0));
+        line.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
+        line.handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
+        line.handle_mouse_moved(Vec2DScreen::new(1.0, 1.0), t);
+        line.handle_mouse_moved(Vec2DScreen::new(0.0, 1.0), t);
 
         storage.add(Box::new(line));
         storage.flush();
@@ -389,19 +392,20 @@ mod tests {
     #[test]
     fn incremental_drawing() {
         let mut storage = Storage::new();
+        let t = Default::default();
         let bbox = [Vec2DDrawing::new(-40.0, -40.0), Vec2DDrawing::new(40.0, 40.0)];
 
         storage.add(Box::new(Path::new(Color::green(), Vec2DDrawing::new(0.0, 0.0), 4.0)));
 
-        storage.last_mut().unwrap().handle_mouse_moved(Vec2DDrawing::new(1.0, 0.0));
+        storage.last_mut().unwrap().handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
 
         assert_eq!(storage.draw_commands(bbox), vec![]);
 
-        storage.last_mut().unwrap().handle_mouse_moved(Vec2DDrawing::new(2.0, 0.0));
+        storage.last_mut().unwrap().handle_mouse_moved(Vec2DScreen::new(2.0, 0.0), t);
 
         assert_eq!(storage.draw_commands(bbox), vec![]);
 
-        storage.last_mut().unwrap().handle_button_released(Vec2DDrawing::new(3.0, 0.0));
+        storage.last_mut().unwrap().handle_button_released(Vec2DScreen::new(3.0, 0.0), t);
 
         assert_eq!(storage.draw_commands(bbox), vec![]);
 

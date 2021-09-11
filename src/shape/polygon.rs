@@ -1,9 +1,10 @@
 use crate::color::Color;
-use crate::point::Vec2DDrawing;
+use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
 use crate::shape::{ShapeTrait, ShapeFinished, ShapeType, path::PathCommand};
 use crate::consts::TOUCH_RADIUS;
 use crate::draw_commands::DrawCommand;
 use crate::geom::{bbox_from_points, segment_intersects_circle};
+use crate::transform::Transform;
 
 pub struct Polygon {
     points: Vec<Vec2DDrawing>,
@@ -37,25 +38,27 @@ impl Polygon {
 }
 
 impl ShapeTrait for Polygon {
-    fn handle_mouse_moved(&mut self, pos: Vec2DDrawing) {
-        self.tip = Some(pos);
+    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
+        self.tip = Some(t.to_storage_coordinates(pos));
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DDrawing) {}
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, t: Transform) {}
 
-    fn handle_button_released(&mut self, pos: Vec2DDrawing) -> ShapeFinished {
+    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
+        let drawing_pos = t.to_storage_coordinates(pos);
+
         if self.points.len() == 0 {
-            self.points.push(pos);
+            self.points.push(drawing_pos);
             return ShapeFinished::No;
         }
 
-        if let Some(point) = self.touches_prev_point(pos) {
+        if let Some(point) = self.touches_prev_point(drawing_pos) {
             self.points.push(point);
             self.tip = None;
 
             ShapeFinished::Yes
         } else {
-            self.points.push(pos);
+            self.points.push(drawing_pos);
 
             ShapeFinished::No
         }
@@ -110,39 +113,38 @@ impl ShapeTrait for Polygon {
 
 #[cfg(test)]
 mod tests {
-    use super::Polygon;
-
-    use crate::point::Vec2DDrawing;
-    use crate::shape::{ShapeTrait, ShapeFinished, path::PathCommand};
-    use crate::draw_commands::DrawCommand;
+    use super::*;
 
     #[test]
     fn it_behaves() {
         let mut poly = Polygon::new(Default::default(), Vec2DDrawing::new(0.0, 0.0), 4.0);
-        poly.handle_button_released(Vec2DDrawing::new(0.0, 0.0));
+        let t = Default::default();
 
-        poly.handle_mouse_moved(Vec2DDrawing::new(20.0, 0.0));
-        assert_eq!(poly.handle_button_released(Vec2DDrawing::new(20.0, 0.0)), ShapeFinished::No);
+        poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t);
 
-        poly.handle_mouse_moved(Vec2DDrawing::new(20.0, 20.0));
-        assert_eq!(poly.handle_button_released(Vec2DDrawing::new(20.0, 20.0)), ShapeFinished::No);
+        poly.handle_mouse_moved(Vec2DScreen::new(20.0, 0.0), t);
+        assert_eq!(poly.handle_button_released(Vec2DScreen::new(20.0, 0.0), t), ShapeFinished::No);
 
-        poly.handle_mouse_moved(Vec2DDrawing::new(0.0, 0.0));
-        assert_eq!(poly.handle_button_released(Vec2DDrawing::new(0.0, 0.0)), ShapeFinished::Yes);
+        poly.handle_mouse_moved(Vec2DScreen::new(20.0, 20.0), t);
+        assert_eq!(poly.handle_button_released(Vec2DScreen::new(20.0, 20.0), t), ShapeFinished::No);
+
+        poly.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
+        assert_eq!(poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t), ShapeFinished::Yes);
     }
 
     #[test]
     fn no_clunky_path_ends() {
         let mut poly = Polygon::new(Default::default(), Vec2DDrawing::new(1.0, 0.0), 4.0);
+        let t = Default::default();
 
-        poly.handle_mouse_moved(Vec2DDrawing::new(1.0, 1.0));
-        poly.handle_button_released(Vec2DDrawing::new(0.0, 0.0));
+        poly.handle_mouse_moved(Vec2DScreen::new(1.0, 1.0), t);
+        poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t);
 
-        poly.handle_mouse_moved(Vec2DDrawing::new(31.0, 0.0));
-        poly.handle_button_released(Vec2DDrawing::new(30.0, 0.0));
+        poly.handle_mouse_moved(Vec2DScreen::new(31.0, 0.0), t);
+        poly.handle_button_released(Vec2DScreen::new(30.0, 0.0), t);
 
-        poly.handle_mouse_moved(Vec2DDrawing::new(29.0, 0.0));
-        assert_eq!(poly.handle_button_released(Vec2DDrawing::new(33.0, 0.0)), ShapeFinished::Yes);
+        poly.handle_mouse_moved(Vec2DScreen::new(29.0, 0.0), t);
+        assert_eq!(poly.handle_button_released(Vec2DScreen::new(33.0, 0.0), t), ShapeFinished::Yes);
 
         assert_eq!(poly.draw_commands(), DrawCommand::Path {
             color: Default::default(),
@@ -158,10 +160,11 @@ mod tests {
     #[test]
     fn can_delete_single_point_polygons() {
         let mut poly = Polygon::new(Default::default(), Vec2DDrawing::new(0.0, 0.0), 4.0);
+        let t = Default::default();
 
-        poly.handle_button_released(Vec2DDrawing::new(0.0, 0.0));
+        poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t);
 
-        if let ShapeFinished::No = poly.handle_button_released(Vec2DDrawing::new(0.0, 0.0)) {
+        if let ShapeFinished::No = poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t) {
             panic!("Unfinished shape");
         }
 

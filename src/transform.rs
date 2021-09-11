@@ -1,6 +1,6 @@
-use crate::point::{Vec2D, Vec2DDrawing, Vec2DScreen};
+use crate::point::{Point, Vec2D, Vec2DDrawing, Vec2DScreen};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Transform {
     scale_factor: f64,
     offset: Vec2D,

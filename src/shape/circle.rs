@@ -1,7 +1,8 @@
 use crate::color::Color;
-use crate::point::Vec2DDrawing;
+use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
 use crate::shape::{ShapeTrait, ShapeFinished, ShapeType};
 use crate::draw_commands::DrawCommand;
+use crate::transform::Transform;
 
 pub struct Circle {
     center: Vec2DDrawing,
@@ -22,14 +23,14 @@ impl Circle {
 }
 
 impl ShapeTrait for Circle {
-    fn handle_mouse_moved(&mut self, pos: Vec2DDrawing) {
-        self.radius = self.center.distance(pos);
+    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
+        self.radius = self.center.distance(t.to_storage_coordinates(pos));
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DDrawing) {}
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, t: Transform) {}
 
-    fn handle_button_released(&mut self, pos: Vec2DDrawing) -> ShapeFinished {
-        self.handle_mouse_moved(pos);
+    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
+        self.handle_mouse_moved(pos, t);
 
         ShapeFinished::Yes
     }

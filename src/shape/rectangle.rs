@@ -1,12 +1,14 @@
-use crate::point::Vec2DDrawing;
+use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
 use crate::draw_commands::DrawCommand;
-use super::{ShapeTrait, ShapeFinished, path::PathCommand};
 use crate::color::Color;
 use crate::ShapeType;
+use crate::transform::Transform;
+use crate::geom::{bbox_from_points, project};
+
+use super::{ShapeTrait, ShapeFinished, path::PathCommand};
 
 pub struct Rectangle {
-    corner_1: Vec2DDrawing,
-    corner_2: Vec2DDrawing,
+    corners: [Vec2DDrawing; 4],
     stroke: f64,
     color: Color,
 }
@@ -14,42 +16,50 @@ pub struct Rectangle {
 impl Rectangle {
     pub fn new(color: Color, initial: Vec2DDrawing, stroke: f64) -> Rectangle {
         Rectangle {
-            corner_1: initial,
-            corner_2: initial,
+            corners: [initial; 4],
             stroke,
             color,
         }
     }
 
     /// Only used for testing
+    #[cfg(test)]
     pub fn from_corners([corner_1, corner_2]: [Vec2DDrawing; 2]) -> Rectangle {
         Rectangle {
-            corner_1, corner_2,
+            corners: [
+                corner_1,
+                Vec2DDrawing::new(corner_2.x, corner_1.y),
+                corner_2,
+                Vec2DDrawing::new(corner_1.x, corner_2.y),
+            ],
             stroke: 4.0,
             color: Color::green(),
         }
     }
 
     pub fn all_four_corners(&self) -> [Vec2DDrawing; 4] {
-        [
-            Vec2DDrawing::new(self.corner_1.x, self.corner_1.y),
-            Vec2DDrawing::new(self.corner_1.x, self.corner_2.y),
-            Vec2DDrawing::new(self.corner_2.x, self.corner_2.y),
-            Vec2DDrawing::new(self.corner_2.x, self.corner_1.y),
-        ]
+        self.corners
     }
 }
 
 impl ShapeTrait for Rectangle {
-    fn handle_mouse_moved(&mut self, pos: Vec2DDrawing) {
-        self.corner_2 = pos;
+    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
+        let first_point = self.corners[0];
+        let first_point_screen = t.to_screen_coordinates(self.corners[0]);
+
+        self.corners = [
+            first_point,
+            t.to_storage_coordinates(Vec2DScreen::new(pos.x, first_point_screen.y)),
+            t.to_storage_coordinates(pos),
+            t.to_storage_coordinates(Vec2DScreen::new(first_point_screen.x, pos.y)),
+        ];
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DDrawing) {
-    }
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, t: Transform) { }
 
-    fn handle_button_released(&mut self, pos: Vec2DDrawing) -> ShapeFinished {
-        self.corner_2 = pos;
+    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
+        self.handle_mouse_moved(pos, t);
+
         ShapeFinished::Yes
     }
 
@@ -68,20 +78,8 @@ impl ShapeTrait for Rectangle {
         }
     }
 
-        let x2 = self.corner_2.x;
-        let y2 = self.corner_2.y;
-
-        [
-            [
-                self.corner_1.x.min(x2),
-                self.corner_1.y.min(y2),
-            ],
-            [
-                self.corner_1.x.max(x2),
-                self.corner_1.y.max(y2),
-            ],
-        ]
     fn bbox(&self) -> [Vec2DDrawing; 2] {
+        bbox_from_points(self.all_four_corners().into_iter().map(|p| *p))
     }
 
     fn shape_type(&self) -> ShapeType {
@@ -96,16 +94,12 @@ impl ShapeTrait for Rectangle {
             .filter(|a| *a)
             .count() > 0;
 
-        let min_y = self.corner_1.y.min(self.corner_2.y);
-        let min_x = self.corner_1.x.min(self.corner_2.x);
-        let max_y = self.corner_1.y.max(self.corner_2.y);
-        let max_x = self.corner_1.x.max(self.corner_2.x);
+        let intersects_sides = self.all_four_corners().iter().zip(self.all_four_corners().iter().cycle())
+            .any(|(&p1, &p2)| {
+                let projection = project(center, [p1, p2]);
 
-        let intersects_sides =
-            ((center.x - self.corner_1.x).abs() < radius && center.y >= min_y && center.y <= max_y) ||
-            ((center.x - self.corner_2.x).abs() < radius && center.y >= min_y && center.y <= max_y) ||
-            ((center.y - self.corner_1.y).abs() < radius && center.x >= min_x && center.x <= max_x) ||
-            ((center.y - self.corner_2.y).abs() < radius && center.x >= min_x && center.x <= max_x);
+                projection.distance(center) < radius
+            });
 
         intersects_sides || intersects_corners
     }
@@ -117,9 +111,7 @@ impl ShapeTrait for Rectangle {
 
 #[cfg(test)]
 mod tests {
-    use super::Rectangle;
-    use crate::point::Vec2DDrawing;
-    use crate::shape::ShapeTrait;
+    use super::*;
 
     #[test]
     fn test_bbox() {

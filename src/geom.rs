@@ -1,4 +1,19 @@
-use crate::point::Vec2DDrawing;
+use crate::point::{Point, Vec2DDrawing};
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Rad(f64);
+
+impl Rad {
+    pub fn degrees(self) -> f64 {
+        self.0.to_degrees()
+    }
+}
+
+impl From<f64> for Rad {
+    fn from(radians: f64) -> Rad {
+        Rad(radians)
+    }
+}
 
 pub fn bbox_from_points<I>(points: I) -> [Vec2DDrawing; 2]
     where I: Iterator<Item=Vec2DDrawing>
@@ -27,7 +42,7 @@ pub fn bbox_from_points<I>(points: I) -> [Vec2DDrawing; 2]
     bbox
 }
 
-pub fn project(point: Vec2DDrawing, [a, b]: [Vec2DDrawing; 2]) -> Vec2DDrawing {
+pub fn project<P: Point>(point: P, [a, b]: [P; 2]) -> P {
     // https://en.wikibooks.org/wiki/Linear_Algebra/Orthogonal_Projection_Onto_a_Line
 
     // If the two points that define the segment are equal they the projection is any of them
@@ -41,12 +56,12 @@ pub fn project(point: Vec2DDrawing, [a, b]: [Vec2DDrawing; 2]) -> Vec2DDrawing {
     s * (v.dot(s) / s.dot(s)) + a
 }
 
-pub fn is_within(point: Vec2DDrawing, a: Vec2DDrawing, b: Vec2DDrawing) -> bool {
+pub fn is_within<P: Point>(point: P, a: P, b: P) -> bool {
     let min = a.min(b);
     let max = a.max(b);
 
-    point.x >= min.x && point.x <= max.x &&
-    point.y >= min.y && point.y <= max.y
+    point.x() >= min.x() && point.x() <= max.x() &&
+    point.y() >= min.y() && point.y() <= max.y()
 }
 
 pub fn segment_intersects_circle([a, b]: [Vec2DDrawing; 2], center: Vec2DDrawing, radius: f64) -> bool {
@@ -55,10 +70,28 @@ pub fn segment_intersects_circle([a, b]: [Vec2DDrawing; 2], center: Vec2DDrawing
     proj.distance(center) < radius && is_within(proj, a, b)
 }
 
+pub fn middle_point<P: Point>(p1: P, p2: P) -> P {
+    (p1 + p2) / 2.0
+}
+
+/// given the four corners that define an ellipse returns the length of the
+/// larger side, a vector that defines it and the length of the shorter side
+pub fn parts_of_ellipse<P: Point>(corners: [P; 4]) -> (f64, P, f64) {
+    let ellipse_side_1 = corners[0] - corners[1];
+    let ellipse_side_2 = corners[1] - corners[2];
+    let ellipse_len_1 = ellipse_side_1.magnitude();
+    let ellipse_len_2 = ellipse_side_2.magnitude();
+
+    if ellipse_len_1 > ellipse_len_2 {
+        (ellipse_len_1, ellipse_side_1, ellipse_len_2)
+    } else {
+        (ellipse_len_2, ellipse_side_2, ellipse_len_1)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::segment_intersects_circle;
-    use crate::point::Vec2DDrawing;
+    use super::*;
 
     #[test]
     fn test_segment_intersects_circle() {

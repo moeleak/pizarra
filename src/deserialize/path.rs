@@ -5,7 +5,7 @@ use std::str;
 use std::str::Bytes;
 
 use crate::shape::path::{PathCommand::{self, *}, CubicBezierCurve};
-use crate::point::Vec2DDrawing;
+use crate::point::{Point, Vec2DDrawing};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Token {

@@ -12,7 +12,7 @@ use crate::storage::Storage;
 use crate::shape::{ShapeTrait, Path, Ellipse};
 use crate::color::Color;
 use crate::consts::DEFAULT_THICKNESS;
-use crate::point::Vec2DDrawing;
+use crate::point::{Point, Vec2DDrawing};
 
 mod path;
 
@@ -336,9 +336,15 @@ impl Ellipse {
             };
 
         let center = Vec2DDrawing::new(cx.parse()?, cy.parse()?);
-        let radius = Vec2DDrawing::new(rx.parse()?, ry.parse()?).abs();
+        let rx: f64 = rx.parse()?;
+        let ry: f64 = ry.parse()?;
 
-        Ok(Ellipse::with_params([center-radius, center + radius], color.with_alpha(alpha), thickness))
+        Ok(Ellipse::with_params([
+            center + Vec2DDrawing::new(rx * -1.0, ry),
+            center + Vec2DDrawing::new(rx, ry),
+            center + Vec2DDrawing::new(rx, ry * -1.0),
+            center + Vec2DDrawing::new(rx * -1.0, ry * -1.0),
+        ], color.with_alpha(alpha), thickness))
     }
 }
 
@@ -395,6 +401,8 @@ impl Storage {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use crate::storage::Storage;
     use crate::shape::{Path, DrawCommand, ShapeTrait, path::PathCommand};
     use crate::color::Color;
@@ -503,5 +511,10 @@ mod tests {
         let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:#FF0000;stroke-opacity:0.8;stroke-miterlimit:10;", "M 10 10 L 20 20").unwrap();
 
         assert_eq!(line.color(), "#FF0000".parse::<Color>().unwrap().with_alpha(0.8));
+    }
+
+    #[test]
+    fn can_deserialize_rotated_ellipse() {
+        assert!(false);
     }
 }
