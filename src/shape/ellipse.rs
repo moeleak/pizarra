@@ -67,13 +67,12 @@ impl ShapeTrait for Ellipse {
     fn draw_commands(&self) -> DrawCommand {
         let (bigside, bigvector, smallside) = parts_of_ellipse(self.corners);
         let angle = bigvector.angle();
-        let dimensions = Vec2DDrawing::new(bigside, smallside);
 
         DrawCommand::Ellipse {
             thickness: self.thickness,
             color: self.color,
             center: middle_point(self.corners[0], self.corners[2]),
-            dimensions, angle,
+            bigside, smallside, angle,
         }
     }
 

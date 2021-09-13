@@ -7,6 +7,10 @@ impl Rad {
     pub fn degrees(self) -> f64 {
         self.0.to_degrees()
     }
+
+    pub fn radians(self) -> f64 {
+        self.0
+    }
 }
 
 impl From<f64> for Rad {

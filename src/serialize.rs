@@ -41,13 +41,13 @@ impl DrawCommand {
                 writer.write(XmlEvent::end_element()).unwrap();
             },
             DrawCommand::Ellipse {
-                thickness, color, center, dimensions, angle,
+                thickness, color, center, bigside, smallside, angle,
             } => {
                 writer.write(XmlEvent::start_element("ellipse")
                     .attr("cx", &center.x.to_string())
                     .attr("cy", &center.y.to_string())
-                    .attr("rx", &dimensions.x.to_string())
-                    .attr("ry", &dimensions.y.to_string())
+                    .attr("rx", &bigside.to_string())
+                    .attr("ry", &smallside.to_string())
                     .attr("style", &format!("\
                             fill:none;\
                             stroke-width:{stroke};\
