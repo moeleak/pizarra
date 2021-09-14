@@ -116,8 +116,6 @@ impl ShapeTrait for Ellipse {
 
 #[cfg(test)]
 mod tests {
-    use crate::shape::ShapeTrait;
-
     use super::*;
 
     #[test]
