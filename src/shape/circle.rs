@@ -12,7 +12,7 @@ pub struct Circle {
 }
 
 impl Circle {
-    pub fn new(color: Color, initial: Vec2DDrawing, thickness: f64) -> Circle {
+    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> Circle {
         Circle {
             center: initial,
             thickness,

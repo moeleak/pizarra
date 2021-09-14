@@ -39,11 +39,11 @@ pub enum ShapeType {
 impl ShapeType {
     pub fn start(&self, color: Color, initial: Vec2DDrawing, stroke: f64) -> Box<dyn ShapeTrait> {
         match *self {
-            ShapeType::Path => Box::new(Path::new(color, initial, stroke)),
-            ShapeType::Rectangle => Box::new(Rectangle::new(color, initial, stroke)),
-            ShapeType::Polygon => Box::new(Polygon::new(color, initial, stroke)),
-            ShapeType::Circle => Box::new(Circle::new(color, initial, stroke)),
-            ShapeType::Ellipse => Box::new(Ellipse::new(color, initial, stroke)),
+            ShapeType::Path => Box::new(Path::start(color, initial, stroke)),
+            ShapeType::Rectangle => Box::new(Rectangle::start(color, initial, stroke)),
+            ShapeType::Polygon => Box::new(Polygon::start(color, initial, stroke)),
+            ShapeType::Circle => Box::new(Circle::start(color, initial, stroke)),
+            ShapeType::Ellipse => Box::new(Ellipse::start(color, initial, stroke)),
         }
     }
 }

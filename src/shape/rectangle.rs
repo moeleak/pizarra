@@ -14,7 +14,7 @@ pub struct Rectangle {
 }
 
 impl Rectangle {
-    pub fn new(color: Color, initial: Vec2DDrawing, stroke: f64) -> Rectangle {
+    pub fn start(color: Color, initial: Vec2DDrawing, stroke: f64) -> Rectangle {
         Rectangle {
             corners: [initial; 4],
             stroke,

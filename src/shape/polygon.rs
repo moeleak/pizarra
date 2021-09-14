@@ -14,7 +14,7 @@ pub struct Polygon {
 }
 
 impl Polygon {
-    pub fn new(color: Color, initial: Vec2DDrawing, thickness: f64) -> Polygon {
+    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> Polygon {
         let init_vec = Vec::with_capacity(8);
 
         Polygon {
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn it_behaves() {
-        let mut poly = Polygon::new(Default::default(), Vec2DDrawing::new(0.0, 0.0), 4.0);
+        let mut poly = Polygon::start(Default::default(), Vec2DDrawing::new(0.0, 0.0), 4.0);
         let t = Default::default();
 
         poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t);
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn no_clunky_path_ends() {
-        let mut poly = Polygon::new(Default::default(), Vec2DDrawing::new(1.0, 0.0), 4.0);
+        let mut poly = Polygon::start(Default::default(), Vec2DDrawing::new(1.0, 0.0), 4.0);
         let t = Default::default();
 
         poly.handle_mouse_moved(Vec2DScreen::new(1.0, 1.0), t);
@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn can_delete_single_point_polygons() {
-        let mut poly = Polygon::new(Default::default(), Vec2DDrawing::new(0.0, 0.0), 4.0);
+        let mut poly = Polygon::start(Default::default(), Vec2DDrawing::new(0.0, 0.0), 4.0);
         let t = Default::default();
 
         poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t);
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn can_render_first_point() {
-        let poly = Polygon::new(Default::default(), Vec2DDrawing::new(0.0, 0.0), 3.0);
+        let poly = Polygon::start(Default::default(), Vec2DDrawing::new(0.0, 0.0), 3.0);
 
         assert_eq!(poly.draw_commands(), DrawCommand::Path {
             color: Default::default(),

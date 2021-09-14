@@ -224,7 +224,7 @@ pub struct Path {
 }
 
 impl Path {
-    pub fn new(color: Color, initial: Vec2DDrawing, thickness: f64) -> Path {
+    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> Path {
         let mut commands = Vec::with_capacity(1000);
 
         commands.push(PathCommand::MoveTo(initial));
@@ -346,7 +346,7 @@ mod tests {
 
     #[test]
     fn test_bbox() {
-        let mut line = Path::new(Color::green(), Vec2DDrawing::new(1.0, 0.0), 4.0);
+        let mut line = Path::start(Color::green(), Vec2DDrawing::new(1.0, 0.0), 4.0);
         let t = Default::default();
 
         line.handle_mouse_moved(Vec2DScreen::new(0.0, 1.0), t);
@@ -356,7 +356,7 @@ mod tests {
 
     #[test]
     fn test_bbox_twisted_line() {
-        let mut line = Path::new(Color::green(), Vec2DDrawing::new(-12.0, -1.0), 1.0);
+        let mut line = Path::start(Color::green(), Vec2DDrawing::new(-12.0, -1.0), 1.0);
         let t = Default::default();
 
         line.handle_mouse_moved(Vec2DScreen::new(-5.0, 0.0), t);

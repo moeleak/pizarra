@@ -255,9 +255,9 @@ mod tests {
     fn test_add_shapes_at_zoom() {
         let mut storage = Storage::new();
         let shapes: Vec<Box<dyn ShapeTrait>> = vec![
-            Box::new(Path::new(Color::red(), Vec2DDrawing::new(0.0, 0.0), 1.0)),
-            Box::new(Rectangle::new(Color::green(), Vec2DDrawing::new(0.0, 0.0), 1.0)),
-            Box::new(Ellipse::new(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)),
+            Box::new(Path::start(Color::red(), Vec2DDrawing::new(0.0, 0.0), 1.0)),
+            Box::new(Rectangle::start(Color::green(), Vec2DDrawing::new(0.0, 0.0), 1.0)),
+            Box::new(Ellipse::start(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|shape| {
             storage.add(shape)
@@ -279,7 +279,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Box::new(Path::new(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)));
+        storage.add(Box::new(Path::start(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -297,7 +297,7 @@ mod tests {
         last_shape.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
         last_shape.handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
 
-        storage.add(Box::new(Ellipse::new(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)));
+        storage.add(Box::new(Ellipse::start(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)));
 
         let last_shape = storage.last_mut().unwrap();
 
@@ -313,7 +313,7 @@ mod tests {
 
         assert!(storage.last_mut().is_none());
 
-        storage.add(Box::new(Path::new(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)));
+        storage.add(Box::new(Path::start(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)));
 
         assert!(storage.last_mut().is_some());
 
@@ -327,7 +327,7 @@ mod tests {
         let mut storage = Storage::new();
         let t = Default::default();
 
-        let mut line = Path::new(Color::green(), Vec2DDrawing::new(0.0, -1.0), 1.0);
+        let mut line = Path::start(Color::green(), Vec2DDrawing::new(0.0, -1.0), 1.0);
 
         line.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
         line.handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
@@ -349,8 +349,8 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let obj_to_remove = Box::new(Path::new(Color::green(), Vec2DDrawing::new(1.0, 1.0), 1.0));
-        let obj_to_interfere = Box::new(Path::new(Color::blue(), Vec2DDrawing::new(0.0, 1.0), 1.0));
+        let obj_to_remove = Box::new(Path::start(Color::green(), Vec2DDrawing::new(1.0, 1.0), 1.0));
+        let obj_to_interfere = Box::new(Path::start(Color::blue(), Vec2DDrawing::new(0.0, 1.0), 1.0));
 
         let id_to_remove = storage.add(obj_to_remove);
         let _id_to_interfere = storage.add(obj_to_interfere);
@@ -372,8 +372,8 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let obj_to_remove = Box::new(Path::new(Color::green(), Vec2DDrawing::new(1.0, 1.0), 1.0));
-        let obj_to_interfere = Box::new(Path::new(Color::blue(), Vec2DDrawing::new(0.0, 1.0), 1.0));
+        let obj_to_remove = Box::new(Path::start(Color::green(), Vec2DDrawing::new(1.0, 1.0), 1.0));
+        let obj_to_interfere = Box::new(Path::start(Color::blue(), Vec2DDrawing::new(0.0, 1.0), 1.0));
 
         let _id_to_interfere = storage.add(obj_to_interfere);
         let id_to_remove = storage.add(obj_to_remove);
@@ -395,7 +395,7 @@ mod tests {
         let t = Default::default();
         let bbox = [Vec2DDrawing::new(-40.0, -40.0), Vec2DDrawing::new(40.0, 40.0)];
 
-        storage.add(Box::new(Path::new(Color::green(), Vec2DDrawing::new(0.0, 0.0), 4.0)));
+        storage.add(Box::new(Path::start(Color::green(), Vec2DDrawing::new(0.0, 0.0), 4.0)));
 
         storage.last_mut().unwrap().handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
 

@@ -14,7 +14,7 @@ pub struct Ellipse {
 }
 
 impl Ellipse {
-    pub fn new(color: Color, initial: Vec2DDrawing, thickness: f64) -> Ellipse {
+    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> Ellipse {
         Ellipse {
             corners: [initial; 4],
             thickness,
