@@ -4,7 +4,6 @@ use crate::point::{Point, Vec2D, Vec2DDrawing, Vec2DScreen};
 pub struct Transform {
     scale_factor: f64,
     offset: Vec2D,
-    rotation: f64,
 }
 
 impl Transform {
@@ -12,13 +11,11 @@ impl Transform {
         Transform {
             offset,
             scale_factor,
-            rotation: 0.0,
         }
     }
 
-    pub fn with_rotation(self, rotation: f64) -> Transform {
+    pub fn with_rotation(self, _rotation: f64) -> Transform {
         Transform {
-            rotation,
             ..self
         }
     }

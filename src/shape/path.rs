@@ -258,9 +258,9 @@ impl ShapeTrait for Path {
         add_point(&mut self.commands, t.to_storage_coordinates(pos));
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, t: Transform) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform) { }
 
-    fn handle_button_released(&mut self, _pos: Vec2DScreen, t: Transform) -> ShapeFinished {
+    fn handle_button_released(&mut self, _pos: Vec2DScreen, _t: Transform) -> ShapeFinished {
         ShapeFinished::Yes
     }
 

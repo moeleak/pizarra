@@ -130,7 +130,7 @@ mod tests {
             ((134.0, 84.0), false),
         ];
 
-        for (coords, output) in cases.iter().map(|t| *t) {
+        for (coords, output) in cases {
             assert!(ellipse.intersects_circle(Vec2DDrawing::from(coords) + Vec2DDrawing::new(8.0, 8.0), 8.0) == output);
         }
     }

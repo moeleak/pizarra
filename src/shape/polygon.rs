@@ -42,7 +42,7 @@ impl ShapeTrait for Polygon {
         self.tip = Some(t.to_storage_coordinates(pos));
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, t: Transform) {}
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform) {}
 
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
         let drawing_pos = t.to_storage_coordinates(pos);

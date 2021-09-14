@@ -55,7 +55,7 @@ impl ShapeTrait for Rectangle {
         ];
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, t: Transform) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform) { }
 
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
         self.handle_mouse_moved(pos, t);
@@ -79,7 +79,7 @@ impl ShapeTrait for Rectangle {
     }
 
     fn bbox(&self) -> [Vec2DDrawing; 2] {
-        bbox_from_points(self.all_four_corners().into_iter().map(|p| *p))
+        bbox_from_points(self.all_four_corners().iter().copied())
     }
 
     fn shape_type(&self) -> ShapeType {

@@ -329,7 +329,7 @@ impl App {
     /// return the axis-aligned bounding box of the visible portion of the
     /// screen.
     pub fn visible_bbox(&self) -> [Vec2DDrawing; 2] {
-        bbox_from_points(self.visible_extent().into_iter().map(|a| *a))
+        bbox_from_points(self.visible_extent().iter().copied())
     }
 
     /// Returns the dimensions of the screen
