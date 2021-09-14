@@ -1,6 +1,6 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
-use crate::shape::{ShapeTrait, ShapeFinished, ShapeType};
+use crate::shape::{ShapeBuilder, ShapeFinished, ShapeType};
 use crate::draw_commands::DrawCommand;
 use crate::transform::Transform;
 
@@ -22,7 +22,7 @@ impl Circle {
     }
 }
 
-impl ShapeTrait for Circle {
+impl ShapeBuilder for Circle {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         self.radius = self.center.distance(t.to_storage_coordinates(pos));
     }

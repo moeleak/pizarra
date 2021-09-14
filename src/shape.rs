@@ -37,7 +37,7 @@ pub enum ShapeType {
 }
 
 impl ShapeType {
-    pub fn start(&self, color: Color, initial: Vec2DDrawing, stroke: f64) -> Box<dyn ShapeTrait> {
+    pub fn start(&self, color: Color, initial: Vec2DDrawing, stroke: f64) -> Box<dyn ShapeBuilder> {
         match *self {
             ShapeType::Path => Box::new(Path::start(color, initial, stroke)),
             ShapeType::Rectangle => Box::new(Rectangle::start(color, initial, stroke)),
@@ -63,7 +63,7 @@ impl FromStr for ShapeType {
     }
 }
 
-pub trait ShapeTrait {
+pub trait ShapeBuilder {
     /// Must handle new coordinates given to this shape. If this method is
     /// called it means that the shape is being modified (thus this is the most
     /// recently added shape
@@ -113,11 +113,11 @@ impl fmt::Display for ShapeId {
 pub struct Shape {
     id: ShapeId,
     z_index: usize,
-    shape_impl: Box<dyn ShapeTrait>,
+    shape_impl: Box<dyn ShapeBuilder>,
 }
 
 impl Shape {
-    pub fn from_shape(shape: Box<dyn ShapeTrait>, id: ShapeId, z_index: usize) -> Shape {
+    pub fn from_shape(shape: Box<dyn ShapeBuilder>, id: ShapeId, z_index: usize) -> Shape {
         Shape {
             id,
             shape_impl: shape,

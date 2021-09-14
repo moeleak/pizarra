@@ -5,7 +5,7 @@ use crate::ShapeType;
 use crate::transform::Transform;
 use crate::geom::{middle_point, parts_of_ellipse, bbox_from_points};
 
-use super::{ShapeTrait, ShapeFinished};
+use super::{ShapeBuilder, ShapeFinished};
 
 pub struct Ellipse {
     corners: [Vec2DDrawing; 4],
@@ -43,7 +43,7 @@ impl Ellipse {
     }
 }
 
-impl ShapeTrait for Ellipse {
+impl ShapeBuilder for Ellipse {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         let first_point = self.corners[0];
         let first_point_screen = t.to_screen_coordinates(self.corners[0]);

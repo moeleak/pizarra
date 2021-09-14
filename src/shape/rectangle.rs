@@ -5,7 +5,7 @@ use crate::ShapeType;
 use crate::transform::Transform;
 use crate::geom::{bbox_from_points, project};
 
-use super::{ShapeTrait, ShapeFinished, path::PathCommand};
+use super::{ShapeBuilder, ShapeFinished, path::PathCommand};
 
 pub struct Rectangle {
     corners: [Vec2DDrawing; 4],
@@ -42,7 +42,7 @@ impl Rectangle {
     }
 }
 
-impl ShapeTrait for Rectangle {
+impl ShapeBuilder for Rectangle {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         let first_point = self.corners[0];
         let first_point_screen = t.to_screen_coordinates(self.corners[0]);

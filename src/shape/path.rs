@@ -7,7 +7,7 @@ use crate::ShapeType;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
 use crate::transform::Transform;
 
-use super::{ShapeTrait, ShapeFinished};
+use super::{ShapeBuilder, ShapeFinished};
 
 /// Given two points return the points in their 1/3 and 2/3 of the segment from
 /// a to b.
@@ -243,7 +243,7 @@ impl Path {
     }
 }
 
-impl ShapeTrait for Path {
+impl ShapeBuilder for Path {
     // 1. The first point is an absolute move.
     //
     // 2. The second point is a flat curve, with the handles put on the line
@@ -321,7 +321,7 @@ impl ShapeTrait for Path {
 mod tests {
     use super::*;
 
-    use crate::shape::ShapeTrait;
+    use crate::shape::ShapeBuilder;
     use crate::color::Color;
     use crate::point::Vec2DDrawing;
 

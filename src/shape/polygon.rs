@@ -1,6 +1,6 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
-use crate::shape::{ShapeTrait, ShapeFinished, ShapeType, path::PathCommand};
+use crate::shape::{ShapeBuilder, ShapeFinished, ShapeType, path::PathCommand};
 use crate::consts::TOUCH_RADIUS;
 use crate::draw_commands::DrawCommand;
 use crate::geom::{bbox_from_points, segment_intersects_circle};
@@ -37,7 +37,7 @@ impl Polygon {
     }
 }
 
-impl ShapeTrait for Polygon {
+impl ShapeBuilder for Polygon {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         self.tip = Some(t.to_storage_coordinates(pos));
     }

@@ -9,7 +9,7 @@ use regex::Regex;
 use lazy_static::lazy_static;
 
 use crate::storage::Storage;
-use crate::shape::{ShapeTrait, Path, Ellipse};
+use crate::shape::{ShapeBuilder, Path, Ellipse};
 use crate::color::Color;
 use crate::consts::DEFAULT_THICKNESS;
 use crate::point::{Point, Vec2DDrawing};
@@ -349,11 +349,11 @@ impl Ellipse {
 }
 
 trait Deserialize {
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeTrait>, Error>;
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeBuilder>, Error>;
 }
 
 impl Deserialize for Path {
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeTrait>, Error> {
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeBuilder>, Error> {
         let styleattr = attributes.iter().find(|a| a.name.local_name == "style").ok_or(Error::MissingAttribute("style".into()))?;
         let dattr = attributes.iter().find(|a| a.name.local_name == "d").ok_or(Error::MissingAttribute("d".into()))?;
 
@@ -362,7 +362,7 @@ impl Deserialize for Path {
 }
 
 impl Deserialize for Ellipse {
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeTrait>, Error> {
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeBuilder>, Error> {
         let cx = attributes.iter().find(|a| a.name.local_name == "cx").ok_or(Error::MissingAttribute("style".into()))?;
         let cy = attributes.iter().find(|a| a.name.local_name == "cy").ok_or(Error::MissingAttribute("style".into()))?;
         let rx = attributes.iter().find(|a| a.name.local_name == "rx").ok_or(Error::MissingAttribute("style".into()))?;
@@ -404,7 +404,7 @@ mod tests {
     use super::*;
 
     use crate::storage::Storage;
-    use crate::shape::{Path, DrawCommand, ShapeTrait, path::PathCommand};
+    use crate::shape::{Path, DrawCommand, ShapeBuilder, path::PathCommand};
     use crate::color::Color;
     use crate::point::Vec2DDrawing;
 
