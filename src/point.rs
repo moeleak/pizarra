@@ -24,7 +24,7 @@ pub struct Vec2DScreen {
     pub y: f64,
 }
 
-pub trait Point: Sized + Copy + PartialEq + Sub<Output=Self> + Mul<f64, Output=Self> + Add<Output=Self> + Div<f64, Output=Self> {
+pub trait Point: Sized + Copy + PartialEq +Add<Output=Self> + Sub<Output=Self> + Mul<f64, Output=Self> + Div<f64, Output=Self> {
     fn new(x: f64, y: f64) -> Self;
     fn x(&self) -> f64;
     fn y(&self) -> f64;
