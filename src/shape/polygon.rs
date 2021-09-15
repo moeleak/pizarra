@@ -1,6 +1,6 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
-use crate::shape::{ShapeBuilder, StoredShape, ShapeFinished, ShapeType, path::PathCommand};
+use crate::shape::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType, path::PathCommand};
 use crate::consts::TOUCH_RADIUS;
 use crate::draw_commands::DrawCommand;
 use crate::geom::{bbox_from_points, segment_intersects_circle};
@@ -108,7 +108,7 @@ impl Polygon {
     }
 }
 
-impl StoredShape for Polygon {
+impl ShapeStored for Polygon {
     fn draw_commands(&self) -> DrawCommand {
         let mut points_iter = self.points.iter();
         let mut commands = Vec::with_capacity(self.points.len());

@@ -1,6 +1,6 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
-use crate::shape::{ShapeBuilder, StoredShape, ShapeFinished, ShapeType};
+use crate::shape::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
 use crate::draw_commands::DrawCommand;
 use crate::transform::Transform;
 
@@ -68,7 +68,7 @@ impl Circle {
     }
 }
 
-impl StoredShape for Circle {
+impl ShapeStored for Circle {
     fn bbox(&self) -> [Vec2DDrawing; 2] {
         [
             Vec2DDrawing::new(self.center.x - self.radius, self.center.y - self.radius),

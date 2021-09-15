@@ -1,11 +1,9 @@
-use std::str::FromStr;
-
 use crate::point::{Point, Vec2DDrawing};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct Rad(f64);
+pub struct Radians(f64);
 
-impl Rad {
+impl Radians {
     pub fn degrees(self) -> f64 {
         self.0.to_degrees()
     }
@@ -15,9 +13,9 @@ impl Rad {
     }
 }
 
-impl From<f64> for Rad {
-    fn from(radians: f64) -> Rad {
-        Rad(radians)
+impl From<f64> for Radians {
+    fn from(radians: f64) -> Radians {
+        Radians(radians)
     }
 }
 

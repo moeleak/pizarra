@@ -5,7 +5,7 @@ use rstar::{RTree, RTreeObject, AABB, SelectionFunction, Envelope};
 
 use crate::point::{Point, Vec2DDrawing};
 
-use super::shape::{Shape, ShapeId, StoredShape};
+use super::shape::{Shape, ShapeId, ShapeStored};
 use super::draw_commands::DrawCommand;
 
 impl RTreeObject for Shape {
@@ -113,7 +113,7 @@ impl Storage {
     }
 
     /// Adds a new shape to the storage
-    pub fn add(&mut self, shape: Box<dyn StoredShape>) -> ShapeId {
+    pub fn add(&mut self, shape: Box<dyn ShapeStored>) -> ShapeId {
         // The previous shape has been finished, move it to persistent storage
         let id = self.nex_id();
         let z_index = self.next_z_index();
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn test_add_shapes_at_zoom() {
         let mut storage = Storage::new();
-        let shapes: Vec<Box<dyn StoredShape>> = vec![
+        let shapes: Vec<Box<dyn ShapeStored>> = vec![
             Box::new(Circle::from_parts(Vec2DDrawing::new(0.0, 0.0), 1.0, 1.0, Color::green())),
             Box::new(Path::from_parts(vec![], Color::red(), 1.0)),
             Box::new(Rectangle::from_parts([Vec2DDrawing::new(0.0, 0.0); 4], Color::green(), 1.0)),

@@ -9,11 +9,11 @@ use regex::Regex;
 use lazy_static::lazy_static;
 
 use crate::storage::Storage;
-use crate::shape::{StoredShape, path::Path, ellipse::Ellipse};
+use crate::shape::{ShapeStored, path::Path, ellipse::Ellipse};
 use crate::color::Color;
 use crate::consts::DEFAULT_THICKNESS;
 use crate::point::{Point, Vec2DDrawing};
-use crate::geom::Rad;
+use crate::geom::Radians;
 
 mod path;
 
@@ -268,10 +268,10 @@ impl FromStr for Vec2DDrawing {
     }
 }
 
-impl FromStr for Rad {
+impl FromStr for Radians {
     type Err = Error;
 
-    fn from_str(source: &str) -> Result<Rad, Self::Err> {
+    fn from_str(source: &str) -> Result<Radians, Self::Err> {
         unimplemented!()
     }
 }
@@ -344,7 +344,7 @@ impl Ellipse {
                 1.0
             };
 
-        let angle: Rad = if let Some(angle_str) = attrs.get("transform") {
+        let angle: Radians = if let Some(angle_str) = attrs.get("transform") {
             angle_str.parse()?
         } else {
             Default::default()
@@ -366,11 +366,11 @@ impl Ellipse {
 }
 
 trait Deserialize {
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn StoredShape>, Error>;
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeStored>, Error>;
 }
 
 impl Deserialize for Path{
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn StoredShape>, Error> {
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeStored>, Error> {
         let styleattr = attributes.iter().find(|a| a.name.local_name == "style").ok_or(Error::MissingAttribute("style".into()))?;
         let dattr = attributes.iter().find(|a| a.name.local_name == "d").ok_or(Error::MissingAttribute("d".into()))?;
 
@@ -379,7 +379,7 @@ impl Deserialize for Path{
 }
 
 impl Deserialize for Ellipse {
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn StoredShape>, Error> {
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeStored>, Error> {
         let cx = attributes.iter().find(|a| a.name.local_name == "cx").ok_or(Error::MissingAttribute("style".into()))?;
         let cy = attributes.iter().find(|a| a.name.local_name == "cy").ok_or(Error::MissingAttribute("style".into()))?;
         let rx = attributes.iter().find(|a| a.name.local_name == "rx").ok_or(Error::MissingAttribute("style".into()))?;

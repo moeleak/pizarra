@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::{Mul, Add, Sub, Div};
 
-use crate::geom::Rad;
+use crate::geom::Radians;
 
 /// A 2D (unitless) vector
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
@@ -81,7 +81,7 @@ pub trait Point: Sized + Copy + PartialEq +Add<Output=Self> + Sub<Output=Self> +
         self / self.magnitude()
     }
 
-    fn angle(self) -> Rad {
+    fn angle(self) -> Radians {
         (self.y() / self.x()).atan().into()
     }
 }

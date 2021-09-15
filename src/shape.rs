@@ -23,7 +23,7 @@ use self::rectangle::RectangleBuilder;
 /// they're finished, for example in the case of a polygon
 #[derive(Debug)]
 pub enum ShapeFinished {
-    Yes(Box<dyn StoredShape>),
+    Yes(Box<dyn ShapeStored>),
     No,
 }
 
@@ -78,7 +78,7 @@ pub trait ShapeBuilder {
     fn draw_commands(&self) -> Vec<DrawCommand>;
 }
 
-pub trait StoredShape: fmt::Debug {
+pub trait ShapeStored: fmt::Debug {
     /// return the commands needed to draw this shape
     fn draw_commands(&self) -> DrawCommand;
 
@@ -119,11 +119,11 @@ impl fmt::Display for ShapeId {
 pub struct Shape {
     id: ShapeId,
     z_index: usize,
-    shape_impl: Box<dyn StoredShape>,
+    shape_impl: Box<dyn ShapeStored>,
 }
 
 impl Shape {
-    pub fn from_shape(shape: Box<dyn StoredShape>, id: ShapeId, z_index: usize) -> Shape {
+    pub fn from_shape(shape: Box<dyn ShapeStored>, id: ShapeId, z_index: usize) -> Shape {
         Shape {
             id,
             shape_impl: shape,

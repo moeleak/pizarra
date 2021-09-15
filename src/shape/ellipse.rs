@@ -3,9 +3,9 @@ use crate::draw_commands::DrawCommand;
 use crate::color::Color;
 use crate::ShapeType;
 use crate::transform::Transform;
-use crate::geom::{Rad, middle_point, parts_of_ellipse};
+use crate::geom::{Radians, middle_point, parts_of_ellipse};
 
-use super::{ShapeBuilder, StoredShape, ShapeFinished};
+use super::{ShapeBuilder, ShapeStored, ShapeFinished};
 
 pub struct EllipseBuilder {
     corners: [Vec2DDrawing; 4],
@@ -68,20 +68,20 @@ pub struct Ellipse {
     center: Vec2DDrawing,
     larger_radius: f64,
     shorter_radius: f64,
-    angle: Rad,
+    angle: Radians,
     color: Color,
     thickness: f64,
 }
 
 impl Ellipse {
-    pub fn from_parts(center: Vec2DDrawing, larger_radius: f64, shorter_radius: f64, angle: Rad, color: Color, thickness: f64) -> Ellipse {
+    pub fn from_parts(center: Vec2DDrawing, larger_radius: f64, shorter_radius: f64, angle: Radians, color: Color, thickness: f64) -> Ellipse {
         Ellipse {
             center, larger_radius, shorter_radius, angle, color, thickness
         }
     }
 }
 
-impl StoredShape for Ellipse {
+impl ShapeStored for Ellipse {
     fn draw_commands(&self) -> DrawCommand {
         unimplemented!()
     }

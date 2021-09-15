@@ -5,7 +5,7 @@ use crate::ShapeType;
 use crate::transform::Transform;
 use crate::geom::{bbox_from_points, project};
 
-use super::{ShapeBuilder, StoredShape, ShapeFinished, path::PathCommand};
+use super::{ShapeBuilder, ShapeStored, ShapeFinished, path::PathCommand};
 
 pub struct RectangleBuilder {
     corners: [Vec2DDrawing; 4],
@@ -81,7 +81,7 @@ impl Rectangle {
     }
 }
 
-impl StoredShape for Rectangle {
+impl ShapeStored for Rectangle {
     fn draw_commands(&self) -> DrawCommand {
         let corners = self.corners;
         let mut points_iter = corners.iter().cycle().take(5);

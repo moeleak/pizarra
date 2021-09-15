@@ -7,7 +7,7 @@ use crate::ShapeType;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
 use crate::transform::Transform;
 
-use super::{ShapeBuilder, StoredShape, ShapeFinished};
+use super::{ShapeBuilder, ShapeStored, ShapeFinished};
 
 /// Given two points return the points in their 1/3 and 2/3 of the segment from
 /// a to b.
@@ -299,7 +299,7 @@ impl Path {
     }
 }
 
-impl StoredShape for Path {
+impl ShapeStored for Path {
     fn draw_commands(&self) -> DrawCommand {
         DrawCommand::Path {
             commands: self.commands.clone(),
