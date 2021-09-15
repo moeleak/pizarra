@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use crate::draw_commands::DrawCommand;
 use crate::storage::Storage;
-use crate::shape::{Shape, ShapeType, ShapeFinished};
+use crate::shape::{Shape, ShapeType, ShapeFinished, ShapeBuilder};
 use crate::color::Color;
 use crate::action::Action;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
@@ -88,6 +88,7 @@ pub enum MouseButton {
 
 pub struct App {
     storage: Storage,
+    current_shape: Option<Box<dyn ShapeBuilder>>,
 
     selected_tool: SelectedTool,
     selected_color: Color,
@@ -151,12 +152,12 @@ impl App {
 
         match self.selected_tool {
             SelectedTool::Shape(shape) => {
-                if let Some(shape) = self.storage.last_mut() {
+                if let Some(shape) = self.current_shape.as_mut() {
                     shape.handle_button_pressed(point, self.transform);
                 } else {
                     let new_shape = shape.start(self.selected_color.with_alpha(self.alpha), transformed_point, self.stroke * 1.0 / self.transform.scale_factor());
 
-                    self.storage.add(new_shape);
+                    self.current_shape = Some(new_shape);
                 }
 
                 ShouldRedraw::Shape
@@ -183,18 +184,16 @@ impl App {
 
         match self.selected_tool {
             SelectedTool::Shape(_shape) => {
-                let finished = if let Some(shape) = self.storage.last_mut() {
+                let finished = if let Some(shape) = self.current_shape.as_mut() {
                     shape.handle_button_released(point, self.transform)
                 } else {
                     ShapeFinished::No
                 };
 
-                if let ShapeFinished::Yes = finished {
-                    if let Some(shape_id) = self.storage.flush() {
-                        Action::Draw(shape_id)
-                    } else {
-                        Action::Empty
-                    }
+                if let ShapeFinished::Yes(shape) = finished {
+                    let shape_id = self.storage.add(shape);
+
+                    Action::Draw(shape_id)
                 } else {
                     Action::Unfinished
                 }
@@ -223,7 +222,7 @@ impl App {
 
         match self.selected_tool {
             SelectedTool::Shape(_shape_type) => {
-                if let Some(shape) = self.storage.last_mut() {
+                if let Some(shape) = self.current_shape.as_mut() {
                     shape.handle_mouse_moved(point, self.transform);
                     ShouldRedraw::Shape
                 } else {
@@ -262,8 +261,6 @@ impl App {
             Action::Erase(shapes) => {
                 let ids = shapes.into_iter().map(|shape| self.storage.restore(shape)).collect();
 
-                self.storage.flush();
-
                 Action::Redraw(ids)
             },
 
@@ -284,6 +281,8 @@ impl App {
     pub fn new(dimensions: Vec2DScreen) -> App {
         App {
             storage: Storage::new(),
+            current_shape: None,
+
             selected_tool: SelectedTool::Shape(ShapeType::Path),
             bgcolor: Color::black(),
             stroke: DEFAULT_THICKNESS,
@@ -360,8 +359,8 @@ impl App {
         self.storage.draw_commands(bbox)
     }
 
-    pub fn draw_commands_for_current_shape(&self) -> Option<DrawCommand> {
-        self.storage.draw_commands_for_current_shape()
+    pub fn draw_commands_for_current_shape(&self) -> Option<Vec<DrawCommand>> {
+        self.current_shape.as_ref().map(|s| s.draw_commands())
     }
 
     /// Move the canvas by this offset

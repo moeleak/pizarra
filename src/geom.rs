@@ -1,6 +1,8 @@
+use std::str::FromStr;
+
 use crate::point::{Point, Vec2DDrawing};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Rad(f64);
 
 impl Rad {

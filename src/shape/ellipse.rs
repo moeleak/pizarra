@@ -3,47 +3,33 @@ use crate::draw_commands::DrawCommand;
 use crate::color::Color;
 use crate::ShapeType;
 use crate::transform::Transform;
-use crate::geom::{middle_point, parts_of_ellipse, bbox_from_points};
+use crate::geom::{Rad, middle_point, parts_of_ellipse};
 
-use super::{ShapeBuilder, ShapeFinished};
+use super::{ShapeBuilder, StoredShape, ShapeFinished};
 
-pub struct Ellipse {
+pub struct EllipseBuilder {
     corners: [Vec2DDrawing; 4],
     thickness: f64,
     color: Color,
 }
 
-impl Ellipse {
-    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> Ellipse {
-        Ellipse {
+impl EllipseBuilder {
+    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> EllipseBuilder {
+        EllipseBuilder {
             corners: [initial; 4],
             thickness,
             color,
         }
     }
 
-    pub fn with_params(corners: [Vec2DDrawing; 4], color: Color, thickness: f64) -> Ellipse {
-        Ellipse {
+    pub fn with_params(corners: [Vec2DDrawing; 4], color: Color, thickness: f64) -> EllipseBuilder {
+        EllipseBuilder {
             corners, thickness, color
-        }
-    }
-
-    #[cfg(test)]
-    pub fn from_corners([corner_1, corner_2]: [Vec2DDrawing; 2]) -> Ellipse {
-        Ellipse {
-            corners: [
-                corner_1,
-                Vec2DDrawing::new(corner_2.x, corner_1.y),
-                corner_2,
-                Vec2DDrawing::new(corner_1.x, corner_2.y),
-            ],
-            thickness: 4.0,
-            color: Color::green(),
         }
     }
 }
 
-impl ShapeBuilder for Ellipse {
+impl ShapeBuilder for EllipseBuilder {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         let first_point = self.corners[0];
         let first_point_screen = t.to_screen_coordinates(self.corners[0]);
@@ -61,23 +47,47 @@ impl ShapeBuilder for Ellipse {
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
         self.handle_mouse_moved(pos, t);
 
-        ShapeFinished::Yes
+        unimplemented!()
     }
 
-    fn draw_commands(&self) -> DrawCommand {
+    fn draw_commands(&self) -> Vec<DrawCommand> {
         let (bigside, bigvector, smallside) = parts_of_ellipse(self.corners);
         let angle = bigvector.angle();
 
-        DrawCommand::Ellipse {
+        vec![DrawCommand::Ellipse {
             thickness: self.thickness,
             color: self.color,
             center: middle_point(self.corners[0], self.corners[2]),
             bigside, smallside, angle,
+        }]
+    }
+}
+
+#[derive(Debug)]
+pub struct Ellipse {
+    center: Vec2DDrawing,
+    larger_radius: f64,
+    shorter_radius: f64,
+    angle: Rad,
+    color: Color,
+    thickness: f64,
+}
+
+impl Ellipse {
+    pub fn from_parts(center: Vec2DDrawing, larger_radius: f64, shorter_radius: f64, angle: Rad, color: Color, thickness: f64) -> Ellipse {
+        Ellipse {
+            center, larger_radius, shorter_radius, angle, color, thickness
         }
+    }
+}
+
+impl StoredShape for Ellipse {
+    fn draw_commands(&self) -> DrawCommand {
+        unimplemented!()
     }
 
     fn bbox(&self) -> [Vec2DDrawing; 2] {
-        bbox_from_points(self.corners.iter().copied())
+        unimplemented!()
     }
 
     fn shape_type(&self) -> ShapeType {
@@ -85,7 +95,7 @@ impl ShapeBuilder for Ellipse {
     }
 
     fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
-        let corners = self.corners;
+        let corners: [Vec2DDrawing; 4] = unimplemented!();
 
         let (bigside, bigvector, smallside) = parts_of_ellipse(corners);
 
@@ -120,7 +130,8 @@ mod tests {
 
     #[test]
     fn test_intersects_circle() {
-        let ellipse = Ellipse::from_corners([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(150.0, 100.0)]);
+        // let ellipse = Ellipse::from_parts([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(150.0, 100.0)]);
+        let ellipse: Ellipse = unimplemented!();
 
         let cases = [
             ((126.0, 6.0), true),

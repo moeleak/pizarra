@@ -5,35 +5,20 @@ use crate::ShapeType;
 use crate::transform::Transform;
 use crate::geom::{bbox_from_points, project};
 
-use super::{ShapeBuilder, ShapeFinished, path::PathCommand};
+use super::{ShapeBuilder, StoredShape, ShapeFinished, path::PathCommand};
 
-pub struct Rectangle {
+pub struct RectangleBuilder {
     corners: [Vec2DDrawing; 4],
     stroke: f64,
     color: Color,
 }
 
-impl Rectangle {
-    pub fn start(color: Color, initial: Vec2DDrawing, stroke: f64) -> Rectangle {
-        Rectangle {
+impl RectangleBuilder {
+    pub fn start(color: Color, initial: Vec2DDrawing, stroke: f64) -> RectangleBuilder {
+        RectangleBuilder {
             corners: [initial; 4],
             stroke,
             color,
-        }
-    }
-
-    /// Only used for testing
-    #[cfg(test)]
-    pub fn from_corners([corner_1, corner_2]: [Vec2DDrawing; 2]) -> Rectangle {
-        Rectangle {
-            corners: [
-                corner_1,
-                Vec2DDrawing::new(corner_2.x, corner_1.y),
-                corner_2,
-                Vec2DDrawing::new(corner_1.x, corner_2.y),
-            ],
-            stroke: 4.0,
-            color: Color::green(),
         }
     }
 
@@ -42,7 +27,7 @@ impl Rectangle {
     }
 }
 
-impl ShapeBuilder for Rectangle {
+impl ShapeBuilder for RectangleBuilder {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         let first_point = self.corners[0];
         let first_point_screen = t.to_screen_coordinates(self.corners[0]);
@@ -60,11 +45,45 @@ impl ShapeBuilder for Rectangle {
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
         self.handle_mouse_moved(pos, t);
 
-        ShapeFinished::Yes
+        ShapeFinished::Yes(Box::new(Rectangle::from_parts(
+            self.corners, self.color, self.stroke,
+        )))
     }
 
-    fn draw_commands(&self) -> DrawCommand {
+    fn draw_commands(&self) -> Vec<DrawCommand> {
         let corners = self.all_four_corners();
+        let mut points_iter = corners.iter().cycle().take(5);
+        let mut commands = Vec::with_capacity(4);
+
+        commands.push(PathCommand::MoveTo(*points_iter.next().unwrap()));
+        commands.extend(points_iter.map(|p| PathCommand::LineTo(*p)));
+
+        vec![DrawCommand::Path {
+            commands,
+            thickness: self.stroke,
+            color: self.color,
+        }]
+    }
+}
+
+#[derive(Debug)]
+pub struct Rectangle {
+    corners: [Vec2DDrawing; 4],
+    color: Color,
+    thickness: f64,
+}
+
+impl Rectangle {
+    pub fn from_parts(corners: [Vec2DDrawing; 4], color: Color, thickness: f64) -> Rectangle {
+        Rectangle {
+            corners, color, thickness,
+        }
+    }
+}
+
+impl StoredShape for Rectangle {
+    fn draw_commands(&self) -> DrawCommand {
+        let corners = self.corners;
         let mut points_iter = corners.iter().cycle().take(5);
         let mut commands = Vec::with_capacity(4);
 
@@ -73,13 +92,13 @@ impl ShapeBuilder for Rectangle {
 
         DrawCommand::Path {
             commands,
-            thickness: self.stroke,
+            thickness: self.thickness,
             color: self.color,
         }
     }
 
     fn bbox(&self) -> [Vec2DDrawing; 2] {
-        bbox_from_points(self.all_four_corners().iter().copied())
+        bbox_from_points(self.corners.iter().copied())
     }
 
     fn shape_type(&self) -> ShapeType {
@@ -87,14 +106,13 @@ impl ShapeBuilder for Rectangle {
     }
 
     fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
-        let intersects_corners = self
-            .all_four_corners()
+        let intersects_corners = self.corners
             .iter()
             .map(|p| p.distance(center) < radius)
             .filter(|a| *a)
             .count() > 0;
 
-        let intersects_sides = self.all_four_corners().iter().zip(self.all_four_corners().iter().cycle())
+        let intersects_sides = self.corners.iter().zip(self.corners.iter().cycle())
             .any(|(&p1, &p2)| {
                 let projection = project(center, [p1, p2]);
 
@@ -115,57 +133,6 @@ mod tests {
 
     #[test]
     fn test_bbox() {
-        let shape1 = Rectangle::from_corners([Vec2DDrawing::new(-1.0, -2.0), Vec2DDrawing::new(5.0, 2.0)]);
-        let shape2 = Rectangle::from_corners([Vec2DDrawing::new(-1.0, 2.0), Vec2DDrawing::new(5.0, -2.0)]);
-
-        assert_eq!(shape1.bbox(), [Vec2DDrawing::new(-1.0, -2.0), Vec2DDrawing::new(5.0, 2.0)]);
-        assert_eq!(shape2.bbox(), [Vec2DDrawing::new(-1.0, -2.0), Vec2DDrawing::new(5.0, 2.0)]);
-    }
-
-    #[test]
-    fn test_bbox_extended() {
-        let rectangles = vec![
-            Rectangle::from_corners([Vec2DDrawing::new(15.0, -48.0), Vec2DDrawing::new(37.0, -27.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(15.0, -27.0), Vec2DDrawing::new(37.0, -48.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(37.0, -48.0), Vec2DDrawing::new(15.0, -27.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(37.0, -27.0), Vec2DDrawing::new(15.0, -48.0)]),
-        ];
-
-        for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [Vec2DDrawing::new(15.0, -48.0), Vec2DDrawing::new(37.0, -27.0)]);
-        }
-
-        let rectangles = vec![
-            Rectangle::from_corners([Vec2DDrawing::new(15.0, -24.0), Vec2DDrawing::new(60.0, 6.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(15.0, 6.0), Vec2DDrawing::new(60.0, -24.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(60.0, -24.0), Vec2DDrawing::new(15.0, 6.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(60.0, 6.0), Vec2DDrawing::new(15.0, -24.0)]),
-        ];
-
-        for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [Vec2DDrawing::new(15.0, -24.0), Vec2DDrawing::new(60.0, 6.0)]);
-        }
-
-        let rectangles = vec![
-            Rectangle::from_corners([Vec2DDrawing::new(-8.0, -32.0), Vec2DDrawing::new(16.0, 0.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(-8.0, 0.0), Vec2DDrawing::new(16.0, -32.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(16.0, -32.0), Vec2DDrawing::new(-8.0, 0.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(16.0, 0.0), Vec2DDrawing::new(-8.0, -32.0)]),
-        ];
-
-        for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [Vec2DDrawing::new(-8.0, -32.0), Vec2DDrawing::new(16.0, 0.0)]);
-        }
-
-        let rectangles = vec![
-            Rectangle::from_corners([Vec2DDrawing::new(48.0, -19.0), Vec2DDrawing::new(78.0, 22.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(48.0, 22.0), Vec2DDrawing::new(78.0, -19.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(78.0, -19.0), Vec2DDrawing::new(48.0, 22.0)]),
-            Rectangle::from_corners([Vec2DDrawing::new(78.0, 22.0), Vec2DDrawing::new(48.0, -19.0)]),
-        ];
-
-        for rectangle in rectangles.into_iter() {
-            assert_eq!(rectangle.bbox(), [Vec2DDrawing::new(48.0, -19.0), Vec2DDrawing::new(78.0, 22.0)]);
-        }
+        assert!(false, "test the bbox of an axis aligned rectangle and a twisted one");
     }
 }

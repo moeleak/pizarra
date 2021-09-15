@@ -1,23 +1,23 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
-use crate::shape::{ShapeBuilder, ShapeFinished, ShapeType, path::PathCommand};
+use crate::shape::{ShapeBuilder, StoredShape, ShapeFinished, ShapeType, path::PathCommand};
 use crate::consts::TOUCH_RADIUS;
 use crate::draw_commands::DrawCommand;
 use crate::geom::{bbox_from_points, segment_intersects_circle};
 use crate::transform::Transform;
 
-pub struct Polygon {
+pub struct PolygonBuilder {
     points: Vec<Vec2DDrawing>,
     tip: Option<Vec2DDrawing>,
     thickness: f64,
     color: Color,
 }
 
-impl Polygon {
-    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> Polygon {
+impl PolygonBuilder {
+    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> PolygonBuilder {
         let init_vec = Vec::with_capacity(8);
 
-        Polygon {
+        PolygonBuilder {
             points: init_vec,
             tip: Some(initial),
             thickness,
@@ -25,8 +25,8 @@ impl Polygon {
         }
     }
 
-    pub fn with_params(color: Color, points: Vec<Vec2DDrawing>, thickness: f64) -> Polygon {
-        Polygon {
+    pub fn with_params(color: Color, points: Vec<Vec2DDrawing>, thickness: f64) -> PolygonBuilder {
+        PolygonBuilder {
             tip: None,
             points, color, thickness,
         }
@@ -37,7 +37,7 @@ impl Polygon {
     }
 }
 
-impl ShapeBuilder for Polygon {
+impl ShapeBuilder for PolygonBuilder {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         self.tip = Some(t.to_storage_coordinates(pos));
     }
@@ -56,7 +56,11 @@ impl ShapeBuilder for Polygon {
             self.points.push(point);
             self.tip = None;
 
-            ShapeFinished::Yes
+            ShapeFinished::Yes(Box::new(Polygon::from_parts(
+                self.points.clone(),
+                self.color,
+                self.thickness,
+            )))
         } else {
             self.points.push(drawing_pos);
 
@@ -64,7 +68,7 @@ impl ShapeBuilder for Polygon {
         }
     }
 
-    fn draw_commands(&self) -> DrawCommand {
+    fn draw_commands(&self) -> Vec<DrawCommand> {
         let mut points_iter = self.points.iter();
         let mut commands = Vec::with_capacity(self.points.len());
 
@@ -79,6 +83,39 @@ impl ShapeBuilder for Polygon {
             } else {
                 PathCommand::LineTo(p)
             });
+        }
+
+        vec![DrawCommand::Path {
+            commands,
+            thickness: self.thickness,
+            color: self.color,
+        }]
+    }
+}
+
+#[derive(Debug)]
+pub struct Polygon {
+    points: Vec<Vec2DDrawing>,
+    color: Color,
+    thickness: f64,
+}
+
+impl Polygon {
+    pub fn from_parts(points: Vec<Vec2DDrawing>, color: Color, thickness: f64) -> Polygon {
+        Polygon {
+            points, color, thickness,
+        }
+    }
+}
+
+impl StoredShape for Polygon {
+    fn draw_commands(&self) -> DrawCommand {
+        let mut points_iter = self.points.iter();
+        let mut commands = Vec::with_capacity(self.points.len());
+
+        if let Some(p) = points_iter.next() {
+            commands.push(PathCommand::MoveTo(*p));
+            commands.extend(points_iter.map(|p| PathCommand::LineTo(*p)));
         }
 
         DrawCommand::Path {
@@ -117,24 +154,30 @@ mod tests {
 
     #[test]
     fn it_behaves() {
-        let mut poly = Polygon::start(Default::default(), Vec2DDrawing::new(0.0, 0.0), 4.0);
+        let mut poly = PolygonBuilder::start(Default::default(), Vec2DDrawing::new(0.0, 0.0), 4.0);
         let t = Default::default();
 
         poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t);
 
         poly.handle_mouse_moved(Vec2DScreen::new(20.0, 0.0), t);
-        assert_eq!(poly.handle_button_released(Vec2DScreen::new(20.0, 0.0), t), ShapeFinished::No);
+        if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2DScreen::new(20.0, 0.0), t) {
+            panic!()
+        }
 
         poly.handle_mouse_moved(Vec2DScreen::new(20.0, 20.0), t);
-        assert_eq!(poly.handle_button_released(Vec2DScreen::new(20.0, 20.0), t), ShapeFinished::No);
+        if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2DScreen::new(20.0, 20.0), t) {
+            panic!()
+        }
 
         poly.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
-        assert_eq!(poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t), ShapeFinished::Yes);
+        if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t) {
+            panic!()
+        }
     }
 
     #[test]
     fn no_clunky_path_ends() {
-        let mut poly = Polygon::start(Default::default(), Vec2DDrawing::new(1.0, 0.0), 4.0);
+        let mut poly = PolygonBuilder::start(Default::default(), Vec2DDrawing::new(1.0, 0.0), 4.0);
         let t = Default::default();
 
         poly.handle_mouse_moved(Vec2DScreen::new(1.0, 1.0), t);
@@ -144,9 +187,11 @@ mod tests {
         poly.handle_button_released(Vec2DScreen::new(30.0, 0.0), t);
 
         poly.handle_mouse_moved(Vec2DScreen::new(29.0, 0.0), t);
-        assert_eq!(poly.handle_button_released(Vec2DScreen::new(33.0, 0.0), t), ShapeFinished::Yes);
+        if let ShapeFinished::No = poly.handle_button_released(Vec2DScreen::new(33.0, 0.0), t) {
+            panic!()
+        }
 
-        assert_eq!(poly.draw_commands(), DrawCommand::Path {
+        assert_eq!(poly.draw_commands()[0], DrawCommand::Path {
             color: Default::default(),
             commands: vec![
                 PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
@@ -159,23 +204,20 @@ mod tests {
 
     #[test]
     fn can_delete_single_point_polygons() {
-        let mut poly = Polygon::start(Default::default(), Vec2DDrawing::new(0.0, 0.0), 4.0);
-        let t = Default::default();
-
-        poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t);
-
-        if let ShapeFinished::No = poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t) {
-            panic!("Unfinished shape");
-        }
+        let poly = Polygon::from_parts(vec![
+            Vec2DDrawing::new(0.0, 0.0),
+            Vec2DDrawing::new(0.0, 0.0),
+            Vec2DDrawing::new(0.0, 0.0),
+        ], Color::green(), 1.0);
 
         assert!(poly.intersects_circle(Vec2DDrawing::new(0.0, 0.0), 10.0));
     }
 
     #[test]
-    fn can_render_first_point() {
-        let poly = Polygon::start(Default::default(), Vec2DDrawing::new(0.0, 0.0), 3.0);
+    fn can_render_first_point_when_building() {
+        let poly = PolygonBuilder::start(Default::default(), Vec2DDrawing::new(0.0, 0.0), 3.0);
 
-        assert_eq!(poly.draw_commands(), DrawCommand::Path {
+        assert_eq!(poly.draw_commands()[0], DrawCommand::Path {
             color: Default::default(),
             commands: vec![
                 PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),

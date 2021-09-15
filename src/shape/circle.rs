@@ -1,19 +1,19 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
-use crate::shape::{ShapeBuilder, ShapeFinished, ShapeType};
+use crate::shape::{ShapeBuilder, StoredShape, ShapeFinished, ShapeType};
 use crate::draw_commands::DrawCommand;
 use crate::transform::Transform;
 
-pub struct Circle {
+pub struct CircleBuilder {
     center: Vec2DDrawing,
     radius: f64,
     thickness: f64,
     color: Color,
 }
 
-impl Circle {
-    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> Circle {
-        Circle {
+impl CircleBuilder {
+    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> CircleBuilder {
+        CircleBuilder {
             center: initial,
             thickness,
             color,
@@ -22,7 +22,7 @@ impl Circle {
     }
 }
 
-impl ShapeBuilder for Circle {
+impl ShapeBuilder for CircleBuilder {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         self.radius = self.center.distance(t.to_storage_coordinates(pos));
     }
@@ -32,18 +32,43 @@ impl ShapeBuilder for Circle {
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
         self.handle_mouse_moved(pos, t);
 
-        ShapeFinished::Yes
+        ShapeFinished::Yes(Box::new(
+            Circle::from_parts(
+                self.center,
+                self.radius,
+                self.thickness,
+                self.color,
+            )
+        ))
     }
 
-    fn draw_commands(&self) -> DrawCommand {
-        DrawCommand::Circle {
+    fn draw_commands(&self) -> Vec<DrawCommand> {
+        vec![DrawCommand::Circle {
             center: self.center,
             radius: self.radius,
             thickness: self.thickness,
             color: self.color,
+        }]
+    }
+}
+
+#[derive(Debug)]
+pub struct Circle {
+    center: Vec2DDrawing,
+    radius: f64,
+    thickness: f64,
+    color: Color,
+}
+
+impl Circle {
+    pub fn from_parts(center: Vec2DDrawing, radius: f64, thickness: f64, color: Color) -> Circle {
+        Circle {
+            center, radius, thickness, color,
         }
     }
+}
 
+impl StoredShape for Circle {
     fn bbox(&self) -> [Vec2DDrawing; 2] {
         [
             Vec2DDrawing::new(self.center.x - self.radius, self.center.y - self.radius),
@@ -63,5 +88,14 @@ impl ShapeBuilder for Circle {
 
     fn color(&self) -> Color {
         self.color
+    }
+
+    fn draw_commands(&self) -> DrawCommand {
+        DrawCommand::Circle {
+            center: self.center,
+            radius: self.radius,
+            thickness: self.thickness,
+            color: self.color,
+        }
     }
 }

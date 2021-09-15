@@ -3,27 +3,27 @@ use std::str::FromStr;
 
 use crate::point::{Vec2DDrawing, Vec2DScreen};
 use crate::transform::Transform;
+use crate::draw_commands::DrawCommand;
 
 pub mod path;
-mod rectangle;
-mod polygon;
-mod circle;
-mod ellipse;
+pub mod rectangle;
+pub mod polygon;
+pub mod circle;
+pub mod ellipse;
 
 use super::color::Color;
-pub use crate::draw_commands::DrawCommand;
 
-pub use self::path::Path;
-pub use self::rectangle::Rectangle;
-pub use self::polygon::Polygon;
-pub use self::circle::Circle;
-pub use self::ellipse::Ellipse;
+use self::path::PathBuilder;
+use self::ellipse::EllipseBuilder;
+use self::polygon::PolygonBuilder;
+use self::circle::CircleBuilder;
+use self::rectangle::RectangleBuilder;
 
 /// Shapes handle input from the user, and they're responsible of notifying when
 /// they're finished, for example in the case of a polygon
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum ShapeFinished {
-    Yes,
+    Yes(Box<dyn StoredShape>),
     No,
 }
 
@@ -39,11 +39,11 @@ pub enum ShapeType {
 impl ShapeType {
     pub fn start(&self, color: Color, initial: Vec2DDrawing, stroke: f64) -> Box<dyn ShapeBuilder> {
         match *self {
-            ShapeType::Path => Box::new(Path::start(color, initial, stroke)),
-            ShapeType::Rectangle => Box::new(Rectangle::start(color, initial, stroke)),
-            ShapeType::Polygon => Box::new(Polygon::start(color, initial, stroke)),
-            ShapeType::Circle => Box::new(Circle::start(color, initial, stroke)),
-            ShapeType::Ellipse => Box::new(Ellipse::start(color, initial, stroke)),
+            ShapeType::Path => Box::new(PathBuilder::start(color, initial, stroke)),
+            ShapeType::Rectangle => Box::new(RectangleBuilder::start(color, initial, stroke)),
+            ShapeType::Polygon => Box::new(PolygonBuilder::start(color, initial, stroke)),
+            ShapeType::Circle => Box::new(CircleBuilder::start(color, initial, stroke)),
+            ShapeType::Ellipse => Box::new(EllipseBuilder::start(color, initial, stroke)),
         }
     }
 }
@@ -74,6 +74,12 @@ pub trait ShapeBuilder {
     fn handle_button_released(&mut self, pos: Vec2DScreen, transform: Transform) -> ShapeFinished;
 
     /// Must return the necessary commands to display this shape on the screen
+    /// when building it
+    fn draw_commands(&self) -> Vec<DrawCommand>;
+}
+
+pub trait StoredShape: fmt::Debug {
+    /// return the commands needed to draw this shape
     fn draw_commands(&self) -> DrawCommand;
 
     /// Must know its bbox
@@ -113,11 +119,11 @@ impl fmt::Display for ShapeId {
 pub struct Shape {
     id: ShapeId,
     z_index: usize,
-    shape_impl: Box<dyn ShapeBuilder>,
+    shape_impl: Box<dyn StoredShape>,
 }
 
 impl Shape {
-    pub fn from_shape(shape: Box<dyn ShapeBuilder>, id: ShapeId, z_index: usize) -> Shape {
+    pub fn from_shape(shape: Box<dyn StoredShape>, id: ShapeId, z_index: usize) -> Shape {
         Shape {
             id,
             shape_impl: shape,
@@ -151,18 +157,6 @@ impl Shape {
 
     pub fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
         self.shape_impl.intersects_circle(center, radius)
-    }
-
-    pub fn handle_mouse_moved(&mut self, val: Vec2DScreen, transform: Transform) {
-        self.shape_impl.handle_mouse_moved(val, transform);
-    }
-
-    pub fn handle_button_pressed(&mut self, point: Vec2DScreen, transform: Transform) {
-        self.shape_impl.handle_button_pressed(point, transform);
-    }
-
-    pub fn handle_button_released(&mut self, point: Vec2DScreen, transform: Transform) -> ShapeFinished {
-        self.shape_impl.handle_button_released(point, transform)
     }
 }
 

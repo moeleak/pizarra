@@ -9,14 +9,15 @@ use regex::Regex;
 use lazy_static::lazy_static;
 
 use crate::storage::Storage;
-use crate::shape::{ShapeBuilder, Path, Ellipse};
+use crate::shape::{StoredShape, path::Path, ellipse::Ellipse};
 use crate::color::Color;
 use crate::consts::DEFAULT_THICKNESS;
 use crate::point::{Point, Vec2DDrawing};
+use crate::geom::Rad;
 
 mod path;
 
-use path::{parse_path, PathBuilder};
+use path::{parse_path, PathBuilder as SvgPathBuilder};
 
 lazy_static! {
     static ref CSS_COLOR_REGEX: Regex = Regex::new(r"(?x)#
@@ -267,6 +268,14 @@ impl FromStr for Vec2DDrawing {
     }
 }
 
+impl FromStr for Rad {
+    type Err = Error;
+
+    fn from_str(source: &str) -> Result<Rad, Self::Err> {
+        unimplemented!()
+    }
+}
+
 fn css_attrs_as_hashmap(attrs: &str) -> HashMap<&str, &str> {
     attrs.split(';').filter_map(|s| {
         let pieces: Vec<_> = s.split(':').collect();
@@ -305,11 +314,11 @@ impl Path {
                 1.0
             };
 
-        let mut builder = PathBuilder::new();
+        let mut builder = SvgPathBuilder::new();
 
         parse_path(path, &mut builder)?;
 
-        Ok(Path::with_params(color.with_alpha(alpha), builder.into_path(), thickness))
+        Ok(Path::from_parts(builder.into_path(), color.with_alpha(alpha), thickness))
     }
 }
 
@@ -335,25 +344,33 @@ impl Ellipse {
                 1.0
             };
 
+        let angle: Rad = if let Some(angle_str) = attrs.get("transform") {
+            angle_str.parse()?
+        } else {
+            Default::default()
+        };
+
         let center = Vec2DDrawing::new(cx.parse()?, cy.parse()?);
         let rx: f64 = rx.parse()?;
         let ry: f64 = ry.parse()?;
 
-        Ok(Ellipse::with_params([
-            center + Vec2DDrawing::new(rx * -1.0, ry),
-            center + Vec2DDrawing::new(rx, ry),
-            center + Vec2DDrawing::new(rx, ry * -1.0),
-            center + Vec2DDrawing::new(rx * -1.0, ry * -1.0),
-        ], color.with_alpha(alpha), thickness))
+        Ok(Ellipse::from_parts(
+            center,
+            rx,
+            ry,
+            angle,
+            color.with_alpha(alpha),
+            thickness,
+        ))
     }
 }
 
 trait Deserialize {
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeBuilder>, Error>;
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn StoredShape>, Error>;
 }
 
-impl Deserialize for Path {
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeBuilder>, Error> {
+impl Deserialize for Path{
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn StoredShape>, Error> {
         let styleattr = attributes.iter().find(|a| a.name.local_name == "style").ok_or(Error::MissingAttribute("style".into()))?;
         let dattr = attributes.iter().find(|a| a.name.local_name == "d").ok_or(Error::MissingAttribute("d".into()))?;
 
@@ -362,7 +379,7 @@ impl Deserialize for Path {
 }
 
 impl Deserialize for Ellipse {
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeBuilder>, Error> {
+    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn StoredShape>, Error> {
         let cx = attributes.iter().find(|a| a.name.local_name == "cx").ok_or(Error::MissingAttribute("style".into()))?;
         let cy = attributes.iter().find(|a| a.name.local_name == "cy").ok_or(Error::MissingAttribute("style".into()))?;
         let rx = attributes.iter().find(|a| a.name.local_name == "rx").ok_or(Error::MissingAttribute("style".into()))?;
@@ -393,20 +410,16 @@ impl Storage {
             }
         }
 
-        storage.flush();
-
         Ok(storage)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::shape::path::PathCommand;
+    use crate::draw_commands::DrawCommand;
 
-    use crate::storage::Storage;
-    use crate::shape::{Path, DrawCommand, ShapeBuilder, path::PathCommand};
-    use crate::color::Color;
-    use crate::point::Vec2DDrawing;
+    use super::*;
 
     #[test]
     fn test_from_svg() {

@@ -5,7 +5,7 @@ use rstar::{RTree, RTreeObject, AABB, SelectionFunction, Envelope};
 
 use crate::point::{Point, Vec2DDrawing};
 
-use super::shape::{Shape, ShapeId, ShapeBuilder};
+use super::shape::{Shape, ShapeId, StoredShape};
 use super::draw_commands::DrawCommand;
 
 impl RTreeObject for Shape {
@@ -74,10 +74,17 @@ impl SelectionFunction<Shape> for CenterAndRadiusSelection {
 
 /// This struct handles storage and fast retrieval of shapes.
 pub struct Storage {
+    /// used to easily find a shape that will be deleted by id, because the
+    /// rstar tree knows how to find bboxes easily but not ids.
     ids: HashMap<ShapeId, AABB<[f64; 2]>>,
+
+    /// The rstart tree that backs this storage.
     shapes: RTree<Shape>,
-    current: Option<Shape>,
+
+    /// The next id available.
     next_id: ShapeId,
+
+    /// the next z-index available.
     next_z_index: usize,
 }
 
@@ -88,32 +95,32 @@ impl Storage {
         Storage {
             shapes: RTree::new(),
             ids: HashMap::new(),
-            current: None,
             next_id: ShapeId::from(1),
             next_z_index: 1,
         }
     }
 
-    pub fn nex_id(&mut self) -> ShapeId {
+    fn nex_id(&mut self) -> ShapeId {
         let id = self.next_id;
         self.next_id = id.next();
         id
     }
 
-    pub fn next_z_index(&mut self) -> usize {
+    fn next_z_index(&mut self) -> usize {
         let index = self.next_z_index;
         self.next_z_index = index + 1;
         index
     }
 
     /// Adds a new shape to the storage
-    pub fn add(&mut self, shape: Box<dyn ShapeBuilder>) -> ShapeId {
+    pub fn add(&mut self, shape: Box<dyn StoredShape>) -> ShapeId {
         // The previous shape has been finished, move it to persistent storage
-        self.flush();
-
         let id = self.nex_id();
+        let z_index = self.next_z_index();
+        let shape = Shape::from_shape(shape, id, z_index);
 
-        self.current = Some(Shape::from_shape(shape, id, self.next_z_index()));
+        self.ids.insert(id, shape.envelope());
+        self.shapes.insert(shape);
 
         id
     }
@@ -126,23 +133,6 @@ impl Storage {
         self.shapes.insert(shape);
 
         shape_id
-    }
-
-    /// moves the last inserted shape to persistent storage. It will no longer
-    /// be accesible through .last_mut()
-    pub fn flush(&mut self) -> Option<ShapeId> {
-        let old_current = self.current.take();
-
-        if let Some(old_shape) = old_current {
-            let old_id = old_shape.id();
-
-            self.ids.insert(old_id, old_shape.envelope());
-            self.shapes.insert(old_shape);
-
-            Some(old_id)
-        } else {
-            None
-        }
     }
 
     /// Deletes a shape from this storage given its id if such id exists
@@ -160,11 +150,6 @@ impl Storage {
     /// and radius, if any.
     pub fn query_circle(&self, center: Vec2DDrawing, radius: f64) -> Option<ShapeId> {
         self.shapes.locate_with_selection_function(CenterAndRadiusSelection::new(center, radius)).next().map(|shape| shape.id())
-    }
-
-    /// gets a mutable reference to the last inserted shape for modifying
-    pub fn last_mut(&mut self) -> Option<&mut Shape> {
-        self.current.as_mut()
     }
 
     /// Returns the number of shapes in this storage
@@ -192,12 +177,6 @@ impl Storage {
     /// continuously drawing on the same portion of the screen
     pub fn draw_commands(&self, bbox: [Vec2DDrawing; 2]) -> Vec<DrawCommand> {
         self.query_commands(bbox)
-    }
-
-    /// Returns the draw commands corresponding to the shape being edited, if
-    /// any
-    pub fn draw_commands_for_current_shape(&self) -> Option<DrawCommand> {
-        self.current.as_ref().map(|s| s.draw_commands())
     }
 
     /// Gets the bounding box that surrounds every shape drawn or returns None
@@ -244,26 +223,25 @@ mod tests {
     use super::*;
 
     use crate::shape::{
-        ShapeType, ShapeBuilder, ShapeId, Path, Rectangle, Ellipse,
+        ShapeId,
         path::PathCommand,
+        circle::Circle, path::Path, rectangle::Rectangle,
     };
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;
-    use crate::point::{Vec2DDrawing, Vec2DScreen};
+    use crate::point::Vec2DDrawing;
 
     #[test]
     fn test_add_shapes_at_zoom() {
         let mut storage = Storage::new();
-        let shapes: Vec<Box<dyn ShapeBuilder>> = vec![
-            Box::new(Path::start(Color::red(), Vec2DDrawing::new(0.0, 0.0), 1.0)),
-            Box::new(Rectangle::start(Color::green(), Vec2DDrawing::new(0.0, 0.0), 1.0)),
-            Box::new(Ellipse::start(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)),
+        let shapes: Vec<Box<dyn StoredShape>> = vec![
+            Box::new(Circle::from_parts(Vec2DDrawing::new(0.0, 0.0), 1.0, 1.0, Color::green())),
+            Box::new(Path::from_parts(vec![], Color::red(), 1.0)),
+            Box::new(Rectangle::from_parts([Vec2DDrawing::new(0.0, 0.0); 4], Color::green(), 1.0)),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|shape| {
             storage.add(shape)
         }).collect();
-
-        storage.flush();
 
         assert_eq!(storage.shape_count(), 3);
 
@@ -273,69 +251,17 @@ mod tests {
     }
 
     #[test]
-    fn test_last_mut() {
-        let mut storage = Storage::new();
-        let t = Default::default();
-
-        assert!(storage.last_mut().is_none());
-
-        storage.add(Box::new(Path::start(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)));
-
-        let last_shape = storage.last_mut().unwrap();
-
-        assert_eq!(last_shape.shape_type(), ShapeType::Path);
-
-        last_shape.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
-        last_shape.handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
-
-        storage.add(Box::new(Rectangle::from_corners([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(0.0, 0.0)])));
-
-        let last_shape = storage.last_mut().unwrap();
-
-        assert_eq!(last_shape.shape_type(), ShapeType::Rectangle);
-
-        last_shape.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
-        last_shape.handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
-
-        storage.add(Box::new(Ellipse::start(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)));
-
-        let last_shape = storage.last_mut().unwrap();
-
-        assert_eq!(last_shape.shape_type(), ShapeType::Ellipse);
-
-        last_shape.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
-        last_shape.handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
-    }
-
-    #[test]
-    fn test_flush() {
-        let mut storage = Storage::new();
-
-        assert!(storage.last_mut().is_none());
-
-        storage.add(Box::new(Path::start(Color::blue(), Vec2DDrawing::new(0.0, 0.0), 1.0)));
-
-        assert!(storage.last_mut().is_some());
-
-        storage.flush();
-
-        assert!(storage.last_mut().is_none());
-    }
-
-    #[test]
     fn test_remove_line() {
         let mut storage = Storage::new();
-        let t = Default::default();
-
-        let mut line = Path::start(Color::green(), Vec2DDrawing::new(0.0, -1.0), 1.0);
-
-        line.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
-        line.handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
-        line.handle_mouse_moved(Vec2DScreen::new(1.0, 1.0), t);
-        line.handle_mouse_moved(Vec2DScreen::new(0.0, 1.0), t);
+        let line = Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(0.0, -1.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(0.0, 1.0)),
+        ], Color::green(), 1.0);
 
         storage.add(Box::new(line));
-        storage.flush();
 
         assert!(storage.query_circle(Vec2DDrawing::new(0.5, -0.5), 0.5).is_none());
         assert!(storage.query_circle(Vec2DDrawing::new(0.5, 0.5), 0.5).is_none());
@@ -349,13 +275,11 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let obj_to_remove = Box::new(Path::start(Color::green(), Vec2DDrawing::new(1.0, 1.0), 1.0));
-        let obj_to_interfere = Box::new(Path::start(Color::blue(), Vec2DDrawing::new(0.0, 1.0), 1.0));
+        let obj_to_remove = Box::new(Path::new());
+        let obj_to_interfere = Box::new(Path::new());
 
         let id_to_remove = storage.add(obj_to_remove);
         let _id_to_interfere = storage.add(obj_to_interfere);
-
-        storage.flush();
 
         assert_eq!(storage.shape_count(), 2);
 
@@ -372,13 +296,11 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let obj_to_remove = Box::new(Path::start(Color::green(), Vec2DDrawing::new(1.0, 1.0), 1.0));
-        let obj_to_interfere = Box::new(Path::start(Color::blue(), Vec2DDrawing::new(0.0, 1.0), 1.0));
+        let obj_to_remove = Box::new(Path::new());
+        let obj_to_interfere = Box::new(Path::new());
 
         let _id_to_interfere = storage.add(obj_to_interfere);
         let id_to_remove = storage.add(obj_to_remove);
-
-        storage.flush();
 
         assert_eq!(storage.shape_count(), 2);
 
@@ -390,45 +312,18 @@ mod tests {
     }
 
     #[test]
-    fn incremental_drawing() {
-        let mut storage = Storage::new();
-        let t = Default::default();
-        let bbox = [Vec2DDrawing::new(-40.0, -40.0), Vec2DDrawing::new(40.0, 40.0)];
-
-        storage.add(Box::new(Path::start(Color::green(), Vec2DDrawing::new(0.0, 0.0), 4.0)));
-
-        storage.last_mut().unwrap().handle_mouse_moved(Vec2DScreen::new(1.0, 0.0), t);
-
-        assert_eq!(storage.draw_commands(bbox), vec![]);
-
-        storage.last_mut().unwrap().handle_mouse_moved(Vec2DScreen::new(2.0, 0.0), t);
-
-        assert_eq!(storage.draw_commands(bbox), vec![]);
-
-        storage.last_mut().unwrap().handle_button_released(Vec2DScreen::new(3.0, 0.0), t);
-
-        assert_eq!(storage.draw_commands(bbox), vec![]);
-
-        storage.flush();
-
-        assert_eq!(storage.draw_commands(bbox).len(), 1);
-    }
-
-    #[test]
     fn test_erase_invalidates_cache() {
         let mut storage = Storage::new();
         let bbox = [Vec2DDrawing::new(-40.0, -40.0), Vec2DDrawing::new(40.0, 40.0)];
 
-        storage.add(Box::new(Path::with_params(Color::green(), vec![
+        storage.add(Box::new(Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
             PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
-        ], 4.0)));
-        storage.add(Box::new(Path::with_params(Color::green(), vec![
+        ], Color::green(), 4.0)));
+        let id = storage.add(Box::new(Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DDrawing::new(0.0, 1.0)),
             PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
-        ], 4.0)));
-
-        let id = storage.flush().unwrap();
+        ], Color::green(), 4.0)));
 
         storage.remove(id);
 
@@ -448,19 +343,37 @@ mod tests {
 
         let shapes = vec![
             // in green the ones that go
-            Box::new(Rectangle::from_corners([Vec2DDrawing::new(-1.1, -1.1), Vec2DDrawing::new(1.1, 1.1)])),
-            Box::new(Rectangle::from_corners([Vec2DDrawing::new(-1.5, 0.5), Vec2DDrawing::new(-0.5, 1.5)])),
-            Box::new(Rectangle::from_corners([Vec2DDrawing::new(0.25, -0.5), Vec2DDrawing::new(0.5, -0.25)])),
+            Box::new(Rectangle::from_parts([
+                Vec2DDrawing::new(-1.1, -1.1),
+                Vec2DDrawing::new(-1.1, 1.1),
+                Vec2DDrawing::new(1.1, 1.1),
+                Vec2DDrawing::new(1.1, -1.1),
+            ], Default::default(), 1.0)),
+            Box::new(Rectangle::from_parts([
+                Vec2DDrawing::new(-1.5, 0.5),
+                Vec2DDrawing::new(-1.5, 0.5),
+                Vec2DDrawing::new(-0.5, 1.5),
+                Vec2DDrawing::new(-0.5, 1.5),
+            ], Default::default(), 1.0)),
+            Box::new(Rectangle::from_parts([
+                Vec2DDrawing::new(0.25, -0.5),
+                Vec2DDrawing::new(0.25, -0.5),
+                Vec2DDrawing::new(0.5, -0.25),
+                Vec2DDrawing::new(0.5, -0.25),
+            ], Default::default(), 1.0)),
 
             // in red the ones that dont
-            Box::new(Rectangle::from_corners([Vec2DDrawing::new(20.0, 20.0), Vec2DDrawing::new(20.0, 20.0)])),
+            Box::new(Rectangle::from_parts([
+                Vec2DDrawing::new(20.0, 20.0),
+                Vec2DDrawing::new(20.0, 20.0),
+                Vec2DDrawing::new(20.0, 20.0),
+                Vec2DDrawing::new(20.0, 20.0),
+            ], Default::default(), 1.0)),
         ];
 
         for shape in shapes.into_iter() {
             storage.add(shape);
         }
-
-        storage.flush();
 
         let buffer = storage.draw_commands([Vec2DDrawing::new(-1.0, -1.0), Vec2DDrawing::new(1.0, 1.0)]);
 
@@ -516,13 +429,20 @@ mod tests {
         let mut storage = Storage::new();
 
         // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
-        storage.add(Box::new(Rectangle::from_corners([Vec2DDrawing::new(1.0, 1.0), Vec2DDrawing::new(3.0, 3.0)])));
-
-        // only the previous shape is in permanent storage
-        storage.flush();
+        storage.add(Box::new(Rectangle::from_parts([
+            Vec2DDrawing::new(1.0, 1.0),
+            Vec2DDrawing::new(3.0, 1.0),
+            Vec2DDrawing::new(3.0, 3.0),
+            Vec2DDrawing::new(1.0, 3.0),
+        ], Default::default(), 1.0)));
 
         // A rectangle of 2x2 in zoom 0 aournd the oriign
-        storage.add(Box::new(Rectangle::from_corners([Vec2DDrawing::new(-1.0, -1.0), Vec2DDrawing::new(1.0, 1.0)])));
+        storage.add(Box::new(Rectangle::from_parts([
+            Vec2DDrawing::new(-1.0, -1.0),
+            Vec2DDrawing::new(1.0, 1.0),
+            Vec2DDrawing::new(1.0, 1.0),
+            Vec2DDrawing::new(1.0, 1.0),
+        ], Default::default(), 1.0)));
 
         let buffer = storage.draw_commands([Vec2DDrawing::new(-2.0, -2.0), Vec2DDrawing::new(4.0, 4.0)]);
 
@@ -545,10 +465,18 @@ mod tests {
     fn test_get_bounds() {
         let mut storage = Storage::new();
 
-        storage.add(Box::new(Rectangle::from_corners([Vec2DDrawing::new(-5.0, -5.0), Vec2DDrawing::new(1.0, 1.0)])));
-        storage.add(Box::new(Rectangle::from_corners([Vec2DDrawing::new(5.0, 5.0), Vec2DDrawing::new(1.0, 1.0)])));
-
-        storage.flush();
+        storage.add(Box::new(Rectangle::from_parts([
+            Vec2DDrawing::new(-5.0, -5.0),
+            Vec2DDrawing::new(1.0, 1.0),
+            Vec2DDrawing::new(1.0, 1.0),
+            Vec2DDrawing::new(1.0, 1.0),
+        ], Default::default(), 1.0)));
+        storage.add(Box::new(Rectangle::from_parts([
+            Vec2DDrawing::new(5.0, 5.0),
+            Vec2DDrawing::new(1.0, 1.0),
+            Vec2DDrawing::new(1.0, 1.0),
+            Vec2DDrawing::new(1.0, 1.0),
+        ], Default::default(), 1.0)));
 
         assert_eq!(storage.get_bounds(), Some([Vec2DDrawing::new(-5.0, -5.0), Vec2DDrawing::new(5.0, 5.0)]));
     }
@@ -557,16 +485,14 @@ mod tests {
     fn test_draw_oder_is_respected() {
         let mut storage = Storage::new();
 
-        storage.add(Box::new(Path::with_params(Color::red(), vec![
+        storage.add(Box::new(Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
             PathCommand::LineTo(Vec2DDrawing::new(0.0, 2.0)),
-        ], 4.0)));
-        storage.add(Box::new(Path::with_params(Color::green(), vec![
+        ], Color::red(), 4.0)));
+        storage.add(Box::new(Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
             PathCommand::LineTo(Vec2DDrawing::new(0.0, 1.0)),
-        ], 4.0)));
-
-        storage.flush();
+        ],Color::green(),  4.0)));
 
         let commands = storage.draw_commands([Vec2DDrawing::new(-1.0, -1.0), Vec2DDrawing::new(1.0, 3.0)]);
 

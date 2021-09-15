@@ -7,7 +7,7 @@ use crate::ShapeType;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
 use crate::transform::Transform;
 
-use super::{ShapeBuilder, ShapeFinished};
+use super::{ShapeBuilder, StoredShape, ShapeFinished};
 
 /// Given two points return the points in their 1/3 and 2/3 of the segment from
 /// a to b.
@@ -217,33 +217,33 @@ impl fmt::Display for PathCommand {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Path {
+pub struct PathBuilder {
     commands: Vec<PathCommand>,
     thickness: f64,
     color: Color,
 }
 
-impl Path {
-    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> Path {
+impl PathBuilder {
+    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> PathBuilder {
         let mut commands = Vec::with_capacity(1000);
 
         commands.push(PathCommand::MoveTo(initial));
 
-        Path {
+        PathBuilder {
             commands,
             thickness,
             color,
         }
     }
 
-    pub fn with_params(color: Color, commands: Vec<PathCommand>, thickness: f64) -> Path {
-        Path {
+    pub fn with_params(color: Color, commands: Vec<PathCommand>, thickness: f64) -> PathBuilder {
+        PathBuilder {
             commands, color, thickness,
         }
     }
 }
 
-impl ShapeBuilder for Path {
+impl ShapeBuilder for PathBuilder {
     // 1. The first point is an absolute move.
     //
     // 2. The second point is a flat curve, with the handles put on the line
@@ -261,9 +261,45 @@ impl ShapeBuilder for Path {
     fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform) { }
 
     fn handle_button_released(&mut self, _pos: Vec2DScreen, _t: Transform) -> ShapeFinished {
-        ShapeFinished::Yes
+        ShapeFinished::Yes(Box::new(Path::from_parts(
+            self.commands.clone(), self.color, self.thickness,
+        )))
     }
 
+    fn draw_commands(&self) -> Vec<DrawCommand> {
+        vec![DrawCommand::Path {
+            commands: self.commands.clone(),
+            thickness: self.thickness,
+            color: self.color,
+        }]
+    }
+}
+
+#[derive(Debug)]
+pub struct Path {
+    commands: Vec<PathCommand>,
+    color: Color,
+    thickness: f64,
+}
+
+impl Path {
+    #[cfg(test)]
+    pub fn new() -> Path {
+        Path {
+            commands: Vec::new(),
+            color: Default::default(),
+            thickness: 1.0,
+        }
+    }
+
+    pub fn from_parts(commands: Vec<PathCommand>, color: Color, thickness: f64) -> Path {
+        Path {
+            commands, color, thickness,
+        }
+    }
+}
+
+impl StoredShape for Path {
     fn draw_commands(&self) -> DrawCommand {
         DrawCommand::Path {
             commands: self.commands.clone(),
@@ -321,7 +357,6 @@ impl ShapeBuilder for Path {
 mod tests {
     use super::*;
 
-    use crate::shape::ShapeBuilder;
     use crate::color::Color;
     use crate::point::Vec2DDrawing;
 
@@ -346,22 +381,22 @@ mod tests {
 
     #[test]
     fn test_bbox() {
-        let mut line = Path::start(Color::green(), Vec2DDrawing::new(1.0, 0.0), 4.0);
-        let t = Default::default();
-
-        line.handle_mouse_moved(Vec2DScreen::new(0.0, 1.0), t);
+        let line = Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(1.0, 0.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(0.0, 1.0)),
+        ], Color::green(), 4.0);
 
         assert_eq!(line.bbox(), [Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(1.0, 1.0)]);
     }
 
     #[test]
     fn test_bbox_twisted_line() {
-        let mut line = Path::start(Color::green(), Vec2DDrawing::new(-12.0, -1.0), 1.0);
-        let t = Default::default();
-
-        line.handle_mouse_moved(Vec2DScreen::new(-5.0, 0.0), t);
-        line.handle_mouse_moved(Vec2DScreen::new(-2.0, 7.0), t);
-        line.handle_mouse_moved(Vec2DScreen::new(2.0, -8.0), t);
+        let line = Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(-12.0, -1.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(-5.0, 0.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(-2.0, 7.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(2.0, -8.0)),
+        ], Color::green(), 1.0);
 
         assert_eq!(line.bbox(), [Vec2DDrawing::new(-12.0, -8.0), Vec2DDrawing::new(3.161263886380917, 7.182987048373279)]);
     }
