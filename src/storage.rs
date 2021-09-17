@@ -232,7 +232,7 @@ mod tests {
     use crate::point::Vec2DDrawing;
 
     #[test]
-    fn test_add_shapes_at_zoom() {
+    fn add_shapes_at_zoom() {
         let mut storage = Storage::new();
         let shapes: Vec<Box<dyn ShapeStored>> = vec![
             Box::new(Circle::from_parts(Vec2DDrawing::new(0.0, 0.0), 1.0, 1.0, Color::green())),
@@ -251,7 +251,7 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_line() {
+    fn remove_line() {
         let mut storage = Storage::new();
         let line = Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DDrawing::new(0.0, -1.0)),
@@ -270,7 +270,7 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_by_id() {
+    fn remove_by_id() {
         let mut storage = Storage::new();
 
         assert_eq!(storage.shape_count(), 0);
@@ -291,7 +291,7 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_by_id_2() {
+    fn remove_by_id_2() {
         let mut storage = Storage::new();
 
         assert_eq!(storage.shape_count(), 0);
@@ -312,7 +312,7 @@ mod tests {
     }
 
     #[test]
-    fn test_erase_invalidates_cache() {
+    fn erase_invalidates_cache() {
         let mut storage = Storage::new();
         let bbox = [Vec2DDrawing::new(-40.0, -40.0), Vec2DDrawing::new(40.0, 40.0)];
 
@@ -338,7 +338,7 @@ mod tests {
     }
 
     #[test]
-    fn test_iter_by_bounds() {
+    fn iter_by_bounds() {
         let mut storage = Storage::new();
 
         let shapes = vec![
@@ -425,7 +425,7 @@ mod tests {
     }
 
     #[test]
-    fn test_last_shape() {
+    fn last_shape() {
         let mut storage = Storage::new();
 
         // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
@@ -462,7 +462,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_bounds() {
+    fn get_bounds() {
         let mut storage = Storage::new();
 
         storage.add(Box::new(Rectangle::from_parts([
@@ -482,7 +482,7 @@ mod tests {
     }
 
     #[test]
-    fn test_draw_oder_is_respected() {
+    fn draw_oder_is_respected() {
         let mut storage = Storage::new();
 
         storage.add(Box::new(Path::from_parts(vec![
