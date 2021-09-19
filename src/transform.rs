@@ -72,9 +72,24 @@ impl Transform {
     }
 }
 
+/// Computes a transform to go back to 1.0 zoom with the drawing's origin centered in the viewport.
+pub fn default_viewport_transform(viewport_dimensions: Vec2DScreen) -> Transform {
+    Transform::new(viewport_dimensions.to_vec2d() * -0.5, 1.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn default_viewport_transform_centers_the_origin() {
+        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let t = default_viewport_transform(dimensions);
+
+        let center = Vec2DScreen::new(100.0, 50.0);
+        let transformed = t.to_storage_coordinates(center);
+        assert_eq!(transformed, Vec2DDrawing::new(0.0, 0.0));
+    }
 
     #[test]
     fn screen_center_is_drawing_origin() {
