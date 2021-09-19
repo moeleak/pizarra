@@ -58,11 +58,6 @@ impl Transform {
         self.scale_factor /= factor;
     }
 
-    pub fn go_home(&mut self, center: Vec2DScreen) {
-        self.offset = (center * -0.5).into();
-        self.scale_factor = 1.0;
-    }
-
     pub fn to_screen_coordinates(&self, p: Vec2DDrawing) -> Vec2DScreen {
         ((p.to_vec2d() - self.offset) * self.scale_factor).into()
     }
