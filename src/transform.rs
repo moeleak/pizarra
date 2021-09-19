@@ -100,4 +100,14 @@ mod tests {
         let transformed = t.to_storage_coordinates(center);
         assert_eq!(transformed, Vec2DDrawing::new(0.0, 0.0));
     }
+
+    #[test]
+    fn drawing_origin_is_screen_center() {
+        let dimensions = Vec2D::new(200.0, 100.0);
+        let t = Transform::new(dimensions * -0.5, 1.0);
+
+        let origin = Vec2DDrawing::new(0.0, 0.0);
+        let transformed = t.to_screen_coordinates(origin);
+        assert_eq!(transformed, Vec2DScreen::new(100.0, 50.0));
+    }
 }
