@@ -71,3 +71,18 @@ impl Transform {
         (p.to_vec2d() / self.scale_factor + self.offset).into()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn screen_center_is_drawing_origin() {
+        let dimensions = Vec2D::new(200.0, 100.0);
+        let t = Transform::new(dimensions * -0.5, 1.0);
+
+        let center = Vec2DScreen::new(100.0, 50.0);
+        let transformed = t.to_storage_coordinates(center);
+        assert_eq!(transformed, Vec2DDrawing::new(0.0, 0.0));
+    }
+}
