@@ -136,4 +136,18 @@ mod tests {
         let zoomed_in = t.to_storage_coordinates(center);
         assert_eq!(fixed_point, zoomed_in);
     }
+
+    #[test]
+    fn translated_screen_point_preserves_drawing_coordinates() {
+        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let mut t = Transform::new(dimensions.to_vec2d(), 2.0);
+
+        let screen_point = Vec2DScreen::new(20.0, 30.0);
+        let drawing_point = t.to_storage_coordinates(screen_point);
+
+        t.translate_screen(Vec2DScreen::new(10.0, 5.0));
+        let translated_screen_point = Vec2DScreen::new(30.0, 35.0);
+        let translated_drawing_point = t.to_storage_coordinates(translated_screen_point);
+        assert_eq!(drawing_point, translated_drawing_point);
+    }
 }
