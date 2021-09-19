@@ -110,4 +110,30 @@ mod tests {
         let transformed = t.to_screen_coordinates(origin);
         assert_eq!(transformed, Vec2DScreen::new(100.0, 50.0));
     }
+
+    #[test]
+    fn zoom_in_preserves_center_point() {
+        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let mut t = Transform::new(dimensions.to_vec2d(), 1.0);
+
+        let center = dimensions * 0.5;
+        let fixed_point = t.to_storage_coordinates(center);
+
+        t.zoom_in(2.0, dimensions);
+        let zoomed_in = t.to_storage_coordinates(center);
+        assert_eq!(fixed_point, zoomed_in);
+    }
+
+    #[test]
+    fn zoom_out_preserves_center_point() {
+        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let mut t = Transform::new(dimensions.to_vec2d(), 1.0);
+
+        let center = dimensions * 0.5;
+        let fixed_point = t.to_storage_coordinates(center);
+
+        t.zoom_out(2.0, dimensions);
+        let zoomed_in = t.to_storage_coordinates(center);
+        assert_eq!(fixed_point, zoomed_in);
+    }
 }
