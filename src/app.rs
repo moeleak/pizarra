@@ -562,7 +562,7 @@ impl Pizarra {
     /// Resets the center and zoom level of the view to its original place
     pub fn go_home(&mut self) {
         log::debug!("go_home()");
-        self.transform.go_home(self.dimensions / 2.0);
+        self.transform = default_viewport_transform(self.dimensions);
     }
 
     /// Sets the color for the new shapes
