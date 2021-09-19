@@ -236,7 +236,10 @@ mod tests {
         let mut storage = Storage::new();
         let shapes: Vec<Box<dyn ShapeStored>> = vec![
             Box::new(Circle::from_parts(Vec2DDrawing::new(0.0, 0.0), 1.0, 1.0, Color::green())),
-            Box::new(Path::from_parts(vec![], Color::red(), 1.0)),
+            Box::new(Path::from_parts(vec![
+                PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
+                PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
+            ], Color::red(), 1.0)),
             Box::new(Rectangle::from_parts([Vec2DDrawing::new(0.0, 0.0); 4], Color::green(), 1.0)),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|shape| {
