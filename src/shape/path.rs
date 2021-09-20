@@ -283,15 +283,6 @@ pub struct Path {
 }
 
 impl Path {
-    #[cfg(test)]
-    pub fn new() -> Path {
-        Path {
-            commands: Vec::new(),
-            color: Default::default(),
-            thickness: 1.0,
-        }
-    }
-
     pub fn from_parts(commands: Vec<PathCommand>, color: Color, thickness: f64) -> Path {
         Path {
             commands, color, thickness,

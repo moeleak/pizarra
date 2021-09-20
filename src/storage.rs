@@ -225,7 +225,7 @@ mod tests {
     use crate::shape::{
         ShapeId,
         path::PathCommand,
-        circle::Circle, path::Path, rectangle::Rectangle,
+        circle::Circle, path::Path,
     };
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;
@@ -240,17 +240,15 @@ mod tests {
                 PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
                 PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
             ], Color::red(), 1.0)),
-            Box::new(Rectangle::from_parts([Vec2DDrawing::new(0.0, 0.0); 4], Color::green(), 1.0)),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|shape| {
             storage.add(shape)
         }).collect();
 
-        assert_eq!(storage.shape_count(), 3);
+        assert_eq!(storage.shape_count(), 2);
 
         assert_eq!(ids[0], ShapeId::from(1));
         assert_eq!(ids[1], ShapeId::from(2));
-        assert_eq!(ids[2], ShapeId::from(3));
     }
 
     #[test]
@@ -278,8 +276,14 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let obj_to_remove = Box::new(Path::new());
-        let obj_to_interfere = Box::new(Path::new());
+        let obj_to_remove = Box::new(Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
+        ], Color::green(), 1.0));
+        let obj_to_interfere = Box::new(Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
+        ], Color::green(), 1.0));
 
         let id_to_remove = storage.add(obj_to_remove);
         let _id_to_interfere = storage.add(obj_to_interfere);
@@ -299,8 +303,14 @@ mod tests {
 
         assert_eq!(storage.shape_count(), 0);
 
-        let obj_to_remove = Box::new(Path::new());
-        let obj_to_interfere = Box::new(Path::new());
+        let obj_to_remove = Box::new(Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
+        ], Color::green(), 1.0));
+        let obj_to_interfere = Box::new(Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
+        ], Color::green(), 1.0));
 
         let _id_to_interfere = storage.add(obj_to_interfere);
         let id_to_remove = storage.add(obj_to_remove);
@@ -346,32 +356,32 @@ mod tests {
 
         let shapes = vec![
             // in green the ones that go
-            Box::new(Rectangle::from_parts([
-                Vec2DDrawing::new(-1.1, -1.1),
-                Vec2DDrawing::new(-1.1, 1.1),
-                Vec2DDrawing::new(1.1, 1.1),
-                Vec2DDrawing::new(1.1, -1.1),
-            ], Default::default(), 1.0)),
-            Box::new(Rectangle::from_parts([
-                Vec2DDrawing::new(-1.5, 0.5),
-                Vec2DDrawing::new(-1.5, 0.5),
-                Vec2DDrawing::new(-0.5, 1.5),
-                Vec2DDrawing::new(-0.5, 1.5),
-            ], Default::default(), 1.0)),
-            Box::new(Rectangle::from_parts([
-                Vec2DDrawing::new(0.25, -0.5),
-                Vec2DDrawing::new(0.25, -0.5),
-                Vec2DDrawing::new(0.5, -0.25),
-                Vec2DDrawing::new(0.5, -0.25),
-            ], Default::default(), 1.0)),
+            Box::new(Path::from_parts(vec![
+                PathCommand::MoveTo(Vec2DDrawing::new(-1.1, -1.1)),
+                PathCommand::LineTo(Vec2DDrawing::new(-1.1, 1.1)),
+                PathCommand::LineTo(Vec2DDrawing::new(1.1, 1.1)),
+                PathCommand::LineTo(Vec2DDrawing::new(1.1, -1.1)),
+            ], Color::green(), 1.0)),
+            Box::new(Path::from_parts(vec![
+                PathCommand::MoveTo(Vec2DDrawing::new(-1.5, 0.5)),
+                PathCommand::LineTo(Vec2DDrawing::new(-1.5, 0.5)),
+                PathCommand::LineTo(Vec2DDrawing::new(-0.5, 1.5)),
+                PathCommand::LineTo(Vec2DDrawing::new(-0.5, 1.5)),
+            ], Color::green(), 1.0)),
+            Box::new(Path::from_parts(vec![
+                PathCommand::MoveTo(Vec2DDrawing::new(0.25, -0.5)),
+                PathCommand::LineTo(Vec2DDrawing::new(0.25, -0.5)),
+                PathCommand::LineTo(Vec2DDrawing::new(0.5, -0.25)),
+                PathCommand::LineTo(Vec2DDrawing::new(0.5, -0.25)),
+            ], Color::green(), 1.0)),
 
             // in red the ones that dont
-            Box::new(Rectangle::from_parts([
-                Vec2DDrawing::new(20.0, 20.0),
-                Vec2DDrawing::new(20.0, 20.0),
-                Vec2DDrawing::new(20.0, 20.0),
-                Vec2DDrawing::new(20.0, 20.0),
-            ], Default::default(), 1.0)),
+            Box::new(Path::from_parts(vec![
+                PathCommand::MoveTo(Vec2DDrawing::new(20.0, 20.0)),
+                PathCommand::LineTo(Vec2DDrawing::new(20.0, 20.0)),
+                PathCommand::LineTo(Vec2DDrawing::new(20.0, 20.0)),
+                PathCommand::LineTo(Vec2DDrawing::new(20.0, 20.0)),
+            ], Color::red(), 1.0)),
         ];
 
         for shape in shapes.into_iter() {
@@ -382,103 +392,24 @@ mod tests {
 
         assert_eq!(buffer.len(), 3);
 
-        assert!(buffer.contains(
-            &DrawCommand::Path {
-                thickness: 4.0,
-                color: Color::green(),
-                commands: vec![
-                    PathCommand::MoveTo(Vec2DDrawing::new(0.25, -0.5)),
-                    PathCommand::LineTo(Vec2DDrawing::new(0.25, -0.25)),
-                    PathCommand::LineTo(Vec2DDrawing::new(0.5, -0.25)),
-                    PathCommand::LineTo(Vec2DDrawing::new(0.5, -0.5)),
-                    PathCommand::LineTo(Vec2DDrawing::new(0.25, -0.5)),
-                ],
-            }
-        ));
-
-        assert!(buffer.contains(
-            &DrawCommand::Path {
-                thickness: 4.0,
-                color: Color::green(),
-                commands: vec![
-                    PathCommand::MoveTo(Vec2DDrawing::new(-1.5, 0.5)),
-                    PathCommand::LineTo(Vec2DDrawing::new(-1.5, 1.5)),
-                    PathCommand::LineTo(Vec2DDrawing::new(-0.5, 1.5)),
-                    PathCommand::LineTo(Vec2DDrawing::new(-0.5, 0.5)),
-                    PathCommand::LineTo(Vec2DDrawing::new(-1.5, 0.5)),
-                ],
-            }
-        ));
-
-        assert!(buffer.contains(
-            &DrawCommand::Path {
-                thickness: 4.0,
-                color: Color::green(),
-                commands: vec![
-                    PathCommand::MoveTo(Vec2DDrawing::new(-1.1, -1.1)),
-                    PathCommand::LineTo(Vec2DDrawing::new(-1.1, 1.1)),
-                    PathCommand::LineTo(Vec2DDrawing::new(1.1, 1.1)),
-                    PathCommand::LineTo(Vec2DDrawing::new(1.1, -1.1)),
-                    PathCommand::LineTo(Vec2DDrawing::new(-1.1, -1.1)),
-                ],
-            }
-        ));
-
-        assert_eq!(buffer.len(), 3);
-    }
-
-    #[test]
-    fn last_shape() {
-        let mut storage = Storage::new();
-
-        // A rectangle of 2x2 in zoom 0 looks like one of 1x1 when looked from zoom 0
-        storage.add(Box::new(Rectangle::from_parts([
-            Vec2DDrawing::new(1.0, 1.0),
-            Vec2DDrawing::new(3.0, 1.0),
-            Vec2DDrawing::new(3.0, 3.0),
-            Vec2DDrawing::new(1.0, 3.0),
-        ], Default::default(), 1.0)));
-
-        // A rectangle of 2x2 in zoom 0 aournd the oriign
-        storage.add(Box::new(Rectangle::from_parts([
-            Vec2DDrawing::new(-1.0, -1.0),
-            Vec2DDrawing::new(1.0, 1.0),
-            Vec2DDrawing::new(1.0, 1.0),
-            Vec2DDrawing::new(1.0, 1.0),
-        ], Default::default(), 1.0)));
-
-        let buffer = storage.draw_commands([Vec2DDrawing::new(-2.0, -2.0), Vec2DDrawing::new(4.0, 4.0)]);
-
-        assert_eq!(buffer.len(), 1);
-
-        assert!(buffer.contains(&DrawCommand::Path{
-            thickness: 4.0,
-            color: Color::green(),
-            commands: vec![
-                PathCommand::MoveTo(Vec2DDrawing::new(1.0, 1.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(1.0, 3.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(3.0, 3.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(3.0, 1.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
-            ],
-        }));
+        buffer.iter().for_each(|x| assert_eq!(x.color(), Color::green()));
     }
 
     #[test]
     fn get_bounds() {
         let mut storage = Storage::new();
 
-        storage.add(Box::new(Rectangle::from_parts([
-            Vec2DDrawing::new(-5.0, -5.0),
-            Vec2DDrawing::new(1.0, 1.0),
-            Vec2DDrawing::new(1.0, 1.0),
-            Vec2DDrawing::new(1.0, 1.0),
+        storage.add(Box::new(Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(-5.0, -5.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
         ], Default::default(), 1.0)));
-        storage.add(Box::new(Rectangle::from_parts([
-            Vec2DDrawing::new(5.0, 5.0),
-            Vec2DDrawing::new(1.0, 1.0),
-            Vec2DDrawing::new(1.0, 1.0),
-            Vec2DDrawing::new(1.0, 1.0),
+        storage.add(Box::new(Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(5.0, 5.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
         ], Default::default(), 1.0)));
 
         assert_eq!(storage.get_bounds(), Some([Vec2DDrawing::new(-5.0, -5.0), Vec2DDrawing::new(5.0, 5.0)]));
