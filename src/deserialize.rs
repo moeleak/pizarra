@@ -272,7 +272,7 @@ impl FromStr for Radians {
     type Err = Error;
 
     fn from_str(source: &str) -> Result<Radians, Self::Err> {
-        unimplemented!()
+        todo!()
     }
 }
 

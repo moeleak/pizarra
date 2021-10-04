@@ -1,9 +1,8 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
-use crate::shape::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType, path::PathCommand};
+use crate::shape::{ShapeBuilder, ShapeFinished, path::{Path, PathCommand}};
 use crate::consts::TOUCH_RADIUS;
 use crate::draw_commands::DrawCommand;
-use crate::geom::{bbox_from_points, segment_intersects_circle};
 use crate::transform::Transform;
 
 pub struct PolygonBuilder {
@@ -56,8 +55,16 @@ impl ShapeBuilder for PolygonBuilder {
             self.points.push(point);
             self.tip = None;
 
-            ShapeFinished::Yes(Box::new(Polygon::from_parts(
-                self.points.clone(),
+            let commands = self.points.iter().enumerate().map(|(i, &p)| {
+                if i == 0 {
+                    PathCommand::MoveTo(p)
+                } else {
+                    PathCommand::LineTo(p)
+                }
+            }).collect();
+
+            ShapeFinished::Yes(Box::new(Path::from_parts(
+                commands,
                 self.color,
                 self.thickness,
             )))
@@ -90,61 +97,6 @@ impl ShapeBuilder for PolygonBuilder {
             thickness: self.thickness,
             color: self.color,
         }]
-    }
-}
-
-#[derive(Debug)]
-pub struct Polygon {
-    points: Vec<Vec2DDrawing>,
-    color: Color,
-    thickness: f64,
-}
-
-impl Polygon {
-    pub fn from_parts(points: Vec<Vec2DDrawing>, color: Color, thickness: f64) -> Polygon {
-        Polygon {
-            points, color, thickness,
-        }
-    }
-}
-
-impl ShapeStored for Polygon {
-    fn draw_commands(&self) -> DrawCommand {
-        let mut points_iter = self.points.iter();
-        let mut commands = Vec::with_capacity(self.points.len());
-
-        if let Some(p) = points_iter.next() {
-            commands.push(PathCommand::MoveTo(*p));
-            commands.extend(points_iter.map(|p| PathCommand::LineTo(*p)));
-        }
-
-        DrawCommand::Path {
-            commands,
-            thickness: self.thickness,
-            color: self.color,
-        }
-    }
-
-    fn bbox(&self) -> [Vec2DDrawing; 2] {
-        bbox_from_points(self.points.iter().map(|p| *p))
-    }
-
-    fn shape_type(&self) -> ShapeType {
-        ShapeType::Polygon
-    }
-
-    fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
-        for (a, b) in self.points.iter().zip(self.points.iter().skip(1)) {
-            if segment_intersects_circle([*a, *b], center, radius) {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    fn color(&self) -> Color {
-        self.color
     }
 }
 
@@ -200,17 +152,6 @@ mod tests {
             ],
             thickness: 4.0,
         });
-    }
-
-    #[test]
-    fn can_delete_single_point_polygons() {
-        let poly = Polygon::from_parts(vec![
-            Vec2DDrawing::new(0.0, 0.0),
-            Vec2DDrawing::new(0.0, 0.0),
-            Vec2DDrawing::new(0.0, 0.0),
-        ], Color::green(), 1.0);
-
-        assert!(poly.intersects_circle(Vec2DDrawing::new(0.0, 0.0), 10.0));
     }
 
     #[test]

@@ -391,4 +391,18 @@ mod tests {
 
         assert_eq!(line.bbox(), [Vec2DDrawing::new(-12.0, -8.0), Vec2DDrawing::new(3.161263886380917, 7.182987048373279)]);
     }
+
+    #[test]
+    fn can_delete_single_point_paths() {
+        let poly = Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
+        ], Color::green(), 1.0);
+
+        assert!(poly.intersects_circle(Vec2DDrawing::new(0.0, 0.0), 10.0));
+    }
+
+    #[test]
+    fn can_delete_beizer_curves() {
+        assert!(false, "pass the eraser through a beizer curve, it should touch");
+    }
 }
