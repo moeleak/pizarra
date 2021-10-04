@@ -82,7 +82,7 @@ pub trait Point: Sized + Copy + PartialEq +Add<Output=Self> + Sub<Output=Self> +
     }
 
     fn angle(self) -> Radians {
-        (self.y() / self.x()).atan().into()
+        Radians::from_radians((self.y() / self.x()).atan())
     }
 }
 

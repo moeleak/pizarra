@@ -3,7 +3,10 @@ use crate::draw_commands::DrawCommand;
 use crate::color::Color;
 use crate::ShapeType;
 use crate::transform::Transform;
-use crate::geom::{Radians, middle_point, parts_of_ellipse};
+use crate::geom::{
+    Radians, middle_point, parts_of_ellipse_from_corners,
+    foci_and_sum_from_center_and_radi
+};
 
 use super::{ShapeBuilder, ShapeStored, ShapeFinished};
 
@@ -47,11 +50,11 @@ impl ShapeBuilder for EllipseBuilder {
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
         self.handle_mouse_moved(pos, t);
 
-        unimplemented!()
+        todo!()
     }
 
     fn draw_commands(&self) -> Vec<DrawCommand> {
-        let (bigside, bigvector, smallside) = parts_of_ellipse(self.corners);
+        let (bigside, bigvector, smallside) = parts_of_ellipse_from_corners(self.corners);
         let angle = bigvector.angle();
 
         vec![DrawCommand::Ellipse {
@@ -83,11 +86,18 @@ impl Ellipse {
 
 impl ShapeStored for Ellipse {
     fn draw_commands(&self) -> DrawCommand {
-        unimplemented!()
+        DrawCommand::Ellipse {
+            center: self.center,
+            bigside: self.larger_radius,
+            smallside: self.shorter_radius,
+            angle: self.angle,
+            color: self.color,
+            thickness: self.thickness,
+        }
     }
 
     fn bbox(&self) -> [Vec2DDrawing; 2] {
-        unimplemented!()
+        todo!()
     }
 
     fn shape_type(&self) -> ShapeType {
@@ -95,28 +105,18 @@ impl ShapeStored for Ellipse {
     }
 
     fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
-        let corners: [Vec2DDrawing; 4] = unimplemented!();
-
-        let (bigside, bigvector, smallside) = parts_of_ellipse(corners);
-
-        let ellipse_center = middle_point(corners[0], corners[2]);
-        let d = (bigside.powi(2) - smallside.powi(2)).sqrt() / 2.0;
-
-        let center1 = ellipse_center + bigvector.unit() * d;
-        let center2 = ellipse_center + bigvector.unit() * (d * -1.0);
-
-        // this variable represents the (constant) sum of the distance from any
-        // point of the ellipse to both of its centers
-        let ellipse_sum_of_distances = bigside;
+        let ([f1, f2], sum) = foci_and_sum_from_center_and_radi(
+            self.center, self.larger_radius, self.shorter_radius, self.angle
+        );
         // the sum of the distances from the center of the circle to both of the
         // centers of the ellipse
-        let sum_of_distances = center1.distance(center) + center2.distance(center);
+        let sum_of_distances = f1.distance(center) + f2.distance(center);
 
         // if the sum of the distances from the center of the circle is within
         // an acceptable margin then we consider that the ellipse and the circle
         // are touching. Not true but close.
-        sum_of_distances <= ellipse_sum_of_distances + 2.0*radius &&
-        sum_of_distances >= ellipse_sum_of_distances - 2.0*radius
+        sum_of_distances <= sum + 2.0*radius &&
+        sum_of_distances >= sum - 2.0*radius
     }
 
     fn color(&self) -> Color {
@@ -126,23 +126,29 @@ impl ShapeStored for Ellipse {
 
 #[cfg(test)]
 mod tests {
+    use crate::geom::ellipse_from_foci_and_sum;
+
     use super::*;
 
     #[test]
     fn test_intersects_circle() {
-        // let ellipse = Ellipse::from_parts([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(150.0, 100.0)]);
-        let ellipse: Ellipse = unimplemented!();
+        let f1: Vec2DDrawing = (-20.22222, -13.24752).into();
+        let f2: Vec2DDrawing = (-2.88, 1.28).into();
+        let sum = 14.29 + 17.67;
+
+        let (center, bigside, smallside, angle) = ellipse_from_foci_and_sum([f1, f2], sum);
+
+        let ellipse = Ellipse::from_parts(center, bigside, smallside, angle, Default::default(), 1.0);
 
         let cases = [
-            ((126.0, 6.0), true),
-            ((5.0, 18.0), true),
-            ((9.0, 72.0), true),
-            ((25.0, 40.0), false),
-            ((134.0, 84.0), false),
+            ((-18.23673, -15.70531), true),
+            ((2.1475, -11.18778), true),
+            ((-5.65939, -2.20061), false),
+            ((7.90327, -3.12798), false),
         ];
 
         for (coords, output) in cases {
-            assert!(ellipse.intersects_circle(Vec2DDrawing::from(coords) + Vec2DDrawing::new(8.0, 8.0), 8.0) == output);
+            assert!(dbg!(ellipse.intersects_circle(Vec2DDrawing::from(dbg!(coords)), 4.0)) == dbg!(output));
         }
     }
 }
