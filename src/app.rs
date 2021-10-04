@@ -31,7 +31,7 @@ enum UndoState {
 }
 
 /// Manages what is happening with the board
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum BoardState {
     Idle,
     UsingTool,
@@ -644,7 +644,7 @@ mod tests {
     use PathCommand::*;
 
     #[test]
-    fn test_draw_a_line() {
+    fn draw_a_line() {
         let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
@@ -672,7 +672,7 @@ mod tests {
     }
 
     #[test]
-    fn test_draw_a_line_in_zoom() {
+    fn draw_a_line_in_zoom() {
         let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
@@ -702,7 +702,7 @@ mod tests {
     }
 
     #[test]
-    fn test_erase() {
+    fn erase() {
         let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
@@ -724,7 +724,7 @@ mod tests {
     }
 
     #[test]
-    fn test_erase_with_zoom() {
+    fn erase_with_zoom() {
         let mut app = App::new(Vec2DScreen::new(4.0, 4.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
@@ -758,7 +758,7 @@ mod tests {
     }
 
     #[test]
-    fn test_do_do_do_undo_redo_redo_undo() {
+    fn do_do_do_undo_redo_redo_undo() {
         let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
@@ -787,7 +787,7 @@ mod tests {
     }
 
     #[test]
-    fn test_do_undo_redo_undo() {
+    fn do_undo_redo_undo() {
         let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
@@ -805,7 +805,7 @@ mod tests {
     }
 
     #[test]
-    fn test_do_undo_do_do_undo() {
+    fn do_undo_do_do_undo() {
         let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
@@ -831,7 +831,7 @@ mod tests {
     }
 
     #[test]
-    fn test_do_undo_do_undo_undo() {
+    fn do_undo_do_undo_undo() {
         let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
@@ -853,7 +853,7 @@ mod tests {
     }
 
     #[test]
-    fn test_move() {
+    fn r#move() {
         let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
         assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
@@ -881,7 +881,7 @@ mod tests {
     }
 
     #[test]
-    fn test_move_while_drawing() {
+    fn move_while_drawing() {
         let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
         assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
@@ -923,7 +923,7 @@ mod tests {
     }
 
     #[test]
-    fn test_zoom_must_be_idempotent() {
+    fn zoom_must_be_idempotent() {
         let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
 
         assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
@@ -938,7 +938,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cache_invalidation_on_ctrl_z() {
+    fn cache_invalidation_on_ctrl_z() {
         let mut app = App::new(Vec2DScreen::new(10.0, 10.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Rectangle));
@@ -984,7 +984,7 @@ mod tests {
     }
 
     #[test]
-    fn test_not_erasing_a_shape_doesnt_leave_the_eraser_active() {
+    fn not_erasing_a_shape_doesnt_leave_the_eraser_active() {
         // the scenario is: you draw a few shapes, then change to the eraser, click and drag
         // on the screen but without touching a shape and then release the left button.
         //
@@ -1011,5 +1011,37 @@ mod tests {
         app.handle_mouse_move(Vec2DScreen::new(5.0, 5.0));
 
         assert_eq!(app.shape_count(), 1);
+    }
+
+    #[test]
+    fn shape_beign_drawn_is_visible() {
+        let mut app = App::new(Vec2DScreen::new(100.0, 100.0));
+
+        app.set_tool(SelectedTool::Shape(ShapeType::Path));
+
+        let p1 = Vec2DScreen::new(1.0, 1.0);
+        let p2 = Vec2DScreen::new(20.0, 20.0);
+
+        app.handle_mouse_button_pressed(MouseButton::Left, p1);
+        app.handle_mouse_button_released(MouseButton::Left, p1);
+
+        dbg!(app.board_state);
+
+        app.handle_mouse_move(p2);
+        app.handle_mouse_button_pressed(MouseButton::Left, p2);
+        app.handle_mouse_button_released(MouseButton::Left, p2);
+
+        let commands = app.draw_commands_for_screen();
+
+        assert_eq!(commands, vec![
+            DrawCommand::Path {
+                color: Color::white(),
+                thickness: 3.0,
+                commands: vec![
+                    PathCommand::MoveTo(app.transform.to_storage_coordinates(p1)),
+                    PathCommand::LineTo(app.transform.to_storage_coordinates(p2)),
+                ],
+            }
+        ]);
     }
 }
