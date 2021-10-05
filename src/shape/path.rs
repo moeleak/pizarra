@@ -6,6 +6,7 @@ use crate::color::Color;
 use crate::ShapeType;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
 use crate::transform::Transform;
+use crate::geom::{segment_intersects_circle, bezier_intersects_circle};
 
 use super::{ShapeBuilder, ShapeStored, ShapeFinished};
 
@@ -65,7 +66,7 @@ fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Vec2DDrawing) ->
                 //
                 // El Segundo manejador va en el segmento que conecta los
                 // dos últimos puntos
-                let prev = sec.unwrap().point();
+                let prev = sec.unwrap().to();
                 let bis = bisector(prev, c.to, pos);
 
                 let fixed_prev_handle = bis * (c.to - prev).magnitude()/-3.0 + c.to;
@@ -124,12 +125,6 @@ impl CubicBezierCurve {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub enum Sweep {
-    Negative,
-    Positive,
-}
-
-#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum PathCommand {
     MoveTo(Vec2DDrawing),
     LineTo(Vec2DDrawing),
@@ -177,11 +172,8 @@ impl PathCommand {
         }
     }
 
-    fn distance(&self, p: Vec2DDrawing) -> f64 {
-        self.point().distance(p)
-    }
-
-    pub fn point(&self) -> Vec2DDrawing {
+    /// returns the point this path segment leads to
+    pub fn to(&self) -> Vec2DDrawing {
         match *self {
             PathCommand::MoveTo(p) => p,
             PathCommand::LineTo(p) => p,
@@ -189,19 +181,15 @@ impl PathCommand {
         }
     }
 
-    pub fn move_to(&self) -> Option<Vec2DDrawing> {
-        match self {
-            PathCommand::MoveTo(p) => Some(*p),
-            PathCommand::LineTo(p) => Some(*p),
-            PathCommand::CurveTo(_) => None,
-        }
-    }
-
-    pub fn curve_to(&self) -> Option<CubicBezierCurve> {
-        match self {
-            PathCommand::MoveTo(_) => None,
-            PathCommand::LineTo(_) => None,
-            PathCommand::CurveTo(c) => Some(*c),
+    pub fn intersects_circle(&self, center: Vec2DDrawing, radius: f64, prev: Option<Vec2DDrawing>) -> bool {
+        match *self {
+            PathCommand::MoveTo(p) => p.distance(center) < radius,
+            PathCommand::LineTo(p) => {
+                p.distance(center) < radius || segment_intersects_circle(prev, p, center, radius)
+            }
+            PathCommand::CurveTo(p) => {
+                p.to.distance(center) < radius || bezier_intersects_circle(prev, p.pt1, p.pt2, p.to, center, radius)
+            }
         }
     }
 }
@@ -330,10 +318,14 @@ impl ShapeStored for Path {
     }
 
     fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
+        let mut last_point = None;
+
         for c in self.commands.iter() {
-            if c.distance(center) <= radius {
+            if c.intersects_circle(center, radius, last_point) {
                 return true;
             }
+
+            last_point = Some(c.to());
         }
 
         false
@@ -389,7 +381,7 @@ mod tests {
             PathCommand::LineTo(Vec2DDrawing::new(2.0, -8.0)),
         ], Color::green(), 1.0);
 
-        assert_eq!(line.bbox(), [Vec2DDrawing::new(-12.0, -8.0), Vec2DDrawing::new(3.161263886380917, 7.182987048373279)]);
+        assert_eq!(line.bbox(), [Vec2DDrawing::new(-12.0, -8.0), Vec2DDrawing::new(2.0, 7.0)]);
     }
 
     #[test]
@@ -403,6 +395,47 @@ mod tests {
 
     #[test]
     fn can_delete_beizer_curves() {
-        assert!(false, "pass the eraser through a beizer curve, it should touch");
+        let path = Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(33.0, 135.0)),
+            PathCommand::CurveTo(CubicBezierCurve {
+                pt1: Vec2DDrawing::new(50.0, 200.0),
+                pt2: Vec2DDrawing::new(171.0, 70.0),
+                to: Vec2DDrawing::new(196.0, 113.0),
+            }),
+        ], Default::default(), 1.0);
+
+        let cases = [
+             (Vec2DDrawing::new(37.0, 129.0), true),
+             (Vec2DDrawing::new(81.0, 154.0), true),
+             (Vec2DDrawing::new(127.0, 109.0), true),
+             (Vec2DDrawing::new(74.0, 90.0), false),
+             (Vec2DDrawing::new(147.0, 165.0), false),
+             (Vec2DDrawing::new(177.0, 121.0), false),
+        ];
+
+        for (center, result) in cases {
+            assert_eq!(dbg!(path.intersects_circle(dbg!(center), 15.0)), dbg!(result));
+        }
+    }
+
+    #[test]
+    fn can_delete_straight_segments() {
+        let path = Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DDrawing::new(33.0, 135.0)),
+            PathCommand::LineTo(Vec2DDrawing::new(196.0, 113.0)),
+        ], Default::default(), 1.0);
+
+        let cases = [
+             (Vec2DDrawing::new(37.0, 129.0), true),
+             (Vec2DDrawing::new(81.0, 154.0), false),
+             (Vec2DDrawing::new(127.0, 109.0), true),
+             (Vec2DDrawing::new(74.0, 90.0), false),
+             (Vec2DDrawing::new(147.0, 165.0), false),
+             (Vec2DDrawing::new(177.0, 121.0), false),
+        ];
+
+        for (center, result) in cases {
+            assert_eq!(dbg!(path.intersects_circle(dbg!(center), 15.0)), dbg!(result));
+        }
     }
 }

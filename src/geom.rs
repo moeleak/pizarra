@@ -72,10 +72,32 @@ pub fn is_within<P: Point>(point: P, a: P, b: P) -> bool {
     point.y() >= min.y() && point.y() <= max.y()
 }
 
-pub fn segment_intersects_circle([a, b]: [Vec2DDrawing; 2], center: Vec2DDrawing, radius: f64) -> bool {
+pub fn segment_intersects_circle<P: Point>(from: Option<P>, to: P, center: P, radius: f64) -> bool {
+    if let Some(from) = from {
+        segment_intersects_circle_inner([from, to], center, radius)
+    } else {
+        false
+    }
+}
+
+#[inline]
+fn segment_intersects_circle_inner<P: Point>([a, b]: [P; 2], center: P, radius: f64) -> bool {
     let proj = project(center, [a, b]);
 
     proj.distance(center) < radius && is_within(proj, a, b)
+}
+
+pub fn bezier_intersects_circle<P: Point>(from: Option<P>, p1: P, p2: P, to: P, center: P, radius: f64) -> bool {
+    if let Some(from) = from {
+        bezier_intersects_circle_inner(from, p1, p2, to, center, radius)
+    } else {
+        false
+    }
+}
+
+#[inline]
+fn bezier_intersects_circle_inner<P: Point>(from: P, p1: P, p2: P, to: P, center: P, radius: f64) -> bool {
+    todo!()
 }
 
 pub fn middle_point<P: Point>(p1: P, p2: P) -> P {
@@ -135,12 +157,12 @@ mod tests {
 
     #[test]
     fn test_segment_intersects_circle() {
-        assert!(segment_intersects_circle([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(100.0, 0.0)], Vec2DDrawing::new(50.0, 9.0), 10.0));
+        assert!(segment_intersects_circle_inner([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(100.0, 0.0)], Vec2DDrawing::new(50.0, 9.0), 10.0));
     }
 
     #[test]
     fn test_single_point_segment_intersects_circle() {
-        assert!(segment_intersects_circle([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(0.0, 0.0)], Vec2DDrawing::new(0.0, 0.0), 10.0));
+        assert!(segment_intersects_circle_inner([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(0.0, 0.0)], Vec2DDrawing::new(0.0, 0.0), 10.0));
     }
 
     #[test]
@@ -169,5 +191,26 @@ mod tests {
         assert!(f2.distance((-20.22222, -13.24752).into()) < 0.1);
         assert!(f1.distance((-2.88, 1.28).into()) < 0.1);
         assert!((sum - (14.29 + 17.67)).abs() < 0.1);
+    }
+
+    #[test]
+    fn bezier_curve_properly_intersects_circles() {
+        let from = Some(Vec2DDrawing::new(33.0, 135.0));
+        let pt1 = Vec2DDrawing::new(50.0, 200.0);
+        let pt2 = Vec2DDrawing::new(171.0, 70.0);
+        let to = Vec2DDrawing::new(196.0, 113.0);
+
+        let cases = [
+             (Vec2DDrawing::new(37.0, 129.0), true),
+             (Vec2DDrawing::new(81.0, 154.0), true),
+             (Vec2DDrawing::new(127.0, 109.0), true),
+             (Vec2DDrawing::new(74.0, 90.0), false),
+             (Vec2DDrawing::new(147.0, 165.0), false),
+             (Vec2DDrawing::new(177.0, 121.0), false),
+        ];
+
+        for (center, result) in cases {
+            assert_eq!(bezier_intersects_circle(from, pt1, pt2, to, center, 15.0), result);
+        }
     }
 }
