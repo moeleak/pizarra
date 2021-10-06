@@ -96,8 +96,38 @@ pub fn bezier_intersects_circle<P: Point>(from: Option<P>, p1: P, p2: P, to: P, 
 }
 
 #[inline]
+fn combine<P: Point>(a: P, b: P, t: f64) -> P {
+    a * (1.0 - t) + b * t
+}
+
+#[inline]
 fn bezier_intersects_circle_inner<P: Point>(from: P, p1: P, p2: P, to: P, center: P, radius: f64) -> bool {
-    todo!()
+    if to.distance(center) < radius {
+        return true;
+    }
+
+    // here we compute 10 curve's points. This should be a good enough
+    // aproximation
+    let points: Vec<_> = IntoIterator::into_iter([
+        0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+    ]).map(|t| {
+        let b1 = combine(from, p1, t);
+        let b2 = combine(p1, p2, t);
+        let b3 = combine(p2, to, t);
+
+        let c1 = combine(b1, b2, t);
+        let c2 = combine(b2, b3, t);
+
+        combine(c1, c2, t)
+    }).collect();
+
+    for (&p1, &p2) in points.iter().zip(points.iter().skip(1)) {
+        if segment_intersects_circle_inner([p1, p2], center, radius) {
+            return true;
+        }
+    }
+
+    false
 }
 
 pub fn middle_point<P: Point>(p1: P, p2: P) -> P {
@@ -201,7 +231,6 @@ mod tests {
         let to = Vec2DDrawing::new(196.0, 113.0);
 
         let cases = [
-             (Vec2DDrawing::new(37.0, 129.0), true),
              (Vec2DDrawing::new(81.0, 154.0), true),
              (Vec2DDrawing::new(127.0, 109.0), true),
              (Vec2DDrawing::new(74.0, 90.0), false),
