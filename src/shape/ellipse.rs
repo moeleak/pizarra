@@ -148,7 +148,12 @@ mod tests {
         ];
 
         for (coords, output) in cases {
-            assert!(dbg!(ellipse.intersects_circle(Vec2DDrawing::from(dbg!(coords)), 4.0)) == dbg!(output));
+            assert!(ellipse.intersects_circle(Vec2DDrawing::from(coords), 4.0) == output);
         }
+    }
+
+    #[test]
+    fn three_point_ellipse_builder() {
+        assert!(false, "test whatever way of building an ellipse I decide");
     }
 }

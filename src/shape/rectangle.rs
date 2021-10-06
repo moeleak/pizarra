@@ -75,12 +75,7 @@ impl ShapeBuilder for RectangleBuilder {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn a_rectangle_can_be_built() {
+    fn three_point_rectangle_builder() {
         assert!(false, "test whatever way of building a rectangle I decide");
-    }
-
-    #[test]
-    fn a_rectangle_can_be_erased_by_its_midle() {
-        assert!(false, "move the eraser by the middle of the lines to see if it erases proberly");
     }
 }
