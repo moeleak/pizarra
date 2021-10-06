@@ -122,7 +122,7 @@ mod tests {
         }
 
         poly.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t);
-        if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t) {
+        if let ShapeFinished::No = poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t) {
             panic!()
         }
     }

@@ -1,9 +1,18 @@
 use crate::point::{Point, Vec2D, Vec2DDrawing, Vec2DScreen};
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct Transform {
     scale_factor: f64,
     offset: Vec2D,
+}
+
+impl Default for Transform {
+    fn default() -> Transform {
+        Transform {
+            scale_factor: 1.0,
+            offset: Vec2D::new(0.0, 0.0),
+        }
+    }
 }
 
 impl Transform {
