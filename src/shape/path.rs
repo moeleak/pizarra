@@ -414,7 +414,7 @@ mod tests {
         ];
 
         for (center, result) in cases {
-            assert_eq!(dbg!(path.intersects_circle(dbg!(center), 15.0)), dbg!(result));
+            assert_eq!(path.intersects_circle(center, 15.0), result);
         }
     }
 
@@ -431,11 +431,11 @@ mod tests {
              (Vec2DDrawing::new(127.0, 109.0), true),
              (Vec2DDrawing::new(74.0, 90.0), false),
              (Vec2DDrawing::new(147.0, 165.0), false),
-             (Vec2DDrawing::new(177.0, 121.0), false),
+             (Vec2DDrawing::new(177.0, 121.0), true),
         ];
 
         for (center, result) in cases {
-            assert_eq!(dbg!(path.intersects_circle(dbg!(center), 15.0)), dbg!(result));
+            assert_eq!(path.intersects_circle(center, 15.0), result);
         }
     }
 }
