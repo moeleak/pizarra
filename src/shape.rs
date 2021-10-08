@@ -14,7 +14,7 @@ pub mod ellipse;
 use super::color::Color;
 
 use self::path::PathBuilder;
-use self::ellipse::EllipseBuilder;
+use self::ellipse::ThreePointEllipseBuilder;
 use self::polygon::PolygonBuilder;
 use self::circle::CircleBuilder;
 use self::rectangle::RectangleBuilder;
@@ -33,7 +33,7 @@ pub enum ShapeType {
     Polygon,
     Rectangle,
     Circle,
-    Ellipse,
+    ThreePointEllipse,
 }
 
 impl ShapeType {
@@ -43,7 +43,7 @@ impl ShapeType {
             ShapeType::Rectangle => Box::new(RectangleBuilder::start(color, initial, stroke)),
             ShapeType::Polygon => Box::new(PolygonBuilder::start(color, initial, stroke)),
             ShapeType::Circle => Box::new(CircleBuilder::start(color, initial, stroke)),
-            ShapeType::Ellipse => Box::new(EllipseBuilder::start(color, initial, stroke)),
+            ShapeType::ThreePointEllipse => Box::new(ThreePointEllipseBuilder::start(color, initial, stroke)),
         }
     }
 }
@@ -57,7 +57,7 @@ impl FromStr for ShapeType {
             "polygon" => Ok(ShapeType::Polygon),
             "rectangle" => Ok(ShapeType::Rectangle),
             "circle" => Ok(ShapeType::Circle),
-            "ellipse" => Ok(ShapeType::Ellipse),
+            "ellipse" => Ok(ShapeType::ThreePointEllipse),
             _ => Err(()),
         }
     }

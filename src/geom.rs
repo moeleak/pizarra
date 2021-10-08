@@ -135,7 +135,8 @@ pub fn middle_point<P: Point>(p1: P, p2: P) -> P {
 }
 
 /// given the four corners that define an ellipse returns the length of the
-/// larger side, a vector that defines it and the length of the shorter side
+/// semimajor axis, a vector that defines it and the length of the semiminor
+/// axis
 pub fn parts_of_ellipse_from_corners<P: Point>(corners: [P; 4]) -> (f64, P, f64) {
     let ellipse_side_1 = corners[0] - corners[1];
     let ellipse_side_2 = corners[1] - corners[2];
@@ -149,22 +150,30 @@ pub fn parts_of_ellipse_from_corners<P: Point>(corners: [P; 4]) -> (f64, P, f64)
     }
 }
 
+/// given the foci and a point of the ellipse return its center, semimajor axis,
+/// semiminor axis and angle
+pub fn ellipse_from_foci_and_point<P: Point>(foci: [P; 2], point: P) -> (P, f64, f64, Radians) {
+    let sum = point.distance(foci[0]) + point.distance(foci[1]);
+
+    ellipse_from_foci_and_sum(foci, sum)
+}
+
 /// given the foci and the sum of distances that define the ellipse return its
-/// center, larger radius and shorter radius
+/// center, semimajor and semiminor axis
 pub fn ellipse_from_foci_and_sum<P: Point>(foci: [P; 2], sum: f64) -> (P, f64, f64, Radians) {
     // half the distance between the foci
     let d = foci[0].distance(foci[1]) / 2.0;
-    let bigside = sum / 2.0;
-    let smallside = (bigside.powi(2) - d.powi(2)).sqrt();
+    let semimajor = sum / 2.0;
+    let semiminor = (semimajor.powi(2) - d.powi(2)).sqrt();
     let v = foci[1] - foci[0];
 
-    return ((foci[0] + foci[1]) / 2.0, bigside, smallside, v.angle());
+    return ((foci[0] + foci[1]) / 2.0, semimajor, semiminor, v.angle());
 }
 
-pub fn foci_and_sum_from_center_and_radi<P: Point>(center: P, bigside: f64, smallside: f64, angle: Radians) -> ([P; 2], f64) {
+pub fn foci_and_sum_from_center_and_radi<P: Point>(center: P, semimajor: f64, semiminor: f64, angle: Radians) -> ([P; 2], f64) {
     // this is the magnitude of a vector that goes from the center of the
     // ellipse to either of the focis
-    let x = (bigside.powi(2) - smallside.powi(2)).sqrt();
+    let x = (semimajor.powi(2) - semiminor.powi(2)).sqrt();
 
     // this is a vector parallel to the line that connects the two focis of
     // the ellipse
@@ -176,7 +185,7 @@ pub fn foci_and_sum_from_center_and_radi<P: Point>(center: P, bigside: f64, smal
 
     // this variable represents the (constant) sum of the distance from any
     // point of the ellipse to both of its centers
-    let sum = bigside * 2.0;
+    let sum = semimajor * 2.0;
 
     ([center1, center2], sum)
 }
@@ -201,22 +210,22 @@ mod tests {
         let f2: Vec2DDrawing = (-2.88, 1.28).into();
         let sum = 14.29 + 17.67;
 
-        let (center, bigside, smallside, angle) = ellipse_from_foci_and_sum([f1, f2], sum);
+        let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_sum([f1, f2], sum);
 
         assert!(center.distance((-11.5, -5.98).into()) < 0.06);
-        assert!((bigside - sum / 2.0).abs() < 0.01);
-        assert!((smallside - 11.28).abs() < 0.01);
+        assert!((semimajor - sum / 2.0).abs() < 0.01);
+        assert!((semiminor - 11.28).abs() < 0.01);
         assert!((angle.degrees() - 39.94).abs() < 0.02);
     }
 
     #[test]
     fn the_expected_ellipse_is_built_back() {
         let center: Vec2DDrawing = (-11.5, -5.98).into();
-        let bigside = (14.29 + 17.67) / 2.0;
-        let smallside = 11.28;
+        let semimajor = (14.29 + 17.67) / 2.0;
+        let semiminor = 11.28;
         let angle = Radians::from_degrees(39.94);
 
-        let ([f1, f2], sum) = foci_and_sum_from_center_and_radi(center, bigside, smallside, angle);
+        let ([f1, f2], sum) = foci_and_sum_from_center_and_radi(center, semimajor, semiminor, angle);
 
         assert!(f2.distance((-20.22222, -13.24752).into()) < 0.1);
         assert!(f1.distance((-2.88, 1.28).into()) < 0.1);
@@ -241,5 +250,13 @@ mod tests {
         for (center, result) in cases {
             assert_eq!(bezier_intersects_circle(from, pt1, pt2, to, center, 15.0), result);
         }
+    }
+
+    #[test]
+    fn middle_point_behaves() {
+        let a = Vec2DDrawing::new(-5.61146,3.80508);
+        let b = Vec2DDrawing::new(-0.44,-1.28);
+
+        assert_eq!(middle_point(a, b), (-3.0257300000000003, 1.26254).into());
     }
 }

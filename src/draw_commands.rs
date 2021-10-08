@@ -21,8 +21,8 @@ pub enum DrawCommand {
 
     Ellipse {
         center: Vec2DDrawing,
-        bigside: f64,
-        smallside: f64,
+        semimajor: f64,
+        semiminor: f64,
         angle: Radians,
         thickness: f64,
         color: Color,

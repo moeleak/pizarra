@@ -41,13 +41,13 @@ impl DrawCommand {
                 writer.write(XmlEvent::end_element()).unwrap();
             },
             DrawCommand::Ellipse {
-                thickness, color, center, bigside, smallside, angle,
+                thickness, color, center, semimajor, semiminor, angle,
             } => {
                 writer.write(XmlEvent::start_element("ellipse")
                     .attr("cx", &center.x.to_string())
                     .attr("cy", &center.y.to_string())
-                    .attr("rx", &bigside.to_string())
-                    .attr("ry", &smallside.to_string())
+                    .attr("rx", &semimajor.to_string())
+                    .attr("ry", &semiminor.to_string())
                     .attr("style", &format!("\
                             fill:none;\
                             stroke-width:{stroke};\
@@ -145,7 +145,7 @@ mod tests {
     fn serialize_ellipse() {
         let mut app = App::new(Vec2DScreen::new(40.0, 40.0));
 
-        app.set_tool(SelectedTool::Shape(ShapeType::Ellipse));
+        app.set_tool(SelectedTool::Shape(ShapeType::ThreePointEllipse));
         app.set_color(Color::red());
         app.set_stroke(3.5);
 
