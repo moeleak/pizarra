@@ -350,7 +350,7 @@ impl App {
     }
 
     /// Returns an interator over the draw commands required to render the wole
-    /// drawing
+    /// drawing. Used for exporting to png
     pub fn draw_commands_for_drawing(&self) -> Vec<DrawCommand> {
         let bbox = if let Some(bbox) = self.get_bounds() {
             bbox
@@ -1013,38 +1013,6 @@ mod tests {
         app.handle_mouse_move(Vec2DScreen::new(5.0, 5.0));
 
         assert_eq!(app.shape_count(), 1);
-    }
-
-    #[test]
-    fn shape_beign_drawn_is_visible() {
-        let mut app = App::new(Vec2DScreen::new(100.0, 100.0));
-
-        app.set_tool(SelectedTool::Shape(ShapeType::Path));
-
-        let p1 = Vec2DScreen::new(1.0, 1.0);
-        let p2 = Vec2DScreen::new(20.0, 20.0);
-
-        app.handle_mouse_button_pressed(MouseButton::Left, p1);
-        app.handle_mouse_button_released(MouseButton::Left, p1);
-
-        dbg!(app.board_state);
-
-        app.handle_mouse_move(p2);
-        app.handle_mouse_button_pressed(MouseButton::Left, p2);
-        app.handle_mouse_button_released(MouseButton::Left, p2);
-
-        let commands = app.draw_commands_for_screen();
-
-        assert_eq!(commands, vec![
-            DrawCommand::Path {
-                color: Color::white(),
-                thickness: 3.0,
-                commands: vec![
-                    PathCommand::MoveTo(app.transform.to_storage_coordinates(p1)),
-                    PathCommand::LineTo(app.transform.to_storage_coordinates(p2)),
-                ],
-            }
-        ]);
     }
 
     #[test]
