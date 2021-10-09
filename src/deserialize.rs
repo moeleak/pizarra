@@ -39,8 +39,8 @@ lazy_static! {
     ").unwrap();
     static ref ANGLE_REGEX: Regex = Regex::new(r"(?x)
         rotate\(
-            (?P<angle>\d+(\.\d*)?)
-            (\s+(\d+(\.\d*)?)\s+(\d+(\.\d*)?))?
+            (?P<angle>-?\d+(\.\d*)?)
+            (\s+(-?\d+(\.\d*)?)\s+(-?\d+(\.\d*)?))?
         \)
     ").unwrap();
     static ref CSS_COLORS: HashMap<String, Color> = vec![
@@ -544,5 +544,12 @@ mod tests {
             },
             _ => panic!()
         }
+    }
+
+    #[test]
+    fn can_deserialize_ellipse_serialization_test() {
+        let svg_data = include_str!("../res/serialize_ellipse.svg");
+
+        Storage::from_svg(svg_data).unwrap();
     }
 }
