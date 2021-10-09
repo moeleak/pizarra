@@ -5,7 +5,7 @@ use crate::color::Color;
 use crate::ShapeType;
 use crate::transform::Transform;
 use crate::geom::{
-    Radians, ellipse_from_foci_and_point, foci_and_sum_from_center_and_radi,
+    Angle, ellipse_from_foci_and_point, foci_and_sum_from_center_and_radi,
 };
 use crate::shape::path::PathCommand;
 
@@ -118,13 +118,13 @@ pub struct Ellipse {
     center: Vec2DDrawing,
     semimajor: f64,
     semiminor: f64,
-    angle: Radians,
+    angle: Angle,
     color: Color,
     thickness: f64,
 }
 
 impl Ellipse {
-    pub fn from_parts(center: Vec2DDrawing, semimajor: f64, semiminor: f64, angle: Radians, color: Color, thickness: f64) -> Ellipse {
+    pub fn from_parts(center: Vec2DDrawing, semimajor: f64, semiminor: f64, angle: Angle, color: Color, thickness: f64) -> Ellipse {
         Ellipse {
             center, semimajor, semiminor, angle, color, thickness
         }
@@ -288,7 +288,7 @@ mod tests {
             center: Vec2DDrawing::new(-3.0257300000000003, 1.26254),
             semimajor: 5.838320272867801,
             semiminor: 4.575529950080007,
-            angle: Radians::from_radians(-0.7769764190469384),
+            angle: Angle::from_radians(-0.7769764190469384),
         });
 
         // finish the ellipse at a point E
@@ -302,7 +302,7 @@ mod tests {
                     center: Vec2DDrawing::new(-3.0257300000000003, 1.26254),
                     semimajor: 7.793799303722533,
                     semiminor: 6.898753387548061,
-                    angle: Radians::from_radians(-0.7769764190469384),
+                    angle: Angle::from_radians(-0.7769764190469384),
                 });
             },
             _ => panic!(),
@@ -316,7 +316,7 @@ mod tests {
         let semiminor = 6.898753387548061;
 
         // axis aligned
-        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, Radians::from_radians(0.0), Default::default(), 1.0);
+        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, Angle::from_radians(0.0), Default::default(), 1.0);
 
         assert_eq!(ellipse.bbox(), [
             center - Vec2DDrawing::new(semimajor, semiminor),
@@ -324,7 +324,7 @@ mod tests {
         ]);
 
         // rotated
-        let angle = Radians::from_radians(-0.7769764190469384);
+        let angle = Angle::from_radians(-0.7769764190469384);
         let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Default::default(), 1.0);
 
         assert_eq!(ellipse.bbox(), [

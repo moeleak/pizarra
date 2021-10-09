@@ -3,9 +3,9 @@
 use crate::point::{Point, Vec2DDrawing};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct Radians(f64);
+pub struct Angle(f64);
 
-impl Radians {
+impl Angle {
     pub fn degrees(self) -> f64 {
         self.0.to_degrees()
     }
@@ -14,12 +14,12 @@ impl Radians {
         self.0
     }
 
-    pub fn from_radians(radians: f64) -> Radians {
-        Radians(radians)
+    pub fn from_radians(radians: f64) -> Angle {
+        Angle(radians)
     }
 
-    pub fn from_degrees(degrees: f64) -> Radians {
-        Radians(degrees.to_radians())
+    pub fn from_degrees(degrees: f64) -> Angle {
+        Angle(degrees.to_radians())
     }
 }
 
@@ -152,7 +152,7 @@ pub fn parts_of_ellipse_from_corners<P: Point>(corners: [P; 4]) -> (f64, P, f64)
 
 /// given the foci and a point of the ellipse return its center, semimajor axis,
 /// semiminor axis and angle
-pub fn ellipse_from_foci_and_point<P: Point>(foci: [P; 2], point: P) -> (P, f64, f64, Radians) {
+pub fn ellipse_from_foci_and_point<P: Point>(foci: [P; 2], point: P) -> (P, f64, f64, Angle) {
     let sum = point.distance(foci[0]) + point.distance(foci[1]);
 
     ellipse_from_foci_and_sum(foci, sum)
@@ -160,7 +160,7 @@ pub fn ellipse_from_foci_and_point<P: Point>(foci: [P; 2], point: P) -> (P, f64,
 
 /// given the foci and the sum of distances that define the ellipse return its
 /// center, semimajor and semiminor axis
-pub fn ellipse_from_foci_and_sum<P: Point>(foci: [P; 2], sum: f64) -> (P, f64, f64, Radians) {
+pub fn ellipse_from_foci_and_sum<P: Point>(foci: [P; 2], sum: f64) -> (P, f64, f64, Angle) {
     // half the distance between the foci
     let d = foci[0].distance(foci[1]) / 2.0;
     let semimajor = sum / 2.0;
@@ -170,7 +170,7 @@ pub fn ellipse_from_foci_and_sum<P: Point>(foci: [P; 2], sum: f64) -> (P, f64, f
     return ((foci[0] + foci[1]) / 2.0, semimajor, semiminor, v.angle());
 }
 
-pub fn foci_and_sum_from_center_and_radi<P: Point>(center: P, semimajor: f64, semiminor: f64, angle: Radians) -> ([P; 2], f64) {
+pub fn foci_and_sum_from_center_and_radi<P: Point>(center: P, semimajor: f64, semiminor: f64, angle: Angle) -> ([P; 2], f64) {
     // this is the magnitude of a vector that goes from the center of the
     // ellipse to either of the focis
     let x = (semimajor.powi(2) - semiminor.powi(2)).sqrt();
@@ -223,7 +223,7 @@ mod tests {
         let center: Vec2DDrawing = (-11.5, -5.98).into();
         let semimajor = (14.29 + 17.67) / 2.0;
         let semiminor = 11.28;
-        let angle = Radians::from_degrees(39.94);
+        let angle = Angle::from_degrees(39.94);
 
         let ([f1, f2], sum) = foci_and_sum_from_center_and_radi(center, semimajor, semiminor, angle);
 

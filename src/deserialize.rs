@@ -13,7 +13,7 @@ use crate::shape::{ShapeStored, path::Path, ellipse::Ellipse};
 use crate::color::Color;
 use crate::consts::DEFAULT_THICKNESS;
 use crate::point::{Point, Vec2DDrawing};
-use crate::geom::Radians;
+use crate::geom::Angle;
 
 mod path;
 
@@ -268,10 +268,10 @@ impl FromStr for Vec2DDrawing {
     }
 }
 
-impl FromStr for Radians {
+impl FromStr for Angle {
     type Err = Error;
 
-    fn from_str(source: &str) -> Result<Radians, Self::Err> {
+    fn from_str(source: &str) -> Result<Angle, Self::Err> {
         todo!()
     }
 }
@@ -344,7 +344,7 @@ impl Ellipse {
                 1.0
             };
 
-        let angle: Radians = if let Some(angle_str) = attrs.get("transform") {
+        let angle: Angle = if let Some(angle_str) = attrs.get("transform") {
             angle_str.parse()?
         } else {
             Default::default()

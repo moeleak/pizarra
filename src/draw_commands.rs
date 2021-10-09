@@ -1,7 +1,7 @@
 use crate::point::Vec2DDrawing;
 use crate::color::Color;
 use crate::shape::path::PathCommand;
-use crate::geom::Radians;
+use crate::geom::Angle;
 
 /// The draw command as returned by the shape: adds the color
 #[derive(Debug, PartialEq, Clone)]
@@ -23,7 +23,7 @@ pub enum DrawCommand {
         center: Vec2DDrawing,
         semimajor: f64,
         semiminor: f64,
-        angle: Radians,
+        angle: Angle,
         thickness: f64,
         color: Color,
     },
