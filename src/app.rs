@@ -13,7 +13,7 @@ use crate::consts::{DEFAULT_THICKNESS, TOUCH_RADIUS};
 use crate::deserialize;
 use crate::geom::bbox_from_points;
 
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy,Clone,Debug, PartialEq, Eq)]
 /// Describes the possible states of the undo_queue and a pointer that moves
 /// in it
 enum UndoState {
@@ -31,7 +31,7 @@ enum UndoState {
 }
 
 /// Manages what is happening with the board
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum BoardState {
     Idle,
     UsingTool,
@@ -70,7 +70,7 @@ impl FromStr for SelectedTool {
 }
 
 /// Possible statuses of file save
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SaveStatus {
     NewAndEmpty,
     NewAndChanged,
@@ -192,6 +192,8 @@ impl App {
 
                 if let ShapeFinished::Yes(shape) = finished {
                     let shape_id = self.storage.add(shape);
+
+                    self.current_shape = None;
 
                     Action::Draw(shape_id)
                 } else {
@@ -1043,5 +1045,28 @@ mod tests {
                 ],
             }
         ]);
+    }
+
+    #[test]
+    fn app_state_after_finished_shape() {
+        let mut app = App::new(Vec2DScreen::new(100.0, 100.0));
+
+        app.set_tool(SelectedTool::Shape(ShapeType::Path));
+
+        let p1 = Vec2DScreen::new(1.0, 1.0);
+        let p2 = Vec2DScreen::new(20.0, 20.0);
+
+        app.handle_mouse_button_pressed(MouseButton::Left, p1);
+        app.handle_mouse_move(p2);
+        app.handle_mouse_button_released(MouseButton::Left, p2);
+
+        assert_eq!(app.board_state, BoardState::Idle);
+        assert_eq!(app.undo_state, UndoState::InSync);
+        assert_eq!(app.save_status, SaveStatus::NewAndChanged);
+        assert_eq!(app.storage.shape_count(), 1);
+
+        if let Some(_) = app.current_shape.as_ref() {
+            panic!()
+        }
     }
 }
