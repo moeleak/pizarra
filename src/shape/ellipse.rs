@@ -144,23 +144,27 @@ impl ShapeStored for Ellipse {
     }
 
     fn bbox(&self) -> [Vec2DDrawing; 2] {
-        let ([f1, f2], _) = foci_and_sum_from_center_and_radi(
-            self.center,
-            self.semimajor,
-            self.semiminor,
-            self.angle
-        );
+        let fun_t_x = |t: f64| {
+            self.center.x + self.semimajor * t.cos() * self.angle.radians().cos() - self.semiminor * t.sin() * self.angle.radians().sin()
+        };
 
-        // half the distance between the foci
-        let c = f1.distance(f2) / 2.0;
-        let rx = self.semiminor.powi(2) / (self.semimajor + c * self.angle.radians().cos());
-        let ry = self.semiminor.powi(2) / (self.semimajor + c * (self.angle.radians() + PI/2.0).cos());
+        let fun_t_y = |t: f64| {
+            self.center.y + self.semiminor * t.sin() * self.angle.radians().cos() + self.semimajor * t.cos() * self.angle.radians().sin()
+        };
 
-        let v = Vec2DDrawing::new(dbg!(rx), dbg!(ry));
+        let t = (-(self.semiminor / self.semimajor) * self.angle.radians().tan()).atan();
+        let x1 = fun_t_x(t);
+        let x2 = fun_t_x(t + PI);
+        let [min_x, max_x] = [x1.min(x2), x1.max(x2)];
+
+        let t = (self.semiminor / self.semiminor * (1.0 / self.angle.radians().tan())).atan();
+        let y1 = fun_t_y(t);
+        let y2 = fun_t_y(t + PI);
+        let [min_y, max_y] = [y1.min(y2), y1.max(y2)];
 
         [
-            self.center - v,
-            self.center + v,
+            Vec2DDrawing::new(min_x, min_y),
+            Vec2DDrawing::new(max_x, max_y),
         ]
     }
 
@@ -306,11 +310,12 @@ mod tests {
     }
 
     #[test]
-    fn the_bbox_of_a_rotated_ellipse() {
+    fn the_bbox_of_an_ellipse() {
         let center = Vec2DDrawing::new(-3.0257300000000003, 1.26254);
         let semimajor = 7.793799303722533;
         let semiminor = 6.898753387548061;
 
+        // axis aligned
         let ellipse = Ellipse::from_parts(center, semimajor, semiminor, Radians::from_radians(0.0), Default::default(), 1.0);
 
         assert_eq!(ellipse.bbox(), [
@@ -318,12 +323,13 @@ mod tests {
             center + Vec2DDrawing::new(semimajor, semiminor),
         ]);
 
+        // rotated
         let angle = Radians::from_radians(-0.7769764190469384);
         let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Default::default(), 1.0);
 
         assert_eq!(ellipse.bbox(), [
-            Vec2DDrawing::new(-10.4, -6.1),
-            Vec2DDrawing::new(4.33, 8.6),
+            Vec2DDrawing { x: -10.39314460317701, y: -6.076198854160735 },
+            Vec2DDrawing { x: 4.3416846031770095, y: 8.601278854160736 },
         ]);
     }
 }
