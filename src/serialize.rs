@@ -113,6 +113,8 @@ impl App {
             writer.write(XmlEvent::end_element()).unwrap(); // g
             writer.write(XmlEvent::end_element()).unwrap(); // svg
 
+            output.push(b'\n');
+
             Some(String::from_utf8(output).unwrap())
         } else {
             None
