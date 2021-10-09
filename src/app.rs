@@ -1069,4 +1069,10 @@ mod tests {
             panic!()
         }
     }
+
+    #[test]
+    #[ignore]
+    fn esc_clears_current_shape() {
+        assert!(false, "pressing the esc button should clear the current shape");
+    }
 }
