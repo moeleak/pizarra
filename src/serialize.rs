@@ -186,9 +186,4 @@ mod tests {
 
         assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_alpha.svg"));
     }
-
-    #[test]
-    fn can_serialize_rotated_ellipse() {
-        assert!(false);
-    }
 }

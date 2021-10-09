@@ -37,6 +37,12 @@ lazy_static! {
         \s+
         (?P<y>-?\d+(\.\d+)?)
     ").unwrap();
+    static ref ANGLE_REGEX: Regex = Regex::new(r"(?x)
+        rotate\(
+            (?P<angle>\d+(\.\d*)?)
+            (\s+(\d+(\.\d*)?)\s+(\d+(\.\d*)?))?
+        \)
+    ").unwrap();
     static ref CSS_COLORS: HashMap<String, Color> = vec![
         ("aliceblue".into(), Color::from_int_rgb(0xF0, 0xF8, 0xFF)),
         ("antiquewhite".into(), Color::from_int_rgb(0xFA, 0xEB, 0xD7)),
@@ -194,6 +200,7 @@ pub enum Error {
     CouldntUnderstandColor(String),
     ParseFloatError(std::num::ParseFloatError),
     PointDoesntMatchRegex,
+    AngleDoesntMatchRegex(String),
     MissingAttribute(String),
     PathParseError(path::ParseError),
 }
@@ -271,8 +278,12 @@ impl FromStr for Vec2DDrawing {
 impl FromStr for Angle {
     type Err = Error;
 
-    fn from_str(source: &str) -> Result<Angle, Self::Err> {
-        todo!()
+    fn from_str(s: &str) -> Result<Angle, Self::Err> {
+        if let Some(angle) = ANGLE_REGEX.captures(s) {
+            Ok(Angle::from_degrees(angle["angle"].parse()?))
+        } else {
+            Err(Error::AngleDoesntMatchRegex(s.into()))
+        }
     }
 }
 
@@ -285,6 +296,12 @@ fn css_attrs_as_hashmap(attrs: &str) -> HashMap<&str, &str> {
         }
 
         Some((pieces[0].trim(), pieces[1].trim()))
+    }).collect()
+}
+
+fn xml_attrs_as_hashmap(attrs: Vec<OwnedAttribute>) -> HashMap<String, String> {
+    attrs.into_iter().map(|a| {
+        (a.name.local_name, a.value)
     }).collect()
 }
 
@@ -322,71 +339,48 @@ impl Path {
     }
 }
 
-impl Ellipse {
-    pub fn from_xml_attributes(cx: &str, cy: &str, rx: &str, ry: &str, style: &str) -> Result<Ellipse, Error> {
-        let attrs = css_attrs_as_hashmap(style);
+trait Deserialize {
+    fn deserialize(attributes: HashMap<String, String>) -> Result<Box<dyn ShapeStored>, Error>;
+}
 
-        let color = if let Some(color_str) = attrs.get("stroke") {
-                color_str.parse()?
-            } else {
-                Color::white()
-            };
+impl Deserialize for Path{
+    fn deserialize(attributes: HashMap<String, String>) -> Result<Box<dyn ShapeStored>, Error> {
+        let styleattr = attributes.get("style").ok_or(Error::MissingAttribute("style".into()))?;
+        let dattr = attributes.get("d").ok_or(Error::MissingAttribute("d".into()))?;
 
-        let thickness = if let Some(thickness_str) = attrs.get("stroke-width") {
-                thickness_str.parse()?
-            } else {
-                DEFAULT_THICKNESS
-            };
+        Ok(Box::new(Path::from_xml_attributes(&styleattr, &dattr)?))
+    }
+}
 
-        let alpha = if let Some(alpha_str) = attrs.get("stroke-opacity") {
-                alpha_str.parse()?
-            } else {
-                1.0
-            };
+impl Deserialize for Ellipse {
+    fn deserialize(attributes: HashMap<String, String>) -> Result<Box<dyn ShapeStored>, Error> {
+        let cx = attributes.get("cx").ok_or(Error::MissingAttribute("cx".into()))?;
+        let cy = attributes.get("cy").ok_or(Error::MissingAttribute("cy".into()))?;
+        let rx = attributes.get("rx").ok_or(Error::MissingAttribute("rx".into()))?;
+        let ry = attributes.get("ry").ok_or(Error::MissingAttribute("ry".into()))?;
+        let angle= attributes.get("transform").map(|s| s.as_str()).unwrap_or("rotate(0)");
+        let styleattr = attributes.get("style").ok_or(Error::MissingAttribute("style".into()))?;
 
-        let angle: Angle = if let Some(angle_str) = attrs.get("transform") {
-            angle_str.parse()?
-        } else {
-            Default::default()
-        };
+        let attrs = css_attrs_as_hashmap(styleattr);
+
+        let color: Color = attrs.get("stroke").map(|c| c.parse()).transpose()?.unwrap_or_default();
+        let thickness = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or(DEFAULT_THICKNESS);
+        let alpha = attrs.get("stroke-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
+
+        let angle: Angle = angle.parse()?;
 
         let center = Vec2DDrawing::new(cx.parse()?, cy.parse()?);
         let rx: f64 = rx.parse()?;
         let ry: f64 = ry.parse()?;
 
-        Ok(Ellipse::from_parts(
+        Ok(Box::new(Ellipse::from_parts(
             center,
             rx,
             ry,
             angle,
             color.with_alpha(alpha),
             thickness,
-        ))
-    }
-}
-
-trait Deserialize {
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeStored>, Error>;
-}
-
-impl Deserialize for Path{
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeStored>, Error> {
-        let styleattr = attributes.iter().find(|a| a.name.local_name == "style").ok_or(Error::MissingAttribute("style".into()))?;
-        let dattr = attributes.iter().find(|a| a.name.local_name == "d").ok_or(Error::MissingAttribute("d".into()))?;
-
-        Ok(Box::new(Path::from_xml_attributes(&styleattr.value, &dattr.value)?))
-    }
-}
-
-impl Deserialize for Ellipse {
-    fn deserialize(attributes: Vec<OwnedAttribute>) -> Result<Box<dyn ShapeStored>, Error> {
-        let cx = attributes.iter().find(|a| a.name.local_name == "cx").ok_or(Error::MissingAttribute("style".into()))?;
-        let cy = attributes.iter().find(|a| a.name.local_name == "cy").ok_or(Error::MissingAttribute("style".into()))?;
-        let rx = attributes.iter().find(|a| a.name.local_name == "rx").ok_or(Error::MissingAttribute("style".into()))?;
-        let ry = attributes.iter().find(|a| a.name.local_name == "ry").ok_or(Error::MissingAttribute("style".into()))?;
-        let styleattr = attributes.iter().find(|a| a.name.local_name == "style").ok_or(Error::MissingAttribute("style".into()))?;
-
-        Ok(Box::new(Ellipse::from_xml_attributes(&cx.value, &cy.value, &rx.value, &ry.value, &styleattr.value)?))
+        )))
     }
 }
 
@@ -398,10 +392,10 @@ impl Storage {
         for e in parser {
             match e {
                 Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
-                    storage.add(Path::deserialize(attributes)?);
+                    storage.add(Path::deserialize(xml_attrs_as_hashmap(attributes))?);
                 }
                 Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
-                    storage.add(Ellipse::deserialize(attributes)?);
+                    storage.add(Ellipse::deserialize(xml_attrs_as_hashmap(attributes))?);
                 }
                 Err(e) => {
                     return Err(e.into());
@@ -523,11 +517,32 @@ mod tests {
     fn test_parse_alpha() {
         let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:#FF0000;stroke-opacity:0.8;stroke-miterlimit:10;", "M 10 10 L 20 20").unwrap();
 
-        assert_eq!(line.color(), "#FF0000".parse::<Color>().unwrap().with_alpha(0.8));
+        assert_eq!(line.color(), Color::red().with_alpha(0.8));
     }
 
     #[test]
     fn can_deserialize_rotated_ellipse() {
-        assert!(false);
+        let attrs: HashMap<String, String> = vec![
+            ("cx".into(), "20.4".into()),
+            ("cy".into(), "-30.5".into()),
+            ("rx".into(), "5.6".into()),
+            ("ry".into(), "3.5".into()),
+            ("transform".into(), "rotate(34.5)".into()),
+            ("style".into(), "stroke:#cabada;stroke-width:3.5;stroke-opacity:0.8".into()),
+        ].into_iter().collect();
+
+        let deserialized = Ellipse::deserialize(attrs).unwrap();
+
+        match deserialized.draw_commands() {
+            DrawCommand::Ellipse { center, semimajor, semiminor, angle, color, thickness } => {
+                assert_eq!(center, Vec2DDrawing::new(20.4, -30.5));
+                assert_eq!(semimajor, 5.6);
+                assert_eq!(semiminor, 3.5);
+                assert_eq!(angle.degrees(), 34.5);
+                assert_eq!(color, Color::from_int_rgb(0xca, 0xba, 0xda).with_alpha(0.8));
+                assert_eq!(thickness, 3.5);
+            },
+            _ => panic!()
+        }
     }
 }
