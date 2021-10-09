@@ -17,7 +17,7 @@ use self::path::PathBuilder;
 use self::ellipse::ThreePointEllipseBuilder;
 use self::polygon::PolygonBuilder;
 use self::circle::CircleBuilder;
-use self::rectangle::RectangleBuilder;
+use self::rectangle::AxisAlignedRectangleBuilder;
 
 /// Shapes handle input from the user, and they're responsible of notifying when
 /// they're finished, for example in the case of a polygon
@@ -40,7 +40,7 @@ impl ShapeType {
     pub fn start(&self, color: Color, initial: Vec2DDrawing, stroke: f64) -> Box<dyn ShapeBuilder> {
         match *self {
             ShapeType::Path => Box::new(PathBuilder::start(color, initial, stroke)),
-            ShapeType::Rectangle => Box::new(RectangleBuilder::start(color, initial, stroke)),
+            ShapeType::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(color, initial, stroke)),
             ShapeType::Polygon => Box::new(PolygonBuilder::start(color, initial, stroke)),
             ShapeType::Circle => Box::new(CircleBuilder::start(color, initial, stroke)),
             ShapeType::ThreePointEllipse => Box::new(ThreePointEllipseBuilder::start(color, initial, stroke)),

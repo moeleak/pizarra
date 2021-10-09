@@ -5,15 +5,15 @@ use crate::transform::Transform;
 
 use super::{ShapeBuilder, ShapeFinished, path::{PathCommand, Path}};
 
-pub struct RectangleBuilder {
+pub struct AxisAlignedRectangleBuilder {
     corners: [Vec2DDrawing; 4],
     stroke: f64,
     color: Color,
 }
 
-impl RectangleBuilder {
-    pub fn start(color: Color, initial: Vec2DDrawing, stroke: f64) -> RectangleBuilder {
-        RectangleBuilder {
+impl AxisAlignedRectangleBuilder {
+    pub fn start(color: Color, initial: Vec2DDrawing, stroke: f64) -> AxisAlignedRectangleBuilder {
+        AxisAlignedRectangleBuilder {
             corners: [initial; 4],
             stroke,
             color,
@@ -25,7 +25,17 @@ impl RectangleBuilder {
     }
 }
 
-impl ShapeBuilder for RectangleBuilder {
+fn draw_commands(corners: [Vec2DDrawing; 4]) -> Vec<PathCommand> {
+    let mut commands = Vec::with_capacity(5);
+    let mut points_iter = corners.iter().cycle().take(5);
+
+    commands.push(PathCommand::MoveTo(*points_iter.next().unwrap()));
+    commands.extend(points_iter.map(|p| PathCommand::LineTo(*p)));
+
+    commands
+}
+
+impl ShapeBuilder for AxisAlignedRectangleBuilder {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         let first_point = self.corners[0];
         let first_point_screen = t.to_screen_coordinates(self.corners[0]);
@@ -43,29 +53,16 @@ impl ShapeBuilder for RectangleBuilder {
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
         self.handle_mouse_moved(pos, t);
 
-        let commands = self.corners.iter().enumerate().map(|(i, &c)| {
-            if i == 0 {
-                PathCommand::MoveTo(c)
-            } else {
-                PathCommand::LineTo(c)
-            }
-        }).collect();
-
         ShapeFinished::Yes(Box::new(Path::from_parts(
-            commands, self.color, self.stroke,
+            draw_commands(self.all_four_corners()), self.color, self.stroke,
         )))
     }
 
     fn draw_commands(&self) -> Vec<DrawCommand> {
         let corners = self.all_four_corners();
-        let mut points_iter = corners.iter().cycle().take(5);
-        let mut commands = Vec::with_capacity(4);
-
-        commands.push(PathCommand::MoveTo(*points_iter.next().unwrap()));
-        commands.extend(points_iter.map(|p| PathCommand::LineTo(*p)));
 
         vec![DrawCommand::Path {
-            commands,
+            commands: draw_commands(corners),
             thickness: self.stroke,
             color: self.color,
         }]
@@ -74,8 +71,47 @@ impl ShapeBuilder for RectangleBuilder {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
-    fn three_point_rectangle_builder() {
-        assert!(false, "test whatever way of building a rectangle I decide");
+    fn finished_shape_has_all_sides() {
+        let a: Vec2DScreen = (4.0, 5.0).into();
+        let b: Vec2DScreen = (10.0, 10.0).into();
+        let t: Transform = Default::default();
+
+        let mut rect = AxisAlignedRectangleBuilder::start(Default::default(), t.to_storage_coordinates(a), 1.0);
+
+        rect.handle_mouse_moved(b, t);
+
+        // while being drawn
+        assert_eq!(rect.draw_commands()[0], DrawCommand::Path {
+            color: Default::default(),
+            thickness: 1.0,
+            commands: vec![
+                PathCommand::MoveTo(Vec2DDrawing::new(4.0, 5.0)),
+                PathCommand::LineTo(Vec2DDrawing::new(10.0, 5.0)),
+                PathCommand::LineTo(Vec2DDrawing::new(10.0, 10.0)),
+                PathCommand::LineTo(Vec2DDrawing::new(4.0, 10.0)),
+                PathCommand::LineTo(Vec2DDrawing::new(4.0, 5.0)),
+            ],
+        });
+
+        // while finished
+        match rect.handle_button_released(b, t) {
+            ShapeFinished::Yes(s) => {
+                assert_eq!(s.draw_commands(), DrawCommand::Path {
+                    color: Default::default(),
+                    thickness: 1.0,
+                    commands: vec![
+                        PathCommand::MoveTo(Vec2DDrawing::new(4.0, 5.0)),
+                        PathCommand::LineTo(Vec2DDrawing::new(10.0, 5.0)),
+                        PathCommand::LineTo(Vec2DDrawing::new(10.0, 10.0)),
+                        PathCommand::LineTo(Vec2DDrawing::new(4.0, 10.0)),
+                        PathCommand::LineTo(Vec2DDrawing::new(4.0, 5.0)),
+                    ],
+                });
+            }
+            ShapeFinished::No => panic!(),
+        }
     }
 }
