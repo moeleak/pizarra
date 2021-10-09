@@ -48,19 +48,21 @@ impl DrawCommand {
                     .attr("cy", &center.y.to_string())
                     .attr("rx", &semimajor.to_string())
                     .attr("ry", &semiminor.to_string())
+                    .attr("transform", &format!(
+                            "rotate({angle} {x} {y})",
+                            angle = angle.degrees(),
+                            x = center.x,
+                            y = center.y,
+                    ))
                     .attr("style", &format!("\
                             fill:none;\
                             stroke-width:{stroke};\
                             stroke:{color};\
                             stroke-opacity:{alpha};\
-                            stroke-miterlimit:10;\
-                            transform:rotate({degs} {cx} {cy})",
+                            stroke-miterlimit:10;",
                         stroke = thickness,
                         color = color.css(),
                         alpha = color.alpha(),
-                        degs = &angle.degrees().to_string(),
-                        cx = center.x,
-                        cy = center.y,
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
@@ -149,8 +151,21 @@ mod tests {
         app.set_color(Color::red());
         app.set_stroke(3.5);
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(5.0, 10.0));
-        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(35.0, 30.0));
+        let a: Vec2DScreen = (-5.61146,3.80508).into();
+        let c: Vec2DScreen = (-0.44,-1.28).into();
+        let e: Vec2DScreen = (4.3,-0.4).into();
+
+        // start and first focus of the ellipse
+        app.handle_mouse_button_pressed(MouseButton::Left, a);
+        app.handle_mouse_button_released(MouseButton::Left, a);
+
+        // second focus of the ellipse
+        app.handle_mouse_move(c);
+        app.handle_mouse_button_released(MouseButton::Left, c);
+
+        // external point of the ellipse, finish shape
+        app.handle_mouse_move(e);
+        app.handle_mouse_button_released(MouseButton::Left, e);
 
         assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_ellipse.svg"));
     }
