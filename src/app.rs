@@ -53,6 +53,7 @@ pub enum ShouldRedraw {
     No,
 }
 
+#[derive(Debug)]
 pub enum SelectedTool {
     Shape(ShapeType),
     Eraser,
@@ -79,6 +80,7 @@ pub enum SaveStatus {
 }
 
 /// Mouse input management
+#[derive(Debug)]
 pub enum MouseButton {
     Left,
     Middle,
@@ -374,6 +376,8 @@ impl Pizarra {
 
     /// Notify the application that the screen size has changed
     pub fn resize(&mut self, new_size: Vec2DScreen) {
+        log::debug!("resize({})", new_size);
+
         let delta = (self.dimensions * -1.0 + new_size) * 0.5;
 
         self.translate(delta.into());
@@ -382,31 +386,43 @@ impl Pizarra {
 
     /// Set a new tool used to handle user input
     pub fn set_tool(&mut self, selected_tool: SelectedTool) {
+        log::debug!("set_tool({:?})", selected_tool);
+
         self.selected_tool = selected_tool;
     }
 
     /// Set a new stroke that will be used in next shapes
     pub fn set_stroke(&mut self, stroke: f64) {
+        log::debug!("set_stroke({})", stroke);
+
         self.stroke = stroke;
     }
 
     pub fn set_alpha(&mut self, alpha: f64) {
+        log::debug!("set_alpha({})", alpha);
+
         self.alpha = alpha;
     }
 
     /// Set the background color of the drawing
     pub fn set_bgcolor(&mut self, bgcolor: Color) {
+        log::debug!("set_bgcolor({})", bgcolor);
+
         self.bgcolor = bgcolor;
     }
 
     /// Set the radius of action for the eraser tool
     pub fn set_erase_radius(&mut self, erase_radius: f64) {
+        log::debug!("set_erase_radius({})", erase_radius);
+
         self.erase_radius = erase_radius;
     }
 
     /// Public method that the UI must call whenever a button of the mouse or
     /// pen is pressed.
     pub fn handle_mouse_button_pressed(&mut self, button: MouseButton, point: Vec2DScreen) -> ShouldRedraw {
+        log::debug!("handle_mouse_button_pressed({:?}, {:?})", button, point);
+
         let (new_board_state, should_redraw) = match self.board_state {
             current@BoardState::Idle => match button {
                 MouseButton::Left => (BoardState::UsingTool, self.handle_tool_button_pressed(point)),
@@ -432,6 +448,8 @@ impl Pizarra {
     /// Public method that the UI must call whenever a button of the mouse or pen
     /// is released.
     pub fn handle_mouse_button_released(&mut self, button: MouseButton, point: Vec2DScreen) -> ShouldRedraw {
+        log::debug!("handle_mouse_button_released({:?}, {:?})", button, point);
+
         let (new_board_state, should_redraw) = match self.board_state {
             current@BoardState::Idle => (current, ShouldRedraw::No),
             current@BoardState::UsingTool => match button {
@@ -485,6 +503,8 @@ impl Pizarra {
 
     /// Public methid that the UI must call with updates on the cursor position
     pub fn handle_mouse_move(&mut self, pos: Vec2DScreen) -> ShouldRedraw {
+        log::debug!("handle_mouse_move({:?})", pos);
+
         let (new_board_state, should_redraw) = match self.board_state {
             BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
             BoardState::UsingTool => (BoardState::UsingTool, self.handle_tool_mouse_move(pos)),
@@ -508,43 +528,53 @@ impl Pizarra {
     /// Zooms in the current view, so objects are bigger and the visible portion
     /// of the drawing gets reduced
     pub fn zoom_in(&mut self) {
+        log::debug!("zoom_in()");
         self.transform.zoom_in(2.0, self.dimensions);
     }
 
     /// Zooms out the current view, so objects are smaller and the visible portion
     /// of the drawing increases
     pub fn zoom_out(&mut self) {
+        log::debug!("zoom_out()");
         self.transform.zoom_out(2.0, self.dimensions);
     }
 
     pub fn scroll_up(&mut self) {
+        log::debug!("scroll_up()");
         self.translate(Vec2DScreen::new(0.0, 10.0));
     }
 
     pub fn scroll_down(&mut self) {
+        log::debug!("scroll_down()");
         self.translate(Vec2DScreen::new(0.0, -10.0));
     }
 
     pub fn scroll_right(&mut self) {
+        log::debug!("scroll_right()");
         self.translate(Vec2DScreen::new(-10.0, 0.0));
     }
 
     pub fn scroll_left(&mut self) {
+        log::debug!("scroll_left()");
         self.translate(Vec2DScreen::new(10.0, 0.0));
     }
 
     /// Resets the center and zoom level of the view to its original place
     pub fn go_home(&mut self) {
+        log::debug!("go_home()");
         self.transform.go_home(self.dimensions / 2.0);
     }
 
     /// Sets the color for the new shapes
     pub fn set_color(&mut self, color: Color) {
+        log::debug!("set_color({})", color);
         self.selected_color = color;
     }
 
     /// Undoes the last action if any
     pub fn undo(&mut self) {
+        log::debug!("undo()");
+
         match self.undo_state {
             // this is the first undo of this queue, we'll invert the last state
             // to its oposite and move the pointer backwards
@@ -581,6 +611,8 @@ impl Pizarra {
 
     /// Redoes the last undone action, if any
     pub fn redo(&mut self) {
+        log::debug!("redo()");
+
         match self.undo_state {
             // nothing has to be done for nothing has been undone
             UndoState::InSync => {},
@@ -632,6 +664,7 @@ impl Pizarra {
     /// Resets the state of the drawing, undo, shapes etc so you can start
     /// drawing again.
     pub fn reset(&mut self) {
+        log::debug!("reset()");
         // TODO reconsider this, I suspect its implementation tends to be broken
         self.storage = Storage::new();
         self.selected_tool = SelectedTool::Shape(ShapeType::Path);
