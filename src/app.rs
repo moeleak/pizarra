@@ -517,6 +517,22 @@ impl Pizarra {
         self.transform.zoom_out(2.0, self.dimensions);
     }
 
+    pub fn scroll_up(&mut self) {
+        self.translate(Vec2DScreen::new(0.0, 10.0));
+    }
+
+    pub fn scroll_down(&mut self) {
+        self.translate(Vec2DScreen::new(0.0, -10.0));
+    }
+
+    pub fn scroll_right(&mut self) {
+        self.translate(Vec2DScreen::new(-10.0, 0.0));
+    }
+
+    pub fn scroll_left(&mut self) {
+        self.translate(Vec2DScreen::new(10.0, 0.0));
+    }
+
     /// Resets the center and zoom level of the view to its original place
     pub fn go_home(&mut self) {
         self.transform.go_home(self.dimensions / 2.0);
