@@ -2,14 +2,13 @@ use std::f64::consts::PI;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
 use crate::draw_commands::DrawCommand;
 use crate::color::Color;
-use crate::ShapeType;
 use crate::transform::Transform;
 use crate::geom::{
     Angle, ellipse_from_foci_and_point, foci_and_sum_from_center_and_radi,
 };
 use crate::shape::path::PathCommand;
 
-use super::{ShapeBuilder, ShapeStored, ShapeFinished};
+use super::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
 
 #[derive(Debug, Copy, Clone)]
 enum ThreePointEllipseState {

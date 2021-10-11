@@ -54,5 +54,4 @@ pub mod consts;
 pub mod serialize;
 pub mod geom;
 
-pub use shape::ShapeType;
-pub use app::Pizarra;
+pub mod prelude;

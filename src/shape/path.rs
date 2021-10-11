@@ -3,12 +3,11 @@ use std::fmt;
 
 use crate::draw_commands::DrawCommand;
 use crate::color::Color;
-use crate::ShapeType;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
 use crate::transform::Transform;
 use crate::geom::{segment_intersects_circle, bezier_intersects_circle};
 
-use super::{ShapeBuilder, ShapeStored, ShapeFinished};
+use super::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
 
 /// Given two points return the points in their 1/3 and 2/3 of the segment from
 /// a to b.
