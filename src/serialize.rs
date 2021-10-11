@@ -3,7 +3,7 @@ use xml::writer::{EmitterConfig, XmlEvent, EventWriter};
 use crate::consts::EXPORT_PADDING;
 use crate::point::{Point, Vec2DDrawing};
 use crate::draw_commands::DrawCommand;
-use crate::app::App;
+use crate::app::Pizarra;
 
 impl DrawCommand {
     fn serialize(self, writer: &mut EventWriter<&mut Vec<u8>>) {
@@ -71,7 +71,7 @@ impl DrawCommand {
     }
 }
 
-impl App {
+impl Pizarra {
     pub fn to_svg(&self) -> Option<String> {
         if let Some(bbox) = self.get_bounds() {
             let mut output = Vec::new();
@@ -128,12 +128,12 @@ mod tests {
 
     use crate::color::Color;
     use crate::point::Vec2DScreen;
-    use crate::app::{App, MouseButton, SelectedTool};
+    use crate::app::{Pizarra, MouseButton, SelectedTool};
     use crate::shape::ShapeType;
 
     #[test]
     fn test_serialize() {
-        let mut app = App::new(Vec2DScreen::new(40.0, 40.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(40.0, 40.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
         app.set_color(Color::red());
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn serialize_ellipse() {
-        let mut app = App::new(Vec2DScreen::new(40.0, 40.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(40.0, 40.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::ThreePointEllipse));
         app.set_color(Color::red());
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_serialize_color_with_alpha() {
-        let mut app = App::new(Vec2DScreen::new(40.0, 40.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(40.0, 40.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Polygon));
         app.set_color(Color::green());

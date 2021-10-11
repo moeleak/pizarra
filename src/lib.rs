@@ -55,4 +55,4 @@ pub mod serialize;
 pub mod geom;
 
 pub use shape::ShapeType;
-pub use app::App;
+pub use app::Pizarra;

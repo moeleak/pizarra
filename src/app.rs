@@ -86,7 +86,11 @@ pub enum MouseButton {
     Unknown,
 }
 
-pub struct App {
+/// Main controller of the pizarra application.
+///
+/// This struct keeps the state of a drawing and exposes the methods necessary
+/// to mutate it according to events in the interface.
+pub struct Pizarra {
     storage: Storage,
     current_shape: Option<Box<dyn ShapeBuilder>>,
 
@@ -117,11 +121,7 @@ pub struct App {
 }
 
 // Private methods
-impl App {
-    /// p is a point in the coordinate space of the drawing area. This function
-    /// converts p's coordinates to storage coordinates given the current zoom
-    /// and offset.
-
+impl Pizarra {
     fn conclude_action(&mut self, action: Action) {
         // this means some undos have been applied. Doing something from here
         // means effectively dropping some actions such that we're again in the
@@ -276,12 +276,12 @@ impl App {
 }
 
 // Public interface
-impl App {
+impl Pizarra {
     /// Create a new instance of Pizarra's controller. Only one is needed and it
     /// can be put inside an Rc<RefCell<_>> to use it inside event callbacks in
     /// UI implementations.
-    pub fn new(dimensions: Vec2DScreen) -> App {
-        App {
+    pub fn new(dimensions: Vec2DScreen) -> Pizarra {
+        Pizarra {
             storage: Storage::new(),
             current_shape: None,
 
@@ -647,7 +647,7 @@ mod tests {
 
     #[test]
     fn draw_a_line() {
-        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
@@ -675,7 +675,7 @@ mod tests {
 
     #[test]
     fn draw_a_line_in_zoom() {
-        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
@@ -705,7 +705,7 @@ mod tests {
 
     #[test]
     fn erase() {
-        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
@@ -727,7 +727,7 @@ mod tests {
 
     #[test]
     fn erase_with_zoom() {
-        let mut app = App::new(Vec2DScreen::new(4.0, 4.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(4.0, 4.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
@@ -761,7 +761,7 @@ mod tests {
 
     #[test]
     fn do_do_do_undo_redo_redo_undo() {
-        let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
@@ -790,7 +790,7 @@ mod tests {
 
     #[test]
     fn do_undo_redo_undo() {
-        let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
@@ -808,7 +808,7 @@ mod tests {
 
     #[test]
     fn do_undo_do_do_undo() {
-        let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
@@ -834,7 +834,7 @@ mod tests {
 
     #[test]
     fn do_undo_do_undo_undo() {
-        let mut app = App::new(Vec2DScreen::new(800.0, 600.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(800.0, 600.0));
 
         // Do
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
@@ -856,7 +856,7 @@ mod tests {
 
     #[test]
     fn r#move() {
-        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
 
         assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
@@ -868,7 +868,7 @@ mod tests {
 
     #[test]
     fn move_while_in_zoom_is_coherent() {
-        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
 
         assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
@@ -884,7 +884,7 @@ mod tests {
 
     #[test]
     fn move_while_drawing() {
-        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
 
         assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
@@ -926,7 +926,7 @@ mod tests {
 
     #[test]
     fn zoom_must_be_idempotent() {
-        let mut app = App::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
 
         assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
 
@@ -941,7 +941,7 @@ mod tests {
 
     #[test]
     fn cache_invalidation_on_ctrl_z() {
-        let mut app = App::new(Vec2DScreen::new(10.0, 10.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(10.0, 10.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Rectangle));
 
@@ -994,7 +994,7 @@ mod tests {
         // it gets erased
         //
         // it's expeceted for the eraser not to erase the shape
-        let mut app = App::new(Vec2DScreen::new(100.0, 100.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(100.0, 100.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Rectangle));
 
@@ -1017,7 +1017,7 @@ mod tests {
 
     #[test]
     fn app_state_after_finished_shape() {
-        let mut app = App::new(Vec2DScreen::new(100.0, 100.0));
+        let mut app = Pizarra::new(Vec2DScreen::new(100.0, 100.0));
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
