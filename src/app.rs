@@ -273,6 +273,29 @@ impl Pizarra {
             },
         }
     }
+
+    /// Move the canvas by this offset
+    fn translate(&mut self, delta: Vec2DScreen) {
+        self.transform.translate_screen(delta);
+    }
+
+    /// Compute the bounds of what is visible in the board according to current
+    /// offset, zoom level and rotation. Return value is an array of the
+    /// top-left, top-right, bottom-right, and bottom-left corners.
+    fn visible_extent(&self) -> [Vec2DDrawing; 4] {
+        [
+            self.transform.to_storage_coordinates(Vec2DScreen::new(0.0, 0.0)),
+            self.transform.to_storage_coordinates(Vec2DScreen::new(self.dimensions.x, 0.0)),
+            self.transform.to_storage_coordinates(self.dimensions),
+            self.transform.to_storage_coordinates(Vec2DScreen::new(0.0, self.dimensions.y)),
+        ]
+    }
+
+    /// return the axis-aligned bounding box of the visible portion of the
+    /// screen.
+    fn visible_bbox(&self) -> [Vec2DDrawing; 2] {
+        bbox_from_points(self.visible_extent().iter().copied())
+    }
 }
 
 // Public interface
@@ -315,24 +338,6 @@ impl Pizarra {
         self.transform
     }
 
-    /// Compute the bounds of what is visible in the board according to current
-    /// offset, zoom level and rotation. Return value is an array of the
-    /// top-left, top-right, bottom-right, and bottom-left corners.
-    pub fn visible_extent(&self) -> [Vec2DDrawing; 4] {
-        [
-            self.transform.to_storage_coordinates(Vec2DScreen::new(0.0, 0.0)),
-            self.transform.to_storage_coordinates(Vec2DScreen::new(self.dimensions.x, 0.0)),
-            self.transform.to_storage_coordinates(self.dimensions),
-            self.transform.to_storage_coordinates(Vec2DScreen::new(0.0, self.dimensions.y)),
-        ]
-    }
-
-    /// return the axis-aligned bounding box of the visible portion of the
-    /// screen.
-    pub fn visible_bbox(&self) -> [Vec2DDrawing; 2] {
-        bbox_from_points(self.visible_extent().iter().copied())
-    }
-
     /// Returns the dimensions of the screen
     pub fn get_dimensions(&self) -> Vec2DScreen {
         self.dimensions
@@ -361,13 +366,10 @@ impl Pizarra {
         self.storage.draw_commands(bbox)
     }
 
+    /// returns only the draw commands needed to paint the current shape on the
+    /// screen.
     pub fn draw_commands_for_current_shape(&self) -> Option<Vec<DrawCommand>> {
         self.current_shape.as_ref().map(|s| s.draw_commands())
-    }
-
-    /// Move the canvas by this offset
-    pub fn translate(&mut self, delta: Vec2DScreen) {
-        self.transform.translate_screen(delta);
     }
 
     /// Notify the application that the screen size has changed
@@ -402,8 +404,8 @@ impl Pizarra {
         self.erase_radius = erase_radius;
     }
 
-    /// Public method that the UI must call whenever a button of the mouse or pen
-    /// is pressed.
+    /// Public method that the UI must call whenever a button of the mouse or
+    /// pen is pressed.
     pub fn handle_mouse_button_pressed(&mut self, button: MouseButton, point: Vec2DScreen) -> ShouldRedraw {
         let (new_board_state, should_redraw) = match self.board_state {
             current@BoardState::Idle => match button {
@@ -596,11 +598,6 @@ impl Pizarra {
         }
     }
 
-    /// Return the drawing's total number of shapes
-    pub fn shape_count(&self) -> usize {
-        self.storage.shape_count()
-    }
-
     /// Returns the bounding box that contains all the shapes in the drawing
     pub fn get_bounds(&self) -> Option<[Vec2DDrawing; 2]> {
         self.storage.get_bounds()
@@ -619,6 +616,7 @@ impl Pizarra {
     /// Resets the state of the drawing, undo, shapes etc so you can start
     /// drawing again.
     pub fn reset(&mut self) {
+        // TODO reconsider this, I suspect its implementation tends to be broken
         self.storage = Storage::new();
         self.selected_tool = SelectedTool::Shape(ShapeType::Path);
         self.transform = Transform::new(self.dimensions.to_vec2d() * -0.5, 1.0);
@@ -655,7 +653,7 @@ mod tests {
         app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(2.0, 0.0));
 
-        assert_eq!(app.shape_count(), 1);
+        assert_eq!(app.storage.shape_count(), 1);
 
         let commands = app.draw_commands_for_screen();
 
@@ -685,7 +683,7 @@ mod tests {
         app.handle_mouse_move(Vec2DScreen::new(1.0, 0.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(2.0, 0.0));
 
-        assert_eq!(app.shape_count(), 1);
+        assert_eq!(app.storage.shape_count(), 1);
 
         let commands = app.draw_commands_for_screen();
 
@@ -714,7 +712,7 @@ mod tests {
         app.handle_mouse_move(Vec2DScreen::new(15.0, 15.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(10.0, 15.0));
 
-        assert_eq!(app.shape_count(), 1);
+        assert_eq!(app.storage.shape_count(), 1);
 
         app.set_tool(SelectedTool::Eraser);
 
@@ -722,7 +720,7 @@ mod tests {
         app.handle_mouse_move(Vec2DScreen::new(15.0, 10.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(15.0, 10.0));
 
-        assert_eq!(app.shape_count(), 0);
+        assert_eq!(app.storage.shape_count(), 0);
     }
 
     #[test]
@@ -737,7 +735,7 @@ mod tests {
         app.handle_mouse_move(Vec2DScreen::new(2.0, 2.5));
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(2.0, 3.0));
 
-        assert_eq!(app.shape_count(), 1);
+        assert_eq!(app.storage.shape_count(), 1);
 
         app.zoom_in();
 
@@ -749,14 +747,14 @@ mod tests {
         app.handle_mouse_move(Vec2DScreen::new(2.6, 3.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(2.6, 4.0));
 
-        assert_eq!(app.shape_count(), 1);
+        assert_eq!(app.storage.shape_count(), 1);
 
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(2.24, 0.0));
         app.handle_mouse_move(Vec2DScreen::new(2.4, 1.0));
         app.handle_mouse_move(Vec2DScreen::new(2.4, 3.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(2.24, 4.0));
 
-        assert_eq!(app.shape_count(), 0);
+        assert_eq!(app.storage.shape_count(), 0);
     }
 
     #[test]
@@ -785,7 +783,7 @@ mod tests {
 
         app.undo();
 
-        assert_eq!(app.shape_count(), 2);
+        assert_eq!(app.storage.shape_count(), 2);
     }
 
     #[test]
@@ -803,7 +801,7 @@ mod tests {
 
         app.undo();
 
-        assert_eq!(app.shape_count(), 0);
+        assert_eq!(app.storage.shape_count(), 0);
     }
 
     #[test]
@@ -829,7 +827,7 @@ mod tests {
 
         app.undo();
 
-        assert_eq!(app.shape_count(), 1);
+        assert_eq!(app.storage.shape_count(), 1);
     }
 
     #[test]
@@ -851,7 +849,7 @@ mod tests {
         app.undo();
         app.undo();
 
-        assert_eq!(app.shape_count(), 0);
+        assert_eq!(app.storage.shape_count(), 0);
     }
 
     #[test]
@@ -899,7 +897,7 @@ mod tests {
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(40.0, 10.0));
 
         assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-50.0, -30.0), Vec2DDrawing::new(30.0, 30.0)]);
-        assert_eq!(app.shape_count(), 1);
+        assert_eq!(app.storage.shape_count(), 1);
 
         let commands = app.draw_commands_for_screen();
 
@@ -1012,7 +1010,7 @@ mod tests {
         // move to where the shape is
         app.handle_mouse_move(Vec2DScreen::new(5.0, 5.0));
 
-        assert_eq!(app.shape_count(), 1);
+        assert_eq!(app.storage.shape_count(), 1);
     }
 
     #[test]
