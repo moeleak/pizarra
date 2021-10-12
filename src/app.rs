@@ -8,7 +8,7 @@ use crate::shape::{Shape, ShapeType, ShapeFinished, ShapeBuilder};
 use crate::color::Color;
 use crate::action::Action;
 use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
-use crate::transform::{Transform, default_viewport_transform};
+use crate::transform::Transform;
 use crate::consts::{DEFAULT_THICKNESS, TOUCH_RADIUS};
 use crate::deserialize;
 use crate::geom::bbox_from_points;
@@ -318,7 +318,7 @@ impl Pizarra {
 
             /// a vector from the top-left corner of the screen to the origin
             /// of coordinates in the storage
-            transform: default_viewport_transform(dimensions),
+            transform: Transform::default_for_viewport(dimensions),
             dimensions,
 
             erased: Vec::new(),
@@ -562,7 +562,7 @@ impl Pizarra {
     /// Resets the center and zoom level of the view to its original place
     pub fn go_home(&mut self) {
         log::debug!("go_home()");
-        self.transform = default_viewport_transform(self.dimensions);
+        self.transform = Transform::default_for_viewport(self.dimensions);
     }
 
     /// Sets the color for the new shapes
@@ -668,7 +668,7 @@ impl Pizarra {
         // TODO reconsider this, I suspect its implementation tends to be broken
         self.storage = Storage::new();
         self.selected_tool = SelectedTool::Shape(ShapeType::Path);
-        self.transform = default_viewport_transform(self.dimensions);
+        self.transform = Transform::default_for_viewport(self.dimensions);
         self.undo_state = UndoState::Reset;
         self.undo_queue = Vec::new();
         self.save_status = SaveStatus::NewAndEmpty;

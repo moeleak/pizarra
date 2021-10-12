@@ -65,11 +65,11 @@ impl Transform {
     pub fn to_storage_coordinates(&self, p: Vec2DScreen) -> Vec2DDrawing {
         (p.to_vec2d() / self.scale_factor + self.offset).into()
     }
-}
 
-/// Computes a transform to go back to 1.0 zoom with the drawing's origin centered in the viewport.
-pub fn default_viewport_transform(viewport_dimensions: Vec2DScreen) -> Transform {
-    Transform::new(viewport_dimensions.to_vec2d() * -0.5, 1.0)
+    /// Computes a transform to go back to 1.0 zoom with the drawing's origin centered in the viewport.
+    pub fn default_for_viewport(viewport_dimensions: Vec2DScreen) -> Transform {
+        Transform::new(viewport_dimensions.to_vec2d() * -0.5, 1.0)
+    }
 }
 
 #[cfg(test)]
@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn default_viewport_transform_centers_the_origin() {
         let dimensions = Vec2DScreen::new(200.0, 100.0);
-        let t = default_viewport_transform(dimensions);
+        let t = Transform::default_for_viewport(dimensions);
 
         let center = Vec2DScreen::new(100.0, 50.0);
         let transformed = t.to_storage_coordinates(center);
