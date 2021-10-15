@@ -51,7 +51,7 @@ impl Transform {
         )
     }
 
-    pub fn new_translate(vector: Vec2DScreen) -> Transform {
+    pub fn new_translate(vector: Vec2DWorld) -> Transform {
         Transform::new(
             1.0, 0.0, vector.x,
             0.0, 1.0, vector.y,
@@ -71,21 +71,27 @@ impl Transform {
 
     /// Computes a transform to go back to 1.0 zoom with the drawing's origin centered in the viewport.
     pub fn default_for_viewport(viewport_dimensions: Vec2DScreen) -> Transform {
-        Transform::new_translate(viewport_dimensions * 0.5)
+        Transform::new_translate(Vec2DWorld::new(viewport_dimensions.x, viewport_dimensions.y) * 0.5)
     }
 
     fn scale(&self, factor: f64) -> Transform {
         multiply(&Transform::new_scale(factor), &self)
     }
 
+    fn translate(&self, delta: Vec2DWorld) -> Transform {
+        multiply(&Transform::new_translate(delta), self)
+    }
+
     /// Objects on the screen look `factor` times bigger. Viewport center stays
     /// fixed.
     pub fn zoom(&self, factor: f64, dimensions: Vec2DScreen) -> Transform {
-        self.translate(dimensions / -2.0).scale(factor).translate(dimensions / (2.0 * factor))
+        self.r#move(dimensions / -2.0).scale(factor).r#move(dimensions / 2.0)
     }
 
-    pub fn translate(&self, delta: Vec2DScreen) -> Transform {
-        multiply(&Transform::new_translate(delta), self)
+    /// Objects on the screen move by this delta in screen units
+    pub fn r#move(&self, delta: Vec2DScreen) -> Transform {
+        let world_delta = self.invert().transform_distance(delta.x, delta.y).into();
+        self.translate(world_delta)
     }
 
     #[inline]
@@ -223,7 +229,7 @@ mod tests {
         let screen_point = Vec2DScreen::new(20.0, 30.0);
         let drawing_point = t.to_world_coordinates(screen_point);
 
-        let t = t.translate(Vec2DScreen::new(10.0, 5.0));
+        let t = t.r#move(Vec2DScreen::new(10.0, 5.0));
         let translated_screen_point = Vec2DScreen::new(30.0, 35.0);
         let translated_drawing_point = t.to_world_coordinates(translated_screen_point);
         assert_eq!(drawing_point, translated_drawing_point);

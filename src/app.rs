@@ -278,7 +278,7 @@ impl Pizarra {
 
     /// Move the canvas by this offset
     fn translate(&mut self, delta: Vec2DScreen) {
-        self.transform = self.transform.translate(delta);
+        self.transform = self.transform.r#move(delta);
     }
 
     /// Compute the bounds of what is visible in the board according to current
