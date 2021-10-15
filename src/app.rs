@@ -536,7 +536,7 @@ impl Pizarra {
     /// of the drawing increases
     pub fn zoom_out(&mut self) {
         log::debug!("zoom_out()");
-        self.transform.zoom(0.5, self.dimensions);
+        self.transform = self.transform.zoom(0.5, self.dimensions);
     }
 
     pub fn scroll_up(&mut self) {
@@ -804,6 +804,15 @@ mod tests {
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(2.24, 4.0));
 
         assert_eq!(app.storage.shape_count(), 0);
+    }
+
+    #[test]
+    fn zoom_out_is_plugged() {
+        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
+
+        app.zoom_out();
+
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-80.0, -60.0), Vec2DWorld::new(80.0, 60.0)]);
     }
 
     #[test]
@@ -1087,7 +1096,13 @@ mod tests {
 
     #[test]
     fn resize_screen_keeps_center() {
-        assert!(false);
+        let mut app = Pizarra::new(Vec2DScreen::new(100.0, 100.0));
+
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-50.0, -50.0), Vec2DWorld::new(50.0, 50.0)]);
+
+        app.resize(Vec2DScreen::new(200.0, 300.0));
+
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-100.0, -150.0), Vec2DWorld::new(100.0, 150.0)]);
     }
 
     #[test]

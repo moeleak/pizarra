@@ -35,8 +35,6 @@ impl Default for Transform {
     }
 }
 
-
-
 impl Transform {
     fn new(xx: f64, xy: f64, x0: f64, yx: f64, yy: f64, y0: f64) -> Transform {
         Transform {
