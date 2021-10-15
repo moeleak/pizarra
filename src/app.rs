@@ -1086,6 +1086,11 @@ mod tests {
     }
 
     #[test]
+    fn resize_screen_keeps_center() {
+        assert!(false);
+    }
+
+    #[test]
     #[ignore]
     fn esc_clears_current_shape() {
         assert!(false, "pressing the esc button should clear the current shape");
