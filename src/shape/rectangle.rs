@@ -1,4 +1,4 @@
-use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
+use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::draw_commands::DrawCommand;
 use crate::color::Color;
 use crate::transform::Transform;
@@ -6,13 +6,13 @@ use crate::transform::Transform;
 use super::{ShapeBuilder, ShapeFinished, path::{PathCommand, Path}};
 
 pub struct AxisAlignedRectangleBuilder {
-    corners: [Vec2DDrawing; 4],
+    corners: [Vec2DWorld; 4],
     stroke: f64,
     color: Color,
 }
 
 impl AxisAlignedRectangleBuilder {
-    pub fn start(color: Color, initial: Vec2DDrawing, stroke: f64) -> AxisAlignedRectangleBuilder {
+    pub fn start(color: Color, initial: Vec2DWorld, stroke: f64) -> AxisAlignedRectangleBuilder {
         AxisAlignedRectangleBuilder {
             corners: [initial; 4],
             stroke,
@@ -20,12 +20,12 @@ impl AxisAlignedRectangleBuilder {
         }
     }
 
-    pub fn all_four_corners(&self) -> [Vec2DDrawing; 4] {
+    pub fn all_four_corners(&self) -> [Vec2DWorld; 4] {
         self.corners
     }
 }
 
-fn draw_commands(corners: [Vec2DDrawing; 4]) -> Vec<PathCommand> {
+fn draw_commands(corners: [Vec2DWorld; 4]) -> Vec<PathCommand> {
     let mut commands = Vec::with_capacity(5);
     let mut points_iter = corners.iter().cycle().take(5);
 
@@ -42,9 +42,9 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
 
         self.corners = [
             first_point,
-            t.to_storage_coordinates(Vec2DScreen::new(pos.x, first_point_screen.y)),
-            t.to_storage_coordinates(pos),
-            t.to_storage_coordinates(Vec2DScreen::new(first_point_screen.x, pos.y)),
+            t.to_world_coordinates(Vec2DScreen::new(pos.x, first_point_screen.y)),
+            t.to_world_coordinates(pos),
+            t.to_world_coordinates(Vec2DScreen::new(first_point_screen.x, pos.y)),
         ];
     }
 
@@ -79,7 +79,7 @@ mod tests {
         let b: Vec2DScreen = (10.0, 10.0).into();
         let t: Transform = Default::default();
 
-        let mut rect = AxisAlignedRectangleBuilder::start(Default::default(), t.to_storage_coordinates(a), 1.0);
+        let mut rect = AxisAlignedRectangleBuilder::start(Default::default(), t.to_world_coordinates(a), 1.0);
 
         rect.handle_mouse_moved(b, t);
 
@@ -88,11 +88,11 @@ mod tests {
             color: Default::default(),
             thickness: 1.0,
             commands: vec![
-                PathCommand::MoveTo(Vec2DDrawing::new(4.0, 5.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(10.0, 5.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(10.0, 10.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(4.0, 10.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(4.0, 5.0)),
+                PathCommand::MoveTo(Vec2DWorld::new(4.0, 5.0)),
+                PathCommand::LineTo(Vec2DWorld::new(10.0, 5.0)),
+                PathCommand::LineTo(Vec2DWorld::new(10.0, 10.0)),
+                PathCommand::LineTo(Vec2DWorld::new(4.0, 10.0)),
+                PathCommand::LineTo(Vec2DWorld::new(4.0, 5.0)),
             ],
         });
 
@@ -103,11 +103,11 @@ mod tests {
                     color: Default::default(),
                     thickness: 1.0,
                     commands: vec![
-                        PathCommand::MoveTo(Vec2DDrawing::new(4.0, 5.0)),
-                        PathCommand::LineTo(Vec2DDrawing::new(10.0, 5.0)),
-                        PathCommand::LineTo(Vec2DDrawing::new(10.0, 10.0)),
-                        PathCommand::LineTo(Vec2DDrawing::new(4.0, 10.0)),
-                        PathCommand::LineTo(Vec2DDrawing::new(4.0, 5.0)),
+                        PathCommand::MoveTo(Vec2DWorld::new(4.0, 5.0)),
+                        PathCommand::LineTo(Vec2DWorld::new(10.0, 5.0)),
+                        PathCommand::LineTo(Vec2DWorld::new(10.0, 10.0)),
+                        PathCommand::LineTo(Vec2DWorld::new(4.0, 10.0)),
+                        PathCommand::LineTo(Vec2DWorld::new(4.0, 5.0)),
                     ],
                 });
             }

@@ -7,7 +7,7 @@ use crate::storage::Storage;
 use crate::shape::{Shape, ShapeType, ShapeFinished, ShapeBuilder};
 use crate::color::Color;
 use crate::action::Action;
-use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
+use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::transform::Transform;
 use crate::consts::{DEFAULT_THICKNESS, TOUCH_RADIUS};
 use crate::deserialize;
@@ -150,14 +150,14 @@ impl Pizarra {
     }
 
     fn handle_tool_button_pressed(&mut self, point: Vec2DScreen) -> ShouldRedraw {
-        let transformed_point = self.transform.to_storage_coordinates(point);
+        let transformed_point = self.transform.to_world_coordinates(point);
 
         match self.selected_tool {
             SelectedTool::Shape(shape) => {
                 if let Some(shape) = self.current_shape.as_mut() {
                     shape.handle_button_pressed(point, self.transform);
                 } else {
-                    let new_shape = shape.start(self.selected_color.with_alpha(self.alpha), transformed_point, self.stroke * 1.0 / self.transform.scale_factor());
+                    let new_shape = shape.start(self.selected_color.with_alpha(self.alpha), transformed_point, self.transform.to_world_units(self.stroke));
 
                     self.current_shape = Some(new_shape);
                 }
@@ -166,7 +166,7 @@ impl Pizarra {
             },
             SelectedTool::Eraser => {
                 let deleted_shape = self.storage
-                    .query_circle(transformed_point, self.erase_radius / self.transform.scale_factor())
+                    .query_circle(transformed_point, self.transform.to_world_units(self.erase_radius))
                     .map(|id| self.storage.remove(id))
                     .flatten();
 
@@ -182,7 +182,7 @@ impl Pizarra {
     }
 
     fn handle_tool_button_released(&mut self, point: Vec2DScreen) -> Action {
-        let transformed_point = self.transform.to_storage_coordinates(point);
+        let transformed_point = self.transform.to_world_coordinates(point);
 
         match self.selected_tool {
             SelectedTool::Shape(_shape) => {
@@ -204,7 +204,7 @@ impl Pizarra {
             },
             SelectedTool::Eraser => {
                 let deleted_shape = self.storage
-                    .query_circle(transformed_point, self.erase_radius / self.transform.scale_factor())
+                    .query_circle(transformed_point, self.transform.to_world_units(self.erase_radius))
                     .map(|id| self.storage.remove(id))
                     .flatten();
 
@@ -222,7 +222,7 @@ impl Pizarra {
     }
 
     fn handle_tool_mouse_move(&mut self, point: Vec2DScreen) -> ShouldRedraw {
-        let transformed_point = self.transform.to_storage_coordinates(point);
+        let transformed_point = self.transform.to_world_coordinates(point);
 
         match self.selected_tool {
             SelectedTool::Shape(_shape_type) => {
@@ -235,7 +235,7 @@ impl Pizarra {
             },
             SelectedTool::Eraser => {
                 let deleted_shape = self.storage
-                    .query_circle(transformed_point, self.erase_radius / self.transform.scale_factor())
+                    .query_circle(transformed_point, self.transform.to_world_units(self.erase_radius))
                     .map(|id| self.storage.remove(id))
                     .flatten();
 
@@ -278,24 +278,24 @@ impl Pizarra {
 
     /// Move the canvas by this offset
     fn translate(&mut self, delta: Vec2DScreen) {
-        self.transform.translate_screen(delta);
+        self.transform = self.transform.translate(delta);
     }
 
     /// Compute the bounds of what is visible in the board according to current
     /// offset, zoom level and rotation. Return value is an array of the
     /// top-left, top-right, bottom-right, and bottom-left corners.
-    fn visible_extent(&self) -> [Vec2DDrawing; 4] {
+    fn visible_extent(&self) -> [Vec2DWorld; 4] {
         [
-            self.transform.to_storage_coordinates(Vec2DScreen::new(0.0, 0.0)),
-            self.transform.to_storage_coordinates(Vec2DScreen::new(self.dimensions.x, 0.0)),
-            self.transform.to_storage_coordinates(self.dimensions),
-            self.transform.to_storage_coordinates(Vec2DScreen::new(0.0, self.dimensions.y)),
+            self.transform.to_world_coordinates(Vec2DScreen::new(0.0, 0.0)),
+            self.transform.to_world_coordinates(Vec2DScreen::new(self.dimensions.x, 0.0)),
+            self.transform.to_world_coordinates(self.dimensions),
+            self.transform.to_world_coordinates(Vec2DScreen::new(0.0, self.dimensions.y)),
         ]
     }
 
     /// return the axis-aligned bounding box of the visible portion of the
     /// screen.
-    fn visible_bbox(&self) -> [Vec2DDrawing; 2] {
+    fn visible_bbox(&self) -> [Vec2DWorld; 2] {
         bbox_from_points(self.visible_extent().iter().copied())
     }
 }
@@ -362,7 +362,7 @@ impl Pizarra {
         let bbox = if let Some(bbox) = self.get_bounds() {
             bbox
         } else {
-            [Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(0.0, 0.0)]
+            [Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(0.0, 0.0)]
         };
 
         self.storage.draw_commands(bbox)
@@ -529,14 +529,14 @@ impl Pizarra {
     /// of the drawing gets reduced
     pub fn zoom_in(&mut self) {
         log::debug!("zoom_in()");
-        self.transform.zoom_in(2.0, self.dimensions);
+        self.transform = self.transform.zoom(2.0, self.dimensions);
     }
 
     /// Zooms out the current view, so objects are smaller and the visible portion
     /// of the drawing increases
     pub fn zoom_out(&mut self) {
         log::debug!("zoom_out()");
-        self.transform.zoom_out(2.0, self.dimensions);
+        self.transform.zoom(0.5, self.dimensions);
     }
 
     pub fn scroll_up(&mut self) {
@@ -647,7 +647,7 @@ impl Pizarra {
     }
 
     /// Returns the bounding box that contains all the shapes in the drawing
-    pub fn get_bounds(&self) -> Option<[Vec2DDrawing; 2]> {
+    pub fn get_bounds(&self) -> Option<[Vec2DWorld; 2]> {
         self.storage.get_bounds()
     }
 
@@ -709,11 +709,11 @@ mod tests {
         assert_eq!(commands[0], DrawCommand::Path {
             color: Default::default(),
             commands: vec![
-                MoveTo(Vec2DDrawing { x: -40.0, y: -30.0 }),
+                MoveTo(Vec2DWorld { x: -40.0, y: -30.0 }),
                 CurveTo(CubicBezierCurve {
-                    pt1: Vec2DDrawing { x: -39.666666666666664, y: -30.0 },
-                    pt2: Vec2DDrawing { x: -39.333333333333336, y: -30.0 },
-                    to: Vec2DDrawing { x: -39.0, y: -30.0 }
+                    pt1: Vec2DWorld { x: -39.666666666666664, y: -30.0 },
+                    pt2: Vec2DWorld { x: -39.333333333333336, y: -30.0 },
+                    to: Vec2DWorld { x: -39.0, y: -30.0 }
                 }),
             ],
             thickness: DEFAULT_THICKNESS,
@@ -739,11 +739,11 @@ mod tests {
         assert_eq!(commands[0], DrawCommand::Path {
             color: Default::default(),
             commands: vec![
-                MoveTo(Vec2DDrawing { x: -20.0, y: -15.0 }),
+                MoveTo(Vec2DWorld { x: -20.0, y: -15.0 }),
                 CurveTo(CubicBezierCurve {
-                    pt1: Vec2DDrawing { x: -19.833333333333332, y: -15.0 },
-                    pt2: Vec2DDrawing { x: -19.666666666666668, y: -15.0 },
-                    to: Vec2DDrawing { x: -19.5, y: -15.0 }
+                    pt1: Vec2DWorld { x: -19.833333333333332, y: -15.0 },
+                    pt2: Vec2DWorld { x: -19.666666666666668, y: -15.0 },
+                    to: Vec2DWorld { x: -19.5, y: -15.0 }
                 }),
             ],
             thickness: DEFAULT_THICKNESS/2.0,
@@ -905,35 +905,35 @@ mod tests {
     fn r#move() {
         let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-40.0, -30.0), Vec2DWorld::new(40.0, 30.0)]);
 
         app.handle_mouse_button_pressed(MouseButton::Middle, Vec2DScreen::new(0.0, 0.0));
         app.handle_mouse_button_released(MouseButton::Middle, Vec2DScreen::new(-1.0, 0.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-39.0, -30.0), Vec2DDrawing::new(41.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-39.0, -30.0), Vec2DWorld::new(41.0, 30.0)]);
     }
 
     #[test]
     fn move_while_in_zoom_is_coherent() {
         let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-40.0, -30.0), Vec2DWorld::new(40.0, 30.0)]);
 
         app.zoom_in();
 
-        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-20.0, -15.0), Vec2DDrawing::new(20.0, 15.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-20.0, -15.0), Vec2DWorld::new(20.0, 15.0)]);
 
         app.handle_mouse_button_pressed(MouseButton::Middle, Vec2DScreen::new(0.0, 0.0));
         app.handle_mouse_button_released(MouseButton::Middle, Vec2DScreen::new(-1.0, 0.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-19.5, -15.0), Vec2DDrawing::new(20.5, 15.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-19.5, -15.0), Vec2DWorld::new(20.5, 15.0)]);
     }
 
     #[test]
     fn move_while_drawing() {
         let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-40.0, -30.0), Vec2DWorld::new(40.0, 30.0)]);
 
         app.set_tool(SelectedTool::Shape(ShapeType::Path));
 
@@ -945,7 +945,7 @@ mod tests {
         app.handle_mouse_move(Vec2DScreen::new(40.0, 10.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(40.0, 10.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-50.0, -30.0), Vec2DDrawing::new(30.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-50.0, -30.0), Vec2DWorld::new(30.0, 30.0)]);
         assert_eq!(app.storage.shape_count(), 1);
 
         let commands = app.draw_commands_for_screen();
@@ -956,16 +956,16 @@ mod tests {
             color: Default::default(),
             thickness: DEFAULT_THICKNESS,
             commands: vec![
-                MoveTo(Vec2DDrawing { x: -30.0, y: -20.0 }),
+                MoveTo(Vec2DWorld { x: -30.0, y: -20.0 }),
                 CurveTo(CubicBezierCurve {
-                    pt1: Vec2DDrawing { x: -26.666666666666668, y: -20.0 },
-                    pt2: Vec2DDrawing { x: -23.333333333333332, y: -20.0 },
-                    to: Vec2DDrawing { x: -20.0, y: -20.0 }
+                    pt1: Vec2DWorld { x: -26.666666666666668, y: -20.0 },
+                    pt2: Vec2DWorld { x: -23.333333333333332, y: -20.0 },
+                    to: Vec2DWorld { x: -20.0, y: -20.0 }
                 }),
                 CurveTo(CubicBezierCurve {
-                    pt1: Vec2DDrawing { x: -16.666666666666668, y: -20.0 },
-                    pt2: Vec2DDrawing { x: -13.333333333333332, y: -20.0 },
-                    to: Vec2DDrawing { x: -10.0, y: -20.0 }
+                    pt1: Vec2DWorld { x: -16.666666666666668, y: -20.0 },
+                    pt2: Vec2DWorld { x: -13.333333333333332, y: -20.0 },
+                    to: Vec2DWorld { x: -10.0, y: -20.0 }
                 }),
             ],
         });
@@ -975,15 +975,15 @@ mod tests {
     fn zoom_must_be_idempotent() {
         let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-40.0, -30.0), Vec2DDrawing::new(40.0, 30.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-40.0, -30.0), Vec2DWorld::new(40.0, 30.0)]);
 
         app.zoom_in();
 
-        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-20.0, -15.0), Vec2DDrawing::new(20.0, 15.0)]);
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-20.0, -15.0), Vec2DWorld::new(20.0, 15.0)]);
 
         app.zoom_in();
 
-        assert_eq!(app.visible_bbox(), [Vec2DDrawing::new(-10.0, -7.5), Vec2DDrawing::new(10.0, 7.5)]);
+        assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-10.0, -7.5), Vec2DWorld::new(10.0, 7.5)]);
     }
 
     #[test]

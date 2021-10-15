@@ -12,7 +12,7 @@ pub struct Vec2D {
 
 /// A point in the storage as X Y coordinates.
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub struct Vec2DDrawing {
+pub struct Vec2DWorld {
     pub x: f64,
     pub y: f64,
 }
@@ -55,15 +55,15 @@ pub trait Point: Sized + Copy + PartialEq +Add<Output=Self> + Sub<Output=Self> +
         )
     }
 
-    fn min(self, other: Self) -> Vec2DDrawing {
-        Vec2DDrawing {
+    fn min(self, other: Self) -> Vec2DWorld {
+        Vec2DWorld {
             x: self.x().min(other.x()),
             y: self.y().min(other.y()),
         }
     }
 
-    fn max(self, other: Self) -> Vec2DDrawing {
-        Vec2DDrawing {
+    fn max(self, other: Self) -> Vec2DWorld {
+        Vec2DWorld {
             x: self.x().max(other.x()),
             y: self.y().max(other.y()),
         }
@@ -102,9 +102,9 @@ impl Point for Vec2D {
     }
 }
 
-impl Point for Vec2DDrawing {
+impl Point for Vec2DWorld {
     fn new(x: f64, y: f64) -> Self {
-        Vec2DDrawing {
+        Vec2DWorld {
             x, y,
         }
     }
@@ -178,44 +178,44 @@ impl Div<f64> for Vec2D {
     }
 }
 
-impl Mul<f64> for Vec2DDrawing {
-    type Output = Vec2DDrawing;
+impl Mul<f64> for Vec2DWorld {
+    type Output = Vec2DWorld;
 
     fn mul(self, rhs: f64) -> Self::Output {
-        Vec2DDrawing {
+        Vec2DWorld {
             x: self.x * rhs,
             y: self.y * rhs,
         }
     }
 }
 
-impl Add for Vec2DDrawing {
-    type Output = Vec2DDrawing;
+impl Add for Vec2DWorld {
+    type Output = Vec2DWorld;
 
-    fn add(self, rhs: Vec2DDrawing) -> Vec2DDrawing {
-        Vec2DDrawing {
+    fn add(self, rhs: Vec2DWorld) -> Vec2DWorld {
+        Vec2DWorld {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
         }
     }
 }
 
-impl Sub for Vec2DDrawing {
-    type Output = Vec2DDrawing;
+impl Sub for Vec2DWorld {
+    type Output = Vec2DWorld;
 
-    fn sub(self, rhs: Vec2DDrawing) -> Vec2DDrawing {
-        Vec2DDrawing {
+    fn sub(self, rhs: Vec2DWorld) -> Vec2DWorld {
+        Vec2DWorld {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
         }
     }
 }
 
-impl Div<f64> for Vec2DDrawing {
-    type Output = Vec2DDrawing;
+impl Div<f64> for Vec2DWorld {
+    type Output = Vec2DWorld;
 
-    fn div(self, rhs: f64) -> Vec2DDrawing {
-        Vec2DDrawing {
+    fn div(self, rhs: f64) -> Vec2DWorld {
+        Vec2DWorld {
             x: self.x / rhs,
             y: self.y / rhs,
         }
@@ -266,21 +266,21 @@ impl Div<f64> for Vec2DScreen {
     }
 }
 
-impl From<[f64; 2]> for Vec2DDrawing {
-    fn from(other: [f64; 2]) -> Vec2DDrawing {
-        Vec2DDrawing::new(other[0], other[1])
+impl From<[f64; 2]> for Vec2DWorld {
+    fn from(other: [f64; 2]) -> Vec2DWorld {
+        Vec2DWorld::new(other[0], other[1])
     }
 }
 
-impl From<(f64, f64)> for Vec2DDrawing {
-    fn from(other: (f64, f64)) -> Vec2DDrawing {
-        Vec2DDrawing::new(other.0, other.1)
+impl From<(f64, f64)> for Vec2DWorld {
+    fn from(other: (f64, f64)) -> Vec2DWorld {
+        Vec2DWorld::new(other.0, other.1)
     }
 }
 
-impl From<Vec2D> for Vec2DDrawing {
-    fn from(point: Vec2D) -> Vec2DDrawing {
-        Vec2DDrawing {
+impl From<Vec2D> for Vec2DWorld {
+    fn from(point: Vec2D) -> Vec2DWorld {
+        Vec2DWorld {
             x: point.x,
             y: point.y,
         }
@@ -314,7 +314,7 @@ impl fmt::Display for Vec2D {
     }
 }
 
-impl fmt::Display for Vec2DDrawing {
+impl fmt::Display for Vec2DWorld {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} {}", self.x, self.y)
     }
@@ -332,8 +332,8 @@ mod tests {
 
     #[test]
     fn distance() {
-        let p1 = Vec2DDrawing::new(0.0, 0.0);
-        let p2 = Vec2DDrawing::new(3.0, 4.0);
+        let p1 = Vec2DWorld::new(0.0, 0.0);
+        let p2 = Vec2DWorld::new(3.0, 4.0);
 
         assert_eq!(p1.distance(p2), 5.0);
     }

@@ -3,7 +3,7 @@ use std::fmt;
 
 use crate::draw_commands::DrawCommand;
 use crate::color::Color;
-use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
+use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::transform::Transform;
 use crate::geom::{segment_intersects_circle, bezier_intersects_circle};
 
@@ -11,7 +11,7 @@ use super::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
 
 /// Given two points return the points in their 1/3 and 2/3 of the segment from
 /// a to b.
-fn thirds(a: Vec2DDrawing, b: Vec2DDrawing) -> (Vec2DDrawing, Vec2DDrawing) {
+fn thirds(a: Vec2DWorld, b: Vec2DWorld) -> (Vec2DWorld, Vec2DWorld) {
     let v = b - a;
 
     (v*1.0/3.0 + a, v*2.0/3.0 + a)
@@ -21,7 +21,7 @@ fn thirds(a: Vec2DDrawing, b: Vec2DDrawing) -> (Vec2DDrawing, Vec2DDrawing) {
 /// of the angle described by the three given points.
 ///
 /// B is the vertex of the angle. The returned vector points towads C
-fn bisector(A: Vec2DDrawing, B: Vec2DDrawing, C: Vec2DDrawing) -> Vec2DDrawing {
+fn bisector(A: Vec2DWorld, B: Vec2DWorld, C: Vec2DWorld) -> Vec2DWorld {
     let Ap = (A - B) * -1.0 + B;
     let (a, b, c) = (B.distance(C), A.distance(C), A.distance(B));
     let incenter = (Ap * a + B * b + C * c) / (a + b + c);
@@ -36,7 +36,7 @@ fn bisector(A: Vec2DDrawing, B: Vec2DDrawing, C: Vec2DDrawing) -> Vec2DDrawing {
 ///
 /// This means that the command at the last position before the operation must
 /// be replaced with the one provided first by this function.
-fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Vec2DDrawing) -> (PathCommand, Option<PathCommand>) {
+fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Vec2DWorld) -> (PathCommand, Option<PathCommand>) {
     match last {
         PathCommand::MoveTo(p) | PathCommand::LineTo(p) => {
             // Second point, put pt1 and pt2 at 1/3 and 2/3 of the
@@ -89,7 +89,7 @@ fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Vec2DDrawing) ->
     }
 }
 
-fn add_point(commands: &mut Vec<PathCommand>, pos: Vec2DDrawing) {
+fn add_point(commands: &mut Vec<PathCommand>, pos: Vec2DWorld) {
     let sub = commands
         .len()
         .checked_sub(2)
@@ -110,11 +110,11 @@ fn add_point(commands: &mut Vec<PathCommand>, pos: Vec2DDrawing) {
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct CubicBezierCurve {
     /// The (x, y) coordinates of the first control point.
-    pub pt1: Vec2DDrawing,
+    pub pt1: Vec2DWorld,
     /// The (x, y) coordinates of the second control point.
-    pub pt2: Vec2DDrawing,
+    pub pt2: Vec2DWorld,
     /// The (x, y) coordinates of the end point of this path segment.
-    pub to: Vec2DDrawing,
+    pub to: Vec2DWorld,
 }
 
 impl CubicBezierCurve {
@@ -125,8 +125,8 @@ impl CubicBezierCurve {
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum PathCommand {
-    MoveTo(Vec2DDrawing),
-    LineTo(Vec2DDrawing),
+    MoveTo(Vec2DWorld),
+    LineTo(Vec2DWorld),
     CurveTo(CubicBezierCurve),
 }
 
@@ -172,7 +172,7 @@ impl PathCommand {
     }
 
     /// returns the point this path segment leads to
-    pub fn to(&self) -> Vec2DDrawing {
+    pub fn to(&self) -> Vec2DWorld {
         match *self {
             PathCommand::MoveTo(p) => p,
             PathCommand::LineTo(p) => p,
@@ -180,7 +180,7 @@ impl PathCommand {
         }
     }
 
-    pub fn intersects_circle(&self, center: Vec2DDrawing, radius: f64, prev: Option<Vec2DDrawing>) -> bool {
+    pub fn intersects_circle(&self, center: Vec2DWorld, radius: f64, prev: Option<Vec2DWorld>) -> bool {
         match *self {
             PathCommand::MoveTo(p) => p.distance(center) < radius,
             PathCommand::LineTo(p) => {
@@ -211,7 +211,7 @@ pub struct PathBuilder {
 }
 
 impl PathBuilder {
-    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> PathBuilder {
+    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> PathBuilder {
         let mut commands = Vec::with_capacity(1000);
 
         commands.push(PathCommand::MoveTo(initial));
@@ -242,7 +242,7 @@ impl ShapeBuilder for PathBuilder {
     //    its two control points but the last one sits in the segment between
     //    the last two points.
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
-        add_point(&mut self.commands, t.to_storage_coordinates(pos));
+        add_point(&mut self.commands, t.to_world_coordinates(pos));
     }
 
     fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform) { }
@@ -287,17 +287,17 @@ impl ShapeStored for Path {
     }
 
     // The bounding box of the path needs to consider the beizer handles
-    fn bbox(&self) -> [Vec2DDrawing; 2] {
+    fn bbox(&self) -> [Vec2DWorld; 2] {
         let bbox = self.commands.iter().fold([
-            Vec2DDrawing::new(std::f64::INFINITY, std::f64::INFINITY), // bottom-left corner
-            Vec2DDrawing::new(std::f64::NEG_INFINITY, std::f64::NEG_INFINITY), // top right corner
+            Vec2DWorld::new(std::f64::INFINITY, std::f64::INFINITY), // bottom-left corner
+            Vec2DWorld::new(std::f64::NEG_INFINITY, std::f64::NEG_INFINITY), // top right corner
         ], |acc, cmd| {
             [
-                Vec2DDrawing::new(
+                Vec2DWorld::new(
                     cmd.min_x().min(acc[0].x),
                     cmd.min_y().min(acc[0].y),
                 ),
-                Vec2DDrawing::new(
+                Vec2DWorld::new(
                     cmd.max_x().max(acc[1].x),
                     cmd.max_y().max(acc[1].y),
                 ),
@@ -316,7 +316,7 @@ impl ShapeStored for Path {
         ShapeType::Path
     }
 
-    fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
+    fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool {
         let mut last_point = None;
 
         for c in self.commands.iter() {
@@ -340,13 +340,13 @@ mod tests {
     use super::*;
 
     use crate::color::Color;
-    use crate::point::Vec2DDrawing;
+    use crate::point::Vec2DWorld;
 
     #[test]
     fn test_thirds() {
-        assert_eq!(thirds(Vec2DDrawing::new(3.0, 0.0), Vec2DDrawing::new(6.0, 0.0)), (Vec2DDrawing::new(4.0, 0.0), Vec2DDrawing::new(5.0, 0.0)));
-        assert_eq!(thirds(Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(6.0, 6.0)), (Vec2DDrawing::new(2.0, 2.0), Vec2DDrawing::new(4.0, 4.0)));
-        assert_eq!(thirds(Vec2DDrawing::new(-15.0, 30.0), Vec2DDrawing::new(-18.0, 27.0)), (Vec2DDrawing::new(-16.0, 29.0), Vec2DDrawing::new(-17.0, 28.0)));
+        assert_eq!(thirds(Vec2DWorld::new(3.0, 0.0), Vec2DWorld::new(6.0, 0.0)), (Vec2DWorld::new(4.0, 0.0), Vec2DWorld::new(5.0, 0.0)));
+        assert_eq!(thirds(Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(6.0, 6.0)), (Vec2DWorld::new(2.0, 2.0), Vec2DWorld::new(4.0, 4.0)));
+        assert_eq!(thirds(Vec2DWorld::new(-15.0, 30.0), Vec2DWorld::new(-18.0, 27.0)), (Vec2DWorld::new(-16.0, 29.0), Vec2DWorld::new(-17.0, 28.0)));
     }
 
     #[test]
@@ -354,7 +354,7 @@ mod tests {
         let a = (-2.0, 3.0).into();
         let b = (1.0, 6.0).into();
         let c = (5.0, 2.0).into();
-        let expected_bisector = Vec2DDrawing::new(1.0, 0.0);
+        let expected_bisector = Vec2DWorld::new(1.0, 0.0);
         let given_bisector = bisector(a, b, c);
 
         assert!(expected_bisector.x - given_bisector.x.abs() < 0.001);
@@ -364,52 +364,52 @@ mod tests {
     #[test]
     fn test_bbox() {
         let line = Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(1.0, 0.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(0.0, 1.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(1.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(0.0, 1.0)),
         ], Color::green(), 4.0);
 
-        assert_eq!(line.bbox(), [Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(1.0, 1.0)]);
+        assert_eq!(line.bbox(), [Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(1.0, 1.0)]);
     }
 
     #[test]
     fn test_bbox_twisted_line() {
         let line = Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(-12.0, -1.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(-5.0, 0.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(-2.0, 7.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(2.0, -8.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(-12.0, -1.0)),
+            PathCommand::LineTo(Vec2DWorld::new(-5.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(-2.0, 7.0)),
+            PathCommand::LineTo(Vec2DWorld::new(2.0, -8.0)),
         ], Color::green(), 1.0);
 
-        assert_eq!(line.bbox(), [Vec2DDrawing::new(-12.0, -8.0), Vec2DDrawing::new(2.0, 7.0)]);
+        assert_eq!(line.bbox(), [Vec2DWorld::new(-12.0, -8.0), Vec2DWorld::new(2.0, 7.0)]);
     }
 
     #[test]
     fn can_delete_single_point_paths() {
         let poly = Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
         ], Color::green(), 1.0);
 
-        assert!(poly.intersects_circle(Vec2DDrawing::new(0.0, 0.0), 10.0));
+        assert!(poly.intersects_circle(Vec2DWorld::new(0.0, 0.0), 10.0));
     }
 
     #[test]
     fn can_delete_beizer_curves() {
         let path = Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(33.0, 135.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(33.0, 135.0)),
             PathCommand::CurveTo(CubicBezierCurve {
-                pt1: Vec2DDrawing::new(50.0, 200.0),
-                pt2: Vec2DDrawing::new(171.0, 70.0),
-                to: Vec2DDrawing::new(196.0, 113.0),
+                pt1: Vec2DWorld::new(50.0, 200.0),
+                pt2: Vec2DWorld::new(171.0, 70.0),
+                to: Vec2DWorld::new(196.0, 113.0),
             }),
         ], Default::default(), 1.0);
 
         let cases = [
-             (Vec2DDrawing::new(37.0, 129.0), true),
-             (Vec2DDrawing::new(81.0, 154.0), true),
-             (Vec2DDrawing::new(127.0, 109.0), true),
-             (Vec2DDrawing::new(74.0, 90.0), false),
-             (Vec2DDrawing::new(147.0, 165.0), false),
-             (Vec2DDrawing::new(177.0, 121.0), false),
+             (Vec2DWorld::new(37.0, 129.0), true),
+             (Vec2DWorld::new(81.0, 154.0), true),
+             (Vec2DWorld::new(127.0, 109.0), true),
+             (Vec2DWorld::new(74.0, 90.0), false),
+             (Vec2DWorld::new(147.0, 165.0), false),
+             (Vec2DWorld::new(177.0, 121.0), false),
         ];
 
         for (center, result) in cases {
@@ -420,17 +420,17 @@ mod tests {
     #[test]
     fn can_delete_straight_segments() {
         let path = Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(33.0, 135.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(196.0, 113.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(33.0, 135.0)),
+            PathCommand::LineTo(Vec2DWorld::new(196.0, 113.0)),
         ], Default::default(), 1.0);
 
         let cases = [
-             (Vec2DDrawing::new(37.0, 129.0), true),
-             (Vec2DDrawing::new(81.0, 154.0), false),
-             (Vec2DDrawing::new(127.0, 109.0), true),
-             (Vec2DDrawing::new(74.0, 90.0), false),
-             (Vec2DDrawing::new(147.0, 165.0), false),
-             (Vec2DDrawing::new(177.0, 121.0), true),
+             (Vec2DWorld::new(37.0, 129.0), true),
+             (Vec2DWorld::new(81.0, 154.0), false),
+             (Vec2DWorld::new(127.0, 109.0), true),
+             (Vec2DWorld::new(74.0, 90.0), false),
+             (Vec2DWorld::new(147.0, 165.0), false),
+             (Vec2DWorld::new(177.0, 121.0), true),
         ];
 
         for (center, result) in cases {

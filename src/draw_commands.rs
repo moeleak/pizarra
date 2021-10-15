@@ -1,4 +1,4 @@
-use crate::point::Vec2DDrawing;
+use crate::point::Vec2DWorld;
 use crate::color::Color;
 use crate::shape::path::PathCommand;
 use crate::geom::Angle;
@@ -13,14 +13,14 @@ pub enum DrawCommand {
     },
 
     Circle {
-        center: Vec2DDrawing,
+        center: Vec2DWorld,
         radius: f64,
         color: Color,
         thickness: f64,
     },
 
     Ellipse {
-        center: Vec2DDrawing,
+        center: Vec2DWorld,
         semimajor: f64,
         semiminor: f64,
         angle: Angle,

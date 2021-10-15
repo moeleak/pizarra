@@ -12,7 +12,7 @@ use crate::storage::Storage;
 use crate::shape::{ShapeStored, path::Path, ellipse::Ellipse};
 use crate::color::Color;
 use crate::consts::DEFAULT_THICKNESS;
-use crate::point::{Point, Vec2DDrawing};
+use crate::point::{Point, Vec2DWorld};
 use crate::geom::Angle;
 
 mod path;
@@ -260,12 +260,12 @@ impl FromStr for Color {
     }
 }
 
-impl FromStr for Vec2DDrawing {
+impl FromStr for Vec2DWorld {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(captures) = POINT_REGEX.captures(s) {
-            Ok(Vec2DDrawing::new(
+            Ok(Vec2DWorld::new(
                 captures["x"].parse::<f64>()?,
                 captures["y"].parse::<f64>()?,
             ))
@@ -369,7 +369,7 @@ impl Deserialize for Ellipse {
 
         let angle: Angle = angle.parse()?;
 
-        let center = Vec2DDrawing::new(cx.parse()?, cy.parse()?);
+        let center = Vec2DWorld::new(cx.parse()?, cy.parse()?);
         let rx: f64 = rx.parse()?;
         let ry: f64 = ry.parse()?;
 
@@ -466,21 +466,21 @@ mod tests {
         } = line.draw_commands() {
             assert_eq!(color, Color::from_rgb(0.5390625, 0.8828125, 0.203125));
             assert_eq!(commands, vec![
-                PathCommand::MoveTo(Vec2DDrawing::new(147.570312, 40.121094)),
-                PathCommand::LineTo(Vec2DDrawing::new(146.9375, 40.121094)),
-                PathCommand::LineTo(Vec2DDrawing::new(145.296875, 40.460938)),
-                PathCommand::LineTo(Vec2DDrawing::new(142.519531, 41.710938)),
-                PathCommand::LineTo(Vec2DDrawing::new(139.613281, 43.304688)),
-                PathCommand::LineTo(Vec2DDrawing::new(138.097656, 44.894531)),
-                PathCommand::LineTo(Vec2DDrawing::new(137.339844, 46.714844)),
-                PathCommand::LineTo(Vec2DDrawing::new(138.097656, 47.621094)),
-                PathCommand::LineTo(Vec2DDrawing::new(139.992188, 47.851562)),
-                PathCommand::LineTo(Vec2DDrawing::new(142.898438, 47.621094)),
-                PathCommand::LineTo(Vec2DDrawing::new(146.179688, 47.167969)),
-                PathCommand::LineTo(Vec2DDrawing::new(150.097656, 47.964844)),
-                PathCommand::LineTo(Vec2DDrawing::new(151.738281, 49.667969)),
-                PathCommand::LineTo(Vec2DDrawing::new(152.496094, 51.714844)),
-                PathCommand::LineTo(Vec2DDrawing::new(152.875, 53.191406)),
+                PathCommand::MoveTo(Vec2DWorld::new(147.570312, 40.121094)),
+                PathCommand::LineTo(Vec2DWorld::new(146.9375, 40.121094)),
+                PathCommand::LineTo(Vec2DWorld::new(145.296875, 40.460938)),
+                PathCommand::LineTo(Vec2DWorld::new(142.519531, 41.710938)),
+                PathCommand::LineTo(Vec2DWorld::new(139.613281, 43.304688)),
+                PathCommand::LineTo(Vec2DWorld::new(138.097656, 44.894531)),
+                PathCommand::LineTo(Vec2DWorld::new(137.339844, 46.714844)),
+                PathCommand::LineTo(Vec2DWorld::new(138.097656, 47.621094)),
+                PathCommand::LineTo(Vec2DWorld::new(139.992188, 47.851562)),
+                PathCommand::LineTo(Vec2DWorld::new(142.898438, 47.621094)),
+                PathCommand::LineTo(Vec2DWorld::new(146.179688, 47.167969)),
+                PathCommand::LineTo(Vec2DWorld::new(150.097656, 47.964844)),
+                PathCommand::LineTo(Vec2DWorld::new(151.738281, 49.667969)),
+                PathCommand::LineTo(Vec2DWorld::new(152.496094, 51.714844)),
+                PathCommand::LineTo(Vec2DWorld::new(152.875, 53.191406)),
             ]);
             assert_eq!(thickness, 3.0);
         } else {
@@ -510,7 +510,7 @@ mod tests {
     fn test_parse_point() {
         let p = " 152.496094 51.714844 ";
 
-        assert_eq!(p.parse::<Vec2DDrawing>().unwrap(), Vec2DDrawing::new(152.496094, 51.714844));
+        assert_eq!(p.parse::<Vec2DWorld>().unwrap(), Vec2DWorld::new(152.496094, 51.714844));
     }
 
     #[test]
@@ -535,7 +535,7 @@ mod tests {
 
         match deserialized.draw_commands() {
             DrawCommand::Ellipse { center, semimajor, semiminor, angle, color, thickness } => {
-                assert_eq!(center, Vec2DDrawing::new(20.4, -30.5));
+                assert_eq!(center, Vec2DWorld::new(20.4, -30.5));
                 assert_eq!(semimajor, 5.6);
                 assert_eq!(semiminor, 3.5);
                 assert_eq!(angle.degrees(), 34.5);

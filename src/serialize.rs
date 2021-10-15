@@ -1,7 +1,7 @@
 use xml::writer::{EmitterConfig, XmlEvent, EventWriter};
 
 use crate::consts::EXPORT_PADDING;
-use crate::point::{Point, Vec2DDrawing};
+use crate::point::{Point, Vec2DWorld};
 use crate::draw_commands::DrawCommand;
 use crate::app::Pizarra;
 
@@ -79,7 +79,7 @@ impl Pizarra {
                 .perform_indent(true)
                 .create_writer(&mut output);
 
-            let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2DDrawing::new(EXPORT_PADDING*2.0, EXPORT_PADDING*2.0);
+            let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2DWorld::new(EXPORT_PADDING*2.0, EXPORT_PADDING*2.0);
             let width = svg_dimensions.x.to_string();
             let height = svg_dimensions.y.to_string();
             let min = bbox[0].min(bbox[1]);

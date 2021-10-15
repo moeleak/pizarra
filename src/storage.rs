@@ -3,7 +3,7 @@ use std::f64;
 
 use rstar::{RTree, RTreeObject, AABB, SelectionFunction, Envelope};
 
-use crate::point::{Point, Vec2DDrawing};
+use crate::point::{Point, Vec2DWorld};
 
 use super::shape::{Shape, ShapeId, ShapeStored};
 use super::draw_commands::DrawCommand;
@@ -45,12 +45,12 @@ impl SelectionFunction<Shape> for BBoxIdSelection {
 
 /// Handles delete from the storage by center and radius
 struct CenterAndRadiusSelection {
-    center: Vec2DDrawing,
+    center: Vec2DWorld,
     radius: f64,
 }
 
 impl CenterAndRadiusSelection {
-    fn new(center: Vec2DDrawing, radius: f64) -> CenterAndRadiusSelection {
+    fn new(center: Vec2DWorld, radius: f64) -> CenterAndRadiusSelection {
         CenterAndRadiusSelection {
             center, radius,
         }
@@ -148,7 +148,7 @@ impl Storage {
 
     /// Returns the id of a shape intersecting the circle described by center
     /// and radius, if any.
-    pub fn query_circle(&self, center: Vec2DDrawing, radius: f64) -> Option<ShapeId> {
+    pub fn query_circle(&self, center: Vec2DWorld, radius: f64) -> Option<ShapeId> {
         self.shapes.locate_with_selection_function(CenterAndRadiusSelection::new(center, radius)).next().map(|shape| shape.id())
     }
 
@@ -159,7 +159,7 @@ impl Storage {
 
     /// returns the draw commands necessary to paint the portion of the screen
     /// indicated by bbox.
-    fn query_commands(&self, bbox: [Vec2DDrawing; 2]) -> Vec<DrawCommand> {
+    fn query_commands(&self, bbox: [Vec2DWorld; 2]) -> Vec<DrawCommand> {
         let bbox = AABB::from_corners(bbox[0].to_a(), bbox[1].to_a());
         let mut commands: Vec<_> = self
             .shapes
@@ -175,29 +175,29 @@ impl Storage {
     /// gets all the draw commands necessary to paint the portion of the screen
     /// indicated by bbox. Commands are cached to improve the performance of
     /// continuously drawing on the same portion of the screen
-    pub fn draw_commands(&self, bbox: [Vec2DDrawing; 2]) -> Vec<DrawCommand> {
+    pub fn draw_commands(&self, bbox: [Vec2DWorld; 2]) -> Vec<DrawCommand> {
         self.query_commands(bbox)
     }
 
     /// Gets the bounding box that surrounds every shape drawn or returns None
     /// if there are no shapes
-    pub fn get_bounds(&self) -> Option<[Vec2DDrawing; 2]> {
+    pub fn get_bounds(&self) -> Option<[Vec2DWorld; 2]> {
         if self.shape_count() == 0 {
             return None;
         }
 
         Some(self.shapes.iter().map(|shape| {
             shape.envelope()
-        }).fold([Vec2DDrawing::new(f64::MAX, f64::MAX), Vec2DDrawing::new(f64::MIN, f64::MIN)], |acc, cur| {
-            let lower = Vec2DDrawing::from(cur.lower());
-            let upper = Vec2DDrawing::from(cur.upper());
+        }).fold([Vec2DWorld::new(f64::MAX, f64::MAX), Vec2DWorld::new(f64::MIN, f64::MIN)], |acc, cur| {
+            let lower = Vec2DWorld::from(cur.lower());
+            let upper = Vec2DWorld::from(cur.upper());
 
             [
-                Vec2DDrawing::new(
+                Vec2DWorld::new(
                     if lower.x < acc[0].x { lower.x } else { acc[0].x },
                     if lower.y < acc[0].y { lower.y } else { acc[0].y },
                 ),
-                Vec2DDrawing::new(
+                Vec2DWorld::new(
                     if upper.x > acc[1].x { upper.x } else { acc[1].x },
                     if upper.y > acc[1].y { upper.y } else { acc[1].y },
                 ),
@@ -229,16 +229,16 @@ mod tests {
     };
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;
-    use crate::point::Vec2DDrawing;
+    use crate::point::Vec2DWorld;
 
     #[test]
     fn add_shapes_at_zoom() {
         let mut storage = Storage::new();
         let shapes: Vec<Box<dyn ShapeStored>> = vec![
-            Box::new(Circle::from_parts(Vec2DDrawing::new(0.0, 0.0), 1.0, 1.0, Color::green())),
+            Box::new(Circle::from_parts(Vec2DWorld::new(0.0, 0.0), 1.0, 1.0, Color::green())),
             Box::new(Path::from_parts(vec![
-                PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
+                PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+                PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),
             ], Color::red(), 1.0)),
         ];
         let ids: Vec<_> = shapes.into_iter().map(|shape| {
@@ -255,19 +255,19 @@ mod tests {
     fn remove_line() {
         let mut storage = Storage::new();
         let line = Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(0.0, -1.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(0.0, 0.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(0.0, 1.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(0.0, -1.0)),
+            PathCommand::LineTo(Vec2DWorld::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),
+            PathCommand::LineTo(Vec2DWorld::new(0.0, 1.0)),
         ], Color::green(), 1.0);
 
         storage.add(Box::new(line));
 
-        assert!(storage.query_circle(Vec2DDrawing::new(0.5, -0.5), 0.5).is_none());
-        assert!(storage.query_circle(Vec2DDrawing::new(0.5, 0.5), 0.5).is_none());
+        assert!(storage.query_circle(Vec2DWorld::new(0.5, -0.5), 0.5).is_none());
+        assert!(storage.query_circle(Vec2DWorld::new(0.5, 0.5), 0.5).is_none());
 
-        assert_eq!(storage.query_circle(Vec2DDrawing::new(-0.25, -1.25), 0.5).unwrap(), ShapeId::from(1));
+        assert_eq!(storage.query_circle(Vec2DWorld::new(-0.25, -1.25), 0.5).unwrap(), ShapeId::from(1));
     }
 
     #[test]
@@ -277,12 +277,12 @@ mod tests {
         assert_eq!(storage.shape_count(), 0);
 
         let obj_to_remove = Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 0.0)),
         ], Color::green(), 1.0));
         let obj_to_interfere = Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 0.0)),
         ], Color::green(), 1.0));
 
         let id_to_remove = storage.add(obj_to_remove);
@@ -304,12 +304,12 @@ mod tests {
         assert_eq!(storage.shape_count(), 0);
 
         let obj_to_remove = Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 0.0)),
         ], Color::green(), 1.0));
         let obj_to_interfere = Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 0.0)),
         ], Color::green(), 1.0));
 
         let _id_to_interfere = storage.add(obj_to_interfere);
@@ -327,15 +327,15 @@ mod tests {
     #[test]
     fn erase_invalidates_cache() {
         let mut storage = Storage::new();
-        let bbox = [Vec2DDrawing::new(-40.0, -40.0), Vec2DDrawing::new(40.0, 40.0)];
+        let bbox = [Vec2DWorld::new(-40.0, -40.0), Vec2DWorld::new(40.0, 40.0)];
 
         storage.add(Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 0.0)),
         ], Color::green(), 4.0)));
         let id = storage.add(Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 1.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(0.0, 1.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),
         ], Color::green(), 4.0)));
 
         storage.remove(id);
@@ -343,8 +343,8 @@ mod tests {
         assert_eq!(storage.draw_commands(bbox), vec![DrawCommand::Path {
             color: Color::green(),
             commands: vec![
-                PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(1.0, 0.0)),
+                PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+                PathCommand::LineTo(Vec2DWorld::new(1.0, 0.0)),
             ],
             thickness: 4.0,
         }]);
@@ -357,30 +357,30 @@ mod tests {
         let shapes = vec![
             // in green the ones that go
             Box::new(Path::from_parts(vec![
-                PathCommand::MoveTo(Vec2DDrawing::new(-1.1, -1.1)),
-                PathCommand::LineTo(Vec2DDrawing::new(-1.1, 1.1)),
-                PathCommand::LineTo(Vec2DDrawing::new(1.1, 1.1)),
-                PathCommand::LineTo(Vec2DDrawing::new(1.1, -1.1)),
+                PathCommand::MoveTo(Vec2DWorld::new(-1.1, -1.1)),
+                PathCommand::LineTo(Vec2DWorld::new(-1.1, 1.1)),
+                PathCommand::LineTo(Vec2DWorld::new(1.1, 1.1)),
+                PathCommand::LineTo(Vec2DWorld::new(1.1, -1.1)),
             ], Color::green(), 1.0)),
             Box::new(Path::from_parts(vec![
-                PathCommand::MoveTo(Vec2DDrawing::new(-1.5, 0.5)),
-                PathCommand::LineTo(Vec2DDrawing::new(-1.5, 0.5)),
-                PathCommand::LineTo(Vec2DDrawing::new(-0.5, 1.5)),
-                PathCommand::LineTo(Vec2DDrawing::new(-0.5, 1.5)),
+                PathCommand::MoveTo(Vec2DWorld::new(-1.5, 0.5)),
+                PathCommand::LineTo(Vec2DWorld::new(-1.5, 0.5)),
+                PathCommand::LineTo(Vec2DWorld::new(-0.5, 1.5)),
+                PathCommand::LineTo(Vec2DWorld::new(-0.5, 1.5)),
             ], Color::green(), 1.0)),
             Box::new(Path::from_parts(vec![
-                PathCommand::MoveTo(Vec2DDrawing::new(0.25, -0.5)),
-                PathCommand::LineTo(Vec2DDrawing::new(0.25, -0.5)),
-                PathCommand::LineTo(Vec2DDrawing::new(0.5, -0.25)),
-                PathCommand::LineTo(Vec2DDrawing::new(0.5, -0.25)),
+                PathCommand::MoveTo(Vec2DWorld::new(0.25, -0.5)),
+                PathCommand::LineTo(Vec2DWorld::new(0.25, -0.5)),
+                PathCommand::LineTo(Vec2DWorld::new(0.5, -0.25)),
+                PathCommand::LineTo(Vec2DWorld::new(0.5, -0.25)),
             ], Color::green(), 1.0)),
 
             // in red the ones that dont
             Box::new(Path::from_parts(vec![
-                PathCommand::MoveTo(Vec2DDrawing::new(20.0, 20.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(20.0, 20.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(20.0, 20.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(20.0, 20.0)),
+                PathCommand::MoveTo(Vec2DWorld::new(20.0, 20.0)),
+                PathCommand::LineTo(Vec2DWorld::new(20.0, 20.0)),
+                PathCommand::LineTo(Vec2DWorld::new(20.0, 20.0)),
+                PathCommand::LineTo(Vec2DWorld::new(20.0, 20.0)),
             ], Color::red(), 1.0)),
         ];
 
@@ -388,7 +388,7 @@ mod tests {
             storage.add(shape);
         }
 
-        let buffer = storage.draw_commands([Vec2DDrawing::new(-1.0, -1.0), Vec2DDrawing::new(1.0, 1.0)]);
+        let buffer = storage.draw_commands([Vec2DWorld::new(-1.0, -1.0), Vec2DWorld::new(1.0, 1.0)]);
 
         assert_eq!(buffer.len(), 3);
 
@@ -400,19 +400,19 @@ mod tests {
         let mut storage = Storage::new();
 
         storage.add(Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(-5.0, -5.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(-5.0, -5.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),
         ], Default::default(), 1.0)));
         storage.add(Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(5.0, 5.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(1.0, 1.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(5.0, 5.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),
+            PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),
         ], Default::default(), 1.0)));
 
-        assert_eq!(storage.get_bounds(), Some([Vec2DDrawing::new(-5.0, -5.0), Vec2DDrawing::new(5.0, 5.0)]));
+        assert_eq!(storage.get_bounds(), Some([Vec2DWorld::new(-5.0, -5.0), Vec2DWorld::new(5.0, 5.0)]));
     }
 
     #[test]
@@ -420,15 +420,15 @@ mod tests {
         let mut storage = Storage::new();
 
         storage.add(Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(0.0, 2.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(0.0, 2.0)),
         ], Color::red(), 4.0)));
         storage.add(Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
-            PathCommand::LineTo(Vec2DDrawing::new(0.0, 1.0)),
+            PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(0.0, 1.0)),
         ],Color::green(),  4.0)));
 
-        let commands = storage.draw_commands([Vec2DDrawing::new(-1.0, -1.0), Vec2DDrawing::new(1.0, 3.0)]);
+        let commands = storage.draw_commands([Vec2DWorld::new(-1.0, -1.0), Vec2DWorld::new(1.0, 3.0)]);
 
         assert_eq!(commands.len(), 2);
 

@@ -1,5 +1,5 @@
 use std::f64::consts::PI;
-use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
+use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::draw_commands::DrawCommand;
 use crate::color::Color;
 use crate::transform::Transform;
@@ -12,11 +12,11 @@ use super::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
 
 #[derive(Debug, Copy, Clone)]
 enum ThreePointEllipseState {
-    One(Vec2DDrawing),
-    Foci([Vec2DDrawing; 2]),
+    One(Vec2DWorld),
+    Foci([Vec2DWorld; 2]),
     FociAndPoint {
-        foci: [Vec2DDrawing; 2],
-        point: Vec2DDrawing,
+        foci: [Vec2DWorld; 2],
+        point: Vec2DWorld,
     }
 }
 
@@ -27,7 +27,7 @@ pub struct ThreePointEllipseBuilder {
 }
 
 impl ThreePointEllipseBuilder {
-    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> ThreePointEllipseBuilder {
+    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> ThreePointEllipseBuilder {
         ThreePointEllipseBuilder {
             state: ThreePointEllipseState::One(initial),
             thickness,
@@ -40,17 +40,17 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         match self.state {
             ThreePointEllipseState::One(_) => {
-                self.state = ThreePointEllipseState::One(t.to_storage_coordinates(pos));
+                self.state = ThreePointEllipseState::One(t.to_world_coordinates(pos));
             }
             ThreePointEllipseState::Foci([f1, _]) => {
-                self.state = ThreePointEllipseState::Foci([f1, t.to_storage_coordinates(pos)]);
+                self.state = ThreePointEllipseState::Foci([f1, t.to_world_coordinates(pos)]);
             }
             ThreePointEllipseState::FociAndPoint {
                 foci,
                 point: _,
             } => {
                 self.state = ThreePointEllipseState::FociAndPoint {
-                    foci, point: t.to_storage_coordinates(pos),
+                    foci, point: t.to_world_coordinates(pos),
                 }
             }
         }
@@ -61,14 +61,14 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
         match self.state {
             ThreePointEllipseState::One(f1) => {
-                self.state = ThreePointEllipseState::Foci([f1, t.to_storage_coordinates(pos)]);
+                self.state = ThreePointEllipseState::Foci([f1, t.to_world_coordinates(pos)]);
 
                 ShapeFinished::No
             }
             ThreePointEllipseState::Foci(foci) => {
                 self.state = ThreePointEllipseState::FociAndPoint {
                     foci,
-                    point: t.to_storage_coordinates(pos),
+                    point: t.to_world_coordinates(pos),
                 };
 
                 ShapeFinished::No
@@ -76,7 +76,7 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
             ThreePointEllipseState::FociAndPoint {
                 foci, ..
             } => {
-                let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, t.to_storage_coordinates(pos));
+                let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, t.to_world_coordinates(pos));
 
                 ShapeFinished::Yes(Box::new(Ellipse::from_parts(
                     center, semimajor, semiminor, angle, self.color, self.thickness,
@@ -114,7 +114,7 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
 
 #[derive(Debug)]
 pub struct Ellipse {
-    center: Vec2DDrawing,
+    center: Vec2DWorld,
     semimajor: f64,
     semiminor: f64,
     angle: Angle,
@@ -123,7 +123,7 @@ pub struct Ellipse {
 }
 
 impl Ellipse {
-    pub fn from_parts(center: Vec2DDrawing, semimajor: f64, semiminor: f64, angle: Angle, color: Color, thickness: f64) -> Ellipse {
+    pub fn from_parts(center: Vec2DWorld, semimajor: f64, semiminor: f64, angle: Angle, color: Color, thickness: f64) -> Ellipse {
         Ellipse {
             center, semimajor, semiminor, angle, color, thickness
         }
@@ -142,7 +142,7 @@ impl ShapeStored for Ellipse {
         }
     }
 
-    fn bbox(&self) -> [Vec2DDrawing; 2] {
+    fn bbox(&self) -> [Vec2DWorld; 2] {
         let fun_t_x = |t: f64| {
             self.center.x + self.semimajor * t.cos() * self.angle.radians().cos() - self.semiminor * t.sin() * self.angle.radians().sin()
         };
@@ -162,8 +162,8 @@ impl ShapeStored for Ellipse {
         let [min_y, max_y] = [y1.min(y2), y1.max(y2)];
 
         [
-            Vec2DDrawing::new(min_x, min_y),
-            Vec2DDrawing::new(max_x, max_y),
+            Vec2DWorld::new(min_x, min_y),
+            Vec2DWorld::new(max_x, max_y),
         ]
     }
 
@@ -171,7 +171,7 @@ impl ShapeStored for Ellipse {
         ShapeType::ThreePointEllipse
     }
 
-    fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
+    fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool {
         let ([f1, f2], sum) = foci_and_sum_from_center_and_radi(
             self.center, self.semimajor, self.semiminor, self.angle
         );
@@ -199,8 +199,8 @@ mod tests {
 
     #[test]
     fn test_intersects_circle() {
-        let f1: Vec2DDrawing = (-20.22222, -13.24752).into();
-        let f2: Vec2DDrawing = (-2.88, 1.28).into();
+        let f1: Vec2DWorld = (-20.22222, -13.24752).into();
+        let f2: Vec2DWorld = (-2.88, 1.28).into();
         let sum = 14.29 + 17.67;
 
         let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_sum([f1, f2], sum);
@@ -215,7 +215,7 @@ mod tests {
         ];
 
         for (coords, output) in cases {
-            assert!(ellipse.intersects_circle(Vec2DDrawing::from(coords), 4.0) == output);
+            assert!(ellipse.intersects_circle(Vec2DWorld::from(coords), 4.0) == output);
         }
     }
 
@@ -232,7 +232,7 @@ mod tests {
         let t: Transform = Default::default();
 
         // start the ellipse somewhere by pressing the pen
-        let mut builder = ThreePointEllipseBuilder::start(Default::default(), t.to_storage_coordinates(a0), 1.0);
+        let mut builder = ThreePointEllipseBuilder::start(Default::default(), t.to_world_coordinates(a0), 1.0);
 
         // move the pen without releasing
         builder.handle_mouse_moved(a1, t);
@@ -242,7 +242,7 @@ mod tests {
             color: Default::default(),
             thickness: 1.0,
             commands: vec![
-                PathCommand::MoveTo(t.to_storage_coordinates(a1)),
+                PathCommand::MoveTo(t.to_world_coordinates(a1)),
             ],
         });
 
@@ -255,8 +255,8 @@ mod tests {
             color: Default::default(),
             thickness: 1.0,
             commands: vec![
-                PathCommand::MoveTo(t.to_storage_coordinates(a)),
-                PathCommand::LineTo(t.to_storage_coordinates(a)),
+                PathCommand::MoveTo(t.to_world_coordinates(a)),
+                PathCommand::LineTo(t.to_world_coordinates(a)),
             ],
         });
 
@@ -268,8 +268,8 @@ mod tests {
             color: Default::default(),
             thickness: 1.0,
             commands: vec![
-                PathCommand::MoveTo(t.to_storage_coordinates(a)),
-                PathCommand::LineTo(t.to_storage_coordinates(b)),
+                PathCommand::MoveTo(t.to_world_coordinates(a)),
+                PathCommand::LineTo(t.to_world_coordinates(b)),
             ],
         });
 
@@ -284,7 +284,7 @@ mod tests {
         assert_eq!(builder.draw_commands()[0], DrawCommand::Ellipse {
             color: Default::default(),
             thickness: 1.0,
-            center: Vec2DDrawing::new(-3.0257300000000003, 1.26254),
+            center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
             semimajor: 5.838320272867801,
             semiminor: 4.575529950080007,
             angle: Angle::from_radians(-0.7769764190469384),
@@ -298,7 +298,7 @@ mod tests {
                 assert_eq!(shape.draw_commands(), DrawCommand::Ellipse {
                     color: Default::default(),
                     thickness: 1.0,
-                    center: Vec2DDrawing::new(-3.0257300000000003, 1.26254),
+                    center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
                     semimajor: 7.793799303722533,
                     semiminor: 6.898753387548061,
                     angle: Angle::from_radians(-0.7769764190469384),
@@ -310,7 +310,7 @@ mod tests {
 
     #[test]
     fn the_bbox_of_an_ellipse() {
-        let center = Vec2DDrawing::new(-3.0257300000000003, 1.26254);
+        let center = Vec2DWorld::new(-3.0257300000000003, 1.26254);
         let semimajor = 7.793799303722533;
         let semiminor = 6.898753387548061;
 
@@ -318,8 +318,8 @@ mod tests {
         let ellipse = Ellipse::from_parts(center, semimajor, semiminor, Angle::from_radians(0.0), Default::default(), 1.0);
 
         assert_eq!(ellipse.bbox(), [
-            center - Vec2DDrawing::new(semimajor, semiminor),
-            center + Vec2DDrawing::new(semimajor, semiminor),
+            center - Vec2DWorld::new(semimajor, semiminor),
+            center + Vec2DWorld::new(semimajor, semiminor),
         ]);
 
         // rotated
@@ -327,8 +327,8 @@ mod tests {
         let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Default::default(), 1.0);
 
         assert_eq!(ellipse.bbox(), [
-            Vec2DDrawing { x: -10.39314460317701, y: -6.076198854160735 },
-            Vec2DDrawing { x: 4.3416846031770095, y: 8.601278854160736 },
+            Vec2DWorld { x: -10.39314460317701, y: -6.076198854160735 },
+            Vec2DWorld { x: 4.3416846031770095, y: 8.601278854160736 },
         ]);
     }
 }

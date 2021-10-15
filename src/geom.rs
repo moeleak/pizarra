@@ -1,6 +1,6 @@
 //! All sorts of geometrical functions, constants and procedures
 
-use crate::point::{Point, Vec2DDrawing};
+use crate::point::{Point, Vec2DWorld};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Angle(f64);
@@ -23,19 +23,19 @@ impl Angle {
     }
 }
 
-pub fn bbox_from_points<I>(points: I) -> [Vec2DDrawing; 2]
-    where I: Iterator<Item=Vec2DDrawing>
+pub fn bbox_from_points<I>(points: I) -> [Vec2DWorld; 2]
+    where I: Iterator<Item=Vec2DWorld>
 {
     let bbox = points.fold([
-        Vec2DDrawing::new(std::f64::INFINITY, std::f64::INFINITY), // bottom-left corner
-        Vec2DDrawing::new(std::f64::NEG_INFINITY, std::f64::NEG_INFINITY), // top right corner
+        Vec2DWorld::new(std::f64::INFINITY, std::f64::INFINITY), // bottom-left corner
+        Vec2DWorld::new(std::f64::NEG_INFINITY, std::f64::NEG_INFINITY), // top right corner
     ], |acc, point| {
         [
-            Vec2DDrawing::new(
+            Vec2DWorld::new(
                 if point.x < acc[0].x { point.x } else { acc[0].x },
                 if point.y < acc[0].y { point.y } else { acc[0].y },
             ),
-            Vec2DDrawing::new(
+            Vec2DWorld::new(
                 if point.x > acc[1].x { point.x } else { acc[1].x },
                 if point.y > acc[1].y { point.y } else { acc[1].y },
             ),
@@ -196,18 +196,18 @@ mod tests {
 
     #[test]
     fn test_segment_intersects_circle() {
-        assert!(segment_intersects_circle_inner([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(100.0, 0.0)], Vec2DDrawing::new(50.0, 9.0), 10.0));
+        assert!(segment_intersects_circle_inner([Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(100.0, 0.0)], Vec2DWorld::new(50.0, 9.0), 10.0));
     }
 
     #[test]
     fn test_single_point_segment_intersects_circle() {
-        assert!(segment_intersects_circle_inner([Vec2DDrawing::new(0.0, 0.0), Vec2DDrawing::new(0.0, 0.0)], Vec2DDrawing::new(0.0, 0.0), 10.0));
+        assert!(segment_intersects_circle_inner([Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(0.0, 0.0)], Vec2DWorld::new(0.0, 0.0), 10.0));
     }
 
     #[test]
     fn the_expected_ellipse_is_built() {
-        let f1: Vec2DDrawing = (-20.22222, -13.24752).into();
-        let f2: Vec2DDrawing = (-2.88, 1.28).into();
+        let f1: Vec2DWorld = (-20.22222, -13.24752).into();
+        let f2: Vec2DWorld = (-2.88, 1.28).into();
         let sum = 14.29 + 17.67;
 
         let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_sum([f1, f2], sum);
@@ -220,7 +220,7 @@ mod tests {
 
     #[test]
     fn the_expected_ellipse_is_built_back() {
-        let center: Vec2DDrawing = (-11.5, -5.98).into();
+        let center: Vec2DWorld = (-11.5, -5.98).into();
         let semimajor = (14.29 + 17.67) / 2.0;
         let semiminor = 11.28;
         let angle = Angle::from_degrees(39.94);
@@ -234,17 +234,17 @@ mod tests {
 
     #[test]
     fn bezier_curve_properly_intersects_circles() {
-        let from = Some(Vec2DDrawing::new(33.0, 135.0));
-        let pt1 = Vec2DDrawing::new(50.0, 200.0);
-        let pt2 = Vec2DDrawing::new(171.0, 70.0);
-        let to = Vec2DDrawing::new(196.0, 113.0);
+        let from = Some(Vec2DWorld::new(33.0, 135.0));
+        let pt1 = Vec2DWorld::new(50.0, 200.0);
+        let pt2 = Vec2DWorld::new(171.0, 70.0);
+        let to = Vec2DWorld::new(196.0, 113.0);
 
         let cases = [
-             (Vec2DDrawing::new(81.0, 154.0), true),
-             (Vec2DDrawing::new(127.0, 109.0), true),
-             (Vec2DDrawing::new(74.0, 90.0), false),
-             (Vec2DDrawing::new(147.0, 165.0), false),
-             (Vec2DDrawing::new(177.0, 121.0), false),
+             (Vec2DWorld::new(81.0, 154.0), true),
+             (Vec2DWorld::new(127.0, 109.0), true),
+             (Vec2DWorld::new(74.0, 90.0), false),
+             (Vec2DWorld::new(147.0, 165.0), false),
+             (Vec2DWorld::new(177.0, 121.0), false),
         ];
 
         for (center, result) in cases {
@@ -254,8 +254,8 @@ mod tests {
 
     #[test]
     fn middle_point_behaves() {
-        let a = Vec2DDrawing::new(-5.61146,3.80508);
-        let b = Vec2DDrawing::new(-0.44,-1.28);
+        let a = Vec2DWorld::new(-5.61146,3.80508);
+        let b = Vec2DWorld::new(-0.44,-1.28);
 
         assert_eq!(middle_point(a, b), (-3.0257300000000003, 1.26254).into());
     }

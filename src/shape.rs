@@ -1,7 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::point::{Vec2DDrawing, Vec2DScreen};
+use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::transform::Transform;
 use crate::draw_commands::DrawCommand;
 
@@ -37,7 +37,7 @@ pub enum ShapeType {
 }
 
 impl ShapeType {
-    pub fn start(&self, color: Color, initial: Vec2DDrawing, stroke: f64) -> Box<dyn ShapeBuilder> {
+    pub fn start(&self, color: Color, initial: Vec2DWorld, stroke: f64) -> Box<dyn ShapeBuilder> {
         match *self {
             ShapeType::Path => Box::new(PathBuilder::start(color, initial, stroke)),
             ShapeType::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(color, initial, stroke)),
@@ -83,13 +83,13 @@ pub trait ShapeStored: fmt::Debug {
     fn draw_commands(&self) -> DrawCommand;
 
     /// Must know its bbox
-    fn bbox(&self) -> [Vec2DDrawing; 2];
+    fn bbox(&self) -> [Vec2DWorld; 2];
 
     /// Returns the current shape type
     fn shape_type(&self) -> ShapeType;
 
     /// does this circle intersect this shape? Used by the eraser
-    fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool;
+    fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool;
 
     /// returns the color of this shape
     fn color(&self) -> Color;
@@ -151,11 +151,11 @@ impl Shape {
         self.shape_impl.color()
     }
 
-    pub fn bbox(&self) -> [Vec2DDrawing; 2] {
+    pub fn bbox(&self) -> [Vec2DWorld; 2] {
         self.shape_impl.bbox()
     }
 
-    pub fn intersects_circle(&self, center: Vec2DDrawing, radius: f64) -> bool {
+    pub fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool {
         self.shape_impl.intersects_circle(center, radius)
     }
 }

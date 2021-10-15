@@ -1,19 +1,19 @@
 use crate::color::Color;
-use crate::point::{Point, Vec2DDrawing, Vec2DScreen};
+use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeFinished, path::{Path, PathCommand}};
 use crate::consts::TOUCH_RADIUS;
 use crate::draw_commands::DrawCommand;
 use crate::transform::Transform;
 
 pub struct PolygonBuilder {
-    points: Vec<Vec2DDrawing>,
-    tip: Option<Vec2DDrawing>,
+    points: Vec<Vec2DWorld>,
+    tip: Option<Vec2DWorld>,
     thickness: f64,
     color: Color,
 }
 
 impl PolygonBuilder {
-    pub fn start(color: Color, initial: Vec2DDrawing, thickness: f64) -> PolygonBuilder {
+    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> PolygonBuilder {
         let init_vec = Vec::with_capacity(8);
 
         PolygonBuilder {
@@ -24,27 +24,27 @@ impl PolygonBuilder {
         }
     }
 
-    pub fn with_params(color: Color, points: Vec<Vec2DDrawing>, thickness: f64) -> PolygonBuilder {
+    pub fn with_params(color: Color, points: Vec<Vec2DWorld>, thickness: f64) -> PolygonBuilder {
         PolygonBuilder {
             tip: None,
             points, color, thickness,
         }
     }
 
-    fn touches_prev_point(&self, point: Vec2DDrawing) -> Option<Vec2DDrawing> {
+    fn touches_prev_point(&self, point: Vec2DWorld) -> Option<Vec2DWorld> {
         self.points.iter().filter(|p| p.distance(point) <= TOUCH_RADIUS).map(|p| *p).next()
     }
 }
 
 impl ShapeBuilder for PolygonBuilder {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
-        self.tip = Some(t.to_storage_coordinates(pos));
+        self.tip = Some(t.to_world_coordinates(pos));
     }
 
     fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform) {}
 
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
-        let drawing_pos = t.to_storage_coordinates(pos);
+        let drawing_pos = t.to_world_coordinates(pos);
 
         if self.points.len() == 0 {
             self.points.push(drawing_pos);
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn it_behaves() {
-        let mut poly = PolygonBuilder::start(Default::default(), Vec2DDrawing::new(0.0, 0.0), 4.0);
+        let mut poly = PolygonBuilder::start(Default::default(), Vec2DWorld::new(0.0, 0.0), 4.0);
         let t = Default::default();
 
         poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t);
@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn no_clunky_path_ends() {
-        let mut poly = PolygonBuilder::start(Default::default(), Vec2DDrawing::new(1.0, 0.0), 4.0);
+        let mut poly = PolygonBuilder::start(Default::default(), Vec2DWorld::new(1.0, 0.0), 4.0);
         let t = Default::default();
 
         poly.handle_mouse_moved(Vec2DScreen::new(1.0, 1.0), t);
@@ -146,9 +146,9 @@ mod tests {
         assert_eq!(poly.draw_commands()[0], DrawCommand::Path {
             color: Default::default(),
             commands: vec![
-                PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(30.0, 0.0)),
-                PathCommand::LineTo(Vec2DDrawing::new(30.0, 0.0)),
+                PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+                PathCommand::LineTo(Vec2DWorld::new(30.0, 0.0)),
+                PathCommand::LineTo(Vec2DWorld::new(30.0, 0.0)),
             ],
             thickness: 4.0,
         });
@@ -156,12 +156,12 @@ mod tests {
 
     #[test]
     fn can_render_first_point_when_building() {
-        let poly = PolygonBuilder::start(Default::default(), Vec2DDrawing::new(0.0, 0.0), 3.0);
+        let poly = PolygonBuilder::start(Default::default(), Vec2DWorld::new(0.0, 0.0), 3.0);
 
         assert_eq!(poly.draw_commands()[0], DrawCommand::Path {
             color: Default::default(),
             commands: vec![
-                PathCommand::MoveTo(Vec2DDrawing::new(0.0, 0.0)),
+                PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
             ],
             thickness: 3.0,
         });
