@@ -529,14 +529,14 @@ impl Pizarra {
     /// of the drawing gets reduced
     pub fn zoom_in(&mut self) {
         log::debug!("zoom_in()");
-        self.transform = self.transform.zoom(2.0, self.dimensions);
+        self.transform = self.transform.zoom(2.0, self.dimensions / 2.0);
     }
 
     /// Zooms out the current view, so objects are smaller and the visible portion
     /// of the drawing increases
     pub fn zoom_out(&mut self) {
         log::debug!("zoom_out()");
-        self.transform = self.transform.zoom(0.5, self.dimensions);
+        self.transform = self.transform.zoom(0.5, self.dimensions / 2.0);
     }
 
     pub fn scroll_up(&mut self) {

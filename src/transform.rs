@@ -1,7 +1,7 @@
-use crate::point::{Point, Vec2DWorld, Vec2DScreen};
+use crate::point::{Point, Vec2D, Vec2DWorld, Vec2DScreen};
 use crate::geom::Angle;
 
-fn multiply(t1: &Transform, t2: &Transform) -> Transform {
+fn multiply(t2: &Transform, t1: &Transform) -> Transform {
     Transform {
         xx: t1.xx * t2.xx + t1.yx * t2.xy,
         yx: t1.xx * t2.yx + t1.yx * t2.yy,
@@ -49,7 +49,7 @@ impl Transform {
         )
     }
 
-    pub fn new_translate(vector: Vec2DWorld) -> Transform {
+    pub fn new_translate(vector: Vec2D) -> Transform {
         Transform::new(
             1.0, 0.0, vector.x,
             0.0, 1.0, vector.y,
@@ -69,37 +69,45 @@ impl Transform {
 
     /// Computes a transform to go back to 1.0 zoom with the drawing's origin centered in the viewport.
     pub fn default_for_viewport(viewport_dimensions: Vec2DScreen) -> Transform {
-        Transform::new_translate(Vec2DWorld::new(viewport_dimensions.x, viewport_dimensions.y) * 0.5)
+        Transform::new_translate(Vec2D::new(viewport_dimensions.x, viewport_dimensions.y) * 0.5)
     }
 
     fn scale(&self, factor: f64) -> Transform {
         multiply(&Transform::new_scale(factor), &self)
     }
 
-    fn translate(&self, delta: Vec2DWorld) -> Transform {
+    fn translate(&self, delta: Vec2D) -> Transform {
         multiply(&Transform::new_translate(delta), self)
     }
 
-    /// Objects on the screen look `factor` times bigger. Viewport center stays
-    /// fixed.
-    pub fn zoom(&self, factor: f64, dimensions: Vec2DScreen) -> Transform {
-        self.r#move(dimensions / -2.0).scale(factor).r#move(dimensions / 2.0)
+    /// Objects on the screen look `factor` times bigger. Specified fixed point
+    /// is, well, fixed in the sense that before and after the zoom this point
+    /// maps to the same point of the world.
+    pub fn zoom(&self, factor: f64, fixed: Vec2DScreen) -> Transform {
+        // let vec = self.to_world_coordinates(fixed);
+
+        let t = fixed * -1.0;
+        let t1 = fixed;
+        // let s = Transform::new_scale(factor);
+
+        // multiply(&t.invert(), &multiply(&s, &multiply(&t, self)))
+        // let t = self.to_world_coordinates(fixed);
+        self.translate(t.to_vec2d()).scale(factor).translate(t1.to_vec2d())
     }
 
     /// Objects on the screen move by this delta in screen units
     pub fn r#move(&self, delta: Vec2DScreen) -> Transform {
-        let world_delta = self.invert().transform_distance(delta.x, delta.y).into();
-        self.translate(world_delta)
+        self.translate(delta.to_vec2d())
     }
 
     #[inline]
-    fn transform_distance(&self, dx: f64, dy: f64) -> (f64, f64) {
-        (dx * self.xx + dy * self.xy, dx * self.yx + dy * self.yy)
+    fn transform_distance(&self, dx: f64, dy: f64) -> Vec2D {
+        Vec2D::new(dx * self.xx + dy * self.xy, dx * self.yx + dy * self.yy)
     }
 
     #[inline]
     fn transform_point(&self, px: f64, py: f64) -> (f64, f64) {
-        let (x, y) = self.transform_distance(px, py);
+        let Vec2D {x, y} = self.transform_distance(px, py);
         (x + self.x0, y + self.y0)
     }
 
@@ -196,12 +204,13 @@ mod tests {
     #[test]
     fn zoom_in_preserves_center_point() {
         let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let center = dimensions * 0.5;
+
         let t = Transform::default_for_viewport(dimensions);
 
-        let center = dimensions * 0.5;
         let fixed_point = t.to_world_coordinates(center);
 
-        let t1 = t.zoom(2.0, dimensions);
+        let t1 = t.zoom(2.0, center);
         let zoomed_in = t1.to_world_coordinates(center);
         assert_eq!(fixed_point, zoomed_in);
     }
@@ -214,7 +223,7 @@ mod tests {
         let center = dimensions * 0.5;
         let fixed_point = t.to_world_coordinates(center);
 
-        let t = t.zoom(0.5, dimensions);
+        let t = t.zoom(0.5, center);
         let zoomed_in = t.to_world_coordinates(center);
         assert_eq!(fixed_point, zoomed_in);
     }
@@ -251,5 +260,52 @@ mod tests {
         t = t.zoom(0.5, dimensions);
 
         assert_eq!(t.to_world_units(1.0), 2.0);
+    }
+
+    #[test]
+    fn zoom_fixes_world_origin() {
+        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let center = dimensions / 2.0;
+        let mut t = Transform::default_for_viewport(dimensions);
+
+        assert_eq!(t.to_screen_coordinates(Vec2DWorld::new(0.0, 0.0)), Vec2DScreen::new(100.0, 50.0));
+
+        t = t.zoom(2.0, center);
+
+        assert_eq!(t.to_screen_coordinates(Vec2DWorld::new(0.0, 0.0)), Vec2DScreen::new(100.0, 50.0));
+
+        t = t.zoom(2.0, center);
+
+        assert_eq!(t.to_screen_coordinates(Vec2DWorld::new(0.0, 0.0)), Vec2DScreen::new(100.0, 50.0));
+    }
+
+    #[test]
+    fn zoom_fixes_viewport_center_even_when_translated() {
+        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let screen_center = dimensions / 2.0;
+        let mut t = Transform::default_for_viewport(dimensions);
+
+        // screen center is world origin
+        assert_eq!(t.to_world_coordinates(screen_center), Vec2DWorld::new(0.0, 0.0));
+
+        // zoom in
+        t = t.zoom(2.0, screen_center);
+
+        // screen center is still world origin
+        assert_eq!(t.to_world_coordinates(screen_center), Vec2DWorld::new(0.0, 0.0));
+
+        // move the screen by this vector
+        t = t.r#move(Vec2DScreen::new(5.0, 0.0));
+
+        // this is the new point in the world that maps to the screen center
+        let fixed = t.to_world_coordinates(screen_center);
+        // it is not the origin anymore
+        assert_ne!(fixed, Vec2DWorld::new(0.0, 0.0));
+
+        // zoom out
+        t = t.zoom(0.5, screen_center);
+
+        // the screen center must map to the fixed point
+        assert_eq!(t.to_world_coordinates(screen_center), fixed);
     }
 }
