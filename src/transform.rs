@@ -12,7 +12,7 @@ fn multiply(t2: &Transform, t1: &Transform) -> Transform {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Transform {
     pub xx: f64,
     pub yx: f64,
@@ -73,7 +73,7 @@ impl Transform {
     }
 
     fn scale(&self, factor: f64) -> Transform {
-        multiply(&Transform::new_scale(factor), &self)
+        multiply(&Transform::new_scale(factor), self)
     }
 
     fn translate(&self, delta: Vec2D) -> Transform {
@@ -84,14 +84,9 @@ impl Transform {
     /// is, well, fixed in the sense that before and after the zoom this point
     /// maps to the same point of the world.
     pub fn zoom(&self, factor: f64, fixed: Vec2DScreen) -> Transform {
-        // let vec = self.to_world_coordinates(fixed);
-
         let t = fixed * -1.0;
         let t1 = fixed;
-        // let s = Transform::new_scale(factor);
 
-        // multiply(&t.invert(), &multiply(&s, &multiply(&t, self)))
-        // let t = self.to_world_coordinates(fixed);
         self.translate(t.to_vec2d()).scale(factor).translate(t1.to_vec2d())
     }
 
