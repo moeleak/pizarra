@@ -11,7 +11,7 @@ use crate::shape::path::PathCommand;
 use super::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
 
 #[derive(Debug, Copy, Clone)]
-enum ThreePointEllipseState {
+enum State {
     One(Vec2DWorld),
     Foci([Vec2DWorld; 2]),
     FociAndPoint {
@@ -21,7 +21,7 @@ enum ThreePointEllipseState {
 }
 
 pub struct ThreePointEllipseBuilder {
-    state: ThreePointEllipseState,
+    state: State,
     thickness: f64,
     color: Color,
 }
@@ -29,7 +29,7 @@ pub struct ThreePointEllipseBuilder {
 impl ThreePointEllipseBuilder {
     pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> ThreePointEllipseBuilder {
         ThreePointEllipseBuilder {
-            state: ThreePointEllipseState::One(initial),
+            state: State::One(initial),
             thickness,
             color,
         }
@@ -39,17 +39,17 @@ impl ThreePointEllipseBuilder {
 impl ShapeBuilder for ThreePointEllipseBuilder {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         match self.state {
-            ThreePointEllipseState::One(_) => {
-                self.state = ThreePointEllipseState::One(t.to_world_coordinates(pos));
+            State::One(_) => {
+                self.state = State::One(t.to_world_coordinates(pos));
             }
-            ThreePointEllipseState::Foci([f1, _]) => {
-                self.state = ThreePointEllipseState::Foci([f1, t.to_world_coordinates(pos)]);
+            State::Foci([f1, _]) => {
+                self.state = State::Foci([f1, t.to_world_coordinates(pos)]);
             }
-            ThreePointEllipseState::FociAndPoint {
+            State::FociAndPoint {
                 foci,
                 point: _,
             } => {
-                self.state = ThreePointEllipseState::FociAndPoint {
+                self.state = State::FociAndPoint {
                     foci, point: t.to_world_coordinates(pos),
                 }
             }
@@ -60,20 +60,20 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
 
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
         match self.state {
-            ThreePointEllipseState::One(f1) => {
-                self.state = ThreePointEllipseState::Foci([f1, t.to_world_coordinates(pos)]);
+            State::One(f1) => {
+                self.state = State::Foci([f1, t.to_world_coordinates(pos)]);
 
                 ShapeFinished::No
             }
-            ThreePointEllipseState::Foci(foci) => {
-                self.state = ThreePointEllipseState::FociAndPoint {
+            State::Foci(foci) => {
+                self.state = State::FociAndPoint {
                     foci,
                     point: t.to_world_coordinates(pos),
                 };
 
                 ShapeFinished::No
             }
-            ThreePointEllipseState::FociAndPoint {
+            State::FociAndPoint {
                 foci, ..
             } => {
                 let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, t.to_world_coordinates(pos));
@@ -87,17 +87,17 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
 
     fn draw_commands(&self) -> Vec<DrawCommand> {
         match self.state {
-            ThreePointEllipseState::One(f1) => vec![DrawCommand::Path {
+            State::One(f1) => vec![DrawCommand::Path {
                 color: self.color,
                 thickness: self.thickness,
                 commands: vec![PathCommand::MoveTo(f1)],
             }],
-            ThreePointEllipseState::Foci([f1, f2]) => vec![DrawCommand::Path {
+            State::Foci([f1, f2]) => vec![DrawCommand::Path {
                 color: self.color,
                 thickness: self.thickness,
                 commands: vec![PathCommand::MoveTo(f1), PathCommand::LineTo(f2)],
             }],
-            ThreePointEllipseState::FociAndPoint {
+            State::FociAndPoint {
                 foci, point,
             } => {
                 let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, point);
@@ -168,7 +168,7 @@ impl ShapeStored for Ellipse {
     }
 
     fn shape_type(&self) -> ShapeType {
-        ShapeType::ThreePointEllipse
+        ShapeType::Ellipse
     }
 
     fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool {
