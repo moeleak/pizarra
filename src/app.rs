@@ -584,12 +584,20 @@ impl Pizarra {
 
     pub fn scroll_up(&mut self) {
         log::debug!("scroll_up()");
-        self.translate(Vec2DScreen::new(0.0, 10.0));
+        if self.is_shift_pressed {
+            self.rotate(Angle::from_degrees(10.0), self.dimensions / 2.0);
+        } else {
+            self.translate(Vec2DScreen::new(0.0, 10.0));
+        }
     }
 
     pub fn scroll_down(&mut self) {
         log::debug!("scroll_down()");
-        self.translate(Vec2DScreen::new(0.0, -10.0));
+        if self.is_shift_pressed {
+            self.rotate(Angle::from_degrees(-10.0), self.dimensions / 2.0);
+        } else {
+            self.translate(Vec2DScreen::new(0.0, -10.0));
+        }
     }
 
     pub fn scroll_right(&mut self) {
