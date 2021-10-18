@@ -1,5 +1,4 @@
 use std::fmt;
-use std::str::FromStr;
 
 use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::transform::Transform;
@@ -55,21 +54,6 @@ impl ShapeTool {
             ShapeTool::CircleByCenterAndPoint => Box::new(CircleBuilder::start(color, initial, stroke)),
             ShapeTool::CircleByThreePoints => Box::new(CircleByThreePointsBuilder::start(color, initial, stroke)),
             ShapeTool::ThreePointEllipse => Box::new(ThreePointEllipseBuilder::start(color, initial, stroke)),
-        }
-    }
-}
-
-impl FromStr for ShapeTool {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "path" => Ok(ShapeTool::Path),
-            "polygon" => Ok(ShapeTool::Polygon),
-            "rectangle" => Ok(ShapeTool::Rectangle),
-            "circle" => Ok(ShapeTool::CircleByCenterAndPoint),
-            "ellipse" => Ok(ShapeTool::ThreePointEllipse),
-            _ => Err(()),
         }
     }
 }
