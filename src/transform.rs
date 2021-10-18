@@ -72,12 +72,31 @@ impl Transform {
         Transform::new_translate(Vec2D::new(viewport_dimensions.x, viewport_dimensions.y) * 0.5)
     }
 
+    /// Take the current transformation matrix and scale it by this factor. New
+    /// transformation is retured.
+    ///
+    /// Implemented as multiplying the current matrix to the left by a scaling
+    /// matrix
     fn scale(&self, factor: f64) -> Transform {
         multiply(&Transform::new_scale(factor), self)
     }
 
+    /// Take the current transformation matrix and translate it by this factor.
+    /// New transformation is retured.
+    ///
+    /// Implemented as multiplying the current matrix to the left by a
+    /// translation matrix
     fn translate(&self, delta: Vec2D) -> Transform {
         multiply(&Transform::new_translate(delta), self)
+    }
+
+    /// Take the current transformation matrix and rotate it by this angle.
+    /// New transformation is retured.
+    ///
+    /// Implemented as multiplying the current matrix to the left by a rotation
+    /// matrix.
+    fn rotate(&self, angle: Angle) -> Transform {
+        multiply(&Transform::new_rotate(angle), self)
     }
 
     /// Objects on the screen look `factor` times bigger. Specified fixed point
@@ -88,6 +107,15 @@ impl Transform {
         let t1 = fixed;
 
         self.translate(t.to_vec2d()).scale(factor).translate(t1.to_vec2d())
+    }
+
+    /// Objects on the screen rotate `angle`. Rotation happens around the
+    /// specified fixed point
+    pub fn turn(&self, angle: Angle, fixed: Vec2DScreen) -> Transform {
+        let t = fixed * -1.0;
+        let t1 = fixed;
+
+        self.translate(t.to_vec2d()).rotate(angle).translate(t1.to_vec2d())
     }
 
     /// Objects on the screen move by this delta in screen units

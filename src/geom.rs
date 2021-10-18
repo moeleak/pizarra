@@ -21,6 +21,18 @@ impl Angle {
     pub fn from_degrees(degrees: f64) -> Angle {
         Angle(degrees.to_radians())
     }
+
+    pub fn between<P: Point>(a: P, b: P) -> Angle {
+        if a == b {
+            return Angle::from_radians(0.0);
+        }
+
+        Self::from_radians((dot(a, b)/(a.magnitude() * b.magnitude())).acos())
+    }
+}
+
+fn dot<P: Point>(a: P, b: P) -> f64 {
+    a.x() * b.x() + a.y() * b.y()
 }
 
 pub fn bbox_from_points<I>(points: I) -> [Vec2DWorld; 2]
@@ -192,6 +204,8 @@ pub fn foci_and_sum_from_center_and_radi<P: Point>(center: P, semimajor: f64, se
 
 #[cfg(test)]
 mod tests {
+    use crate::point::Vec2DScreen;
+
     use super::*;
 
     #[test]
@@ -258,5 +272,27 @@ mod tests {
         let b = Vec2DWorld::new(-0.44,-1.28);
 
         assert_eq!(middle_point(a, b), (-3.0257300000000003, 1.26254).into());
+    }
+
+    #[test]
+    fn angle_between_two_vectors() {
+        let a: Vec2DWorld = (-2.68,5.12).into();
+        let b: Vec2DWorld = (-4.4,2.12).into();
+
+        assert!((Angle::between(a, b).radians() - Angle::from_degrees(36.65).radians()).abs() < 0.001);
+    }
+
+    #[test]
+    fn angle_between_two_identical_points() {
+        let a = Vec2DScreen {
+            x: -38.89215087890625,
+            y: 145.26171875,
+        };
+        let b = Vec2DScreen {
+            x: -38.89215087890625,
+            y: 145.26171875,
+        };
+
+        assert_eq!(Angle::between(a, b), Angle::from_radians(0.0));
     }
 }

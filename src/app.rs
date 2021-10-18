@@ -11,7 +11,8 @@ use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::transform::Transform;
 use crate::consts::{DEFAULT_THICKNESS, TOUCH_RADIUS};
 use crate::deserialize;
-use crate::geom::bbox_from_points;
+use crate::geom::{Angle, bbox_from_points};
+use crate::key::Key;
 
 #[derive(Copy,Clone,Debug, PartialEq, Eq)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -103,9 +104,10 @@ pub struct Pizarra {
     alpha: f64,
     erase_radius: f64,
 
-    /// This value represents the coordinate of the drwing space that is currently
-    /// at the top-left corner of the screen.
+    /// The transformation matrix that takes points from the drawing coordinate
+    /// system to the screen coordinate system.
     transform: Transform,
+    /// What is the  size of the canvas in pixels?
     dimensions: Vec2DScreen,
 
     /// Stores erased shapes temporarily while being erased
@@ -117,6 +119,8 @@ pub struct Pizarra {
 
     /// What is happening with the board right now?
     board_state: BoardState,
+    /// Is the shift key pressed on the keyboard?
+    is_shift_pressed: bool,
 
     /// File management
     save_status: SaveStatus,
@@ -281,6 +285,26 @@ impl Pizarra {
         self.transform = self.transform.r#move(delta);
     }
 
+    fn rotate(&mut self, angle: Angle, fixed: Vec2DScreen) {
+        self.transform = self.transform.turn(angle, fixed);
+    }
+
+    /// Handles the canvas moving logic. Must be kept private
+    fn handle_move(&mut self, old_point: Vec2DScreen, new_point: Vec2DScreen) {
+        if self.is_shift_pressed {
+            let center = self.dimensions / 2.0;
+
+            let a = old_point - center;
+            let b = new_point - center;
+
+            self.rotate(Angle::between(a, b), center);
+        } else {
+            let delta = new_point - old_point;
+
+            self.translate(delta);
+        }
+    }
+
     /// Compute the bounds of what is visible in the board according to current
     /// offset, zoom level and rotation. Return value is an array of the
     /// top-left, top-right, bottom-right, and bottom-left corners.
@@ -293,8 +317,8 @@ impl Pizarra {
         ]
     }
 
-    /// return the axis-aligned bounding box of the visible portion of the
-    /// screen.
+    /// return the screen-axis-aligned bounding box of the visible portion of
+    /// the screen.
     fn visible_bbox(&self) -> [Vec2DWorld; 2] {
         bbox_from_points(self.visible_extent().iter().copied())
     }
@@ -324,6 +348,7 @@ impl Pizarra {
             erased: Vec::new(),
 
             board_state: BoardState::Idle,
+            is_shift_pressed: false,
 
             undo_state: UndoState::Reset,
             undo_queue: Vec::new(),
@@ -468,7 +493,7 @@ impl Pizarra {
             BoardState::Moving(old_point) => match button {
                 MouseButton::Left => (BoardState::Moving(old_point), ShouldRedraw::No),
                 MouseButton::Middle => {
-                    self.translate(point - old_point);
+                    self.handle_move(old_point, point);
 
                     (BoardState::Idle, ShouldRedraw::All)
                 },
@@ -487,7 +512,7 @@ impl Pizarra {
                         }
                 },
                 MouseButton::Middle => {
-                    self.translate(point - old_point);
+                    self.handle_move(old_point, point);
 
                     (BoardState::UsingTool, ShouldRedraw::All)
                 },
@@ -509,12 +534,12 @@ impl Pizarra {
             BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
             BoardState::UsingTool => (BoardState::UsingTool, self.handle_tool_mouse_move(pos)),
             BoardState::Moving(old_point) => {
-                self.translate(pos - old_point);
+                self.handle_move(old_point, pos);
 
                 (BoardState::Moving(pos), ShouldRedraw::All)
             },
             BoardState::MovingWhileUsingTool(old_point) => {
-                self.translate(pos - old_point);
+                self.handle_move(old_point, pos);
 
                 (BoardState::MovingWhileUsingTool(pos), ShouldRedraw::All)
             },
@@ -523,6 +548,24 @@ impl Pizarra {
         self.board_state = new_board_state;
 
         should_redraw
+    }
+
+    pub fn handle_key_pressed(&mut self, key: Key) {
+        log::debug!("handle_key_pressed({:?})", key);
+
+        match key {
+            Key::Shift => { self.is_shift_pressed = true; }
+            _ => { }
+        }
+    }
+
+    pub fn handle_key_released(&mut self, key: Key) {
+        log::debug!("handle_key_released({:?})", key);
+
+        match key {
+            Key::Shift => { self.is_shift_pressed = false; }
+            _ => { }
+        }
     }
 
     /// Zooms in the current view, so objects are bigger and the visible portion

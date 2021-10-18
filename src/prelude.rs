@@ -3,3 +3,4 @@ pub use crate::transform::Transform;
 pub use crate::point::{Vec2DScreen, Vec2DWorld, Point};
 pub use crate::color::Color;
 pub use crate::shape::ShapeType;
+pub use crate::key::Key;
