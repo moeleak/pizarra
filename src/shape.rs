@@ -10,6 +10,7 @@ pub mod rectangle;
 pub mod polygon;
 pub mod circle;
 pub mod ellipse;
+pub mod three_point_circle;
 
 use super::color::Color;
 
@@ -18,6 +19,7 @@ use self::ellipse::ThreePointEllipseBuilder;
 use self::polygon::PolygonBuilder;
 use self::circle::CircleBuilder;
 use self::rectangle::AxisAlignedRectangleBuilder;
+use self::three_point_circle::CircleByThreePointsBuilder;
 
 /// Shapes handle input from the user, and they're responsible of notifying when
 /// they're finished, for example in the case of a polygon
@@ -39,18 +41,20 @@ pub enum ShapeTool {
     Path,
     Polygon,
     Rectangle,
-    Circle,
+    CircleByCenterAndPoint,
+    CircleByThreePoints,
     ThreePointEllipse,
 }
 
 impl ShapeTool {
     pub fn start(&self, color: Color, initial: Vec2DWorld, stroke: f64) -> Box<dyn ShapeBuilder> {
         match *self {
-            ShapeType::Path => Box::new(PathBuilder::start(color, initial, stroke)),
-            ShapeType::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(color, initial, stroke)),
-            ShapeType::Polygon => Box::new(PolygonBuilder::start(color, initial, stroke)),
-            ShapeType::Circle => Box::new(CircleBuilder::start(color, initial, stroke)),
-            ShapeType::ThreePointEllipse => Box::new(ThreePointEllipseBuilder::start(color, initial, stroke)),
+            ShapeTool::Path => Box::new(PathBuilder::start(color, initial, stroke)),
+            ShapeTool::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(color, initial, stroke)),
+            ShapeTool::Polygon => Box::new(PolygonBuilder::start(color, initial, stroke)),
+            ShapeTool::CircleByCenterAndPoint => Box::new(CircleBuilder::start(color, initial, stroke)),
+            ShapeTool::CircleByThreePoints => Box::new(CircleByThreePointsBuilder::start(color, initial, stroke)),
+            ShapeTool::ThreePointEllipse => Box::new(ThreePointEllipseBuilder::start(color, initial, stroke)),
         }
     }
 }

@@ -208,6 +208,24 @@ pub fn foci_and_sum_from_center_and_radi<P: Point>(center: P, semimajor: f64, se
     ([center1, center2], sum)
 }
 
+pub fn circle_by_three_points<P: Point>(p1: P, p2: P, p3: P) -> (P, f64) {
+    let s1 = p1.x().powi(2) + p1.y().powi(2);
+    let s2 = p2.x().powi(2) + p2.y().powi(2);
+    let s3 = p3.x().powi(2) + p3.y().powi(2);
+
+    let a = p1.x()*(p2.y() - p3.y()) - p1.y() * (p2.x() - p3.x()) + p2.x()*p3.y() - p3.x()*p2.y();
+    let b = s1 * (p3.y() - p2.y()) + s2 * (p1.y() - p3.y()) + s3 * (p2.y() - p1.y());
+    let c = s1 * (p2.x() - p3.x()) + s2 * (p3.x() - p1.x()) + s3 * (p1.x() - p2.x());
+    let d = s1 * (p3.x() * p2.y() - p2.x() * p3.y()) + s2 * (p1.x() * p3.y() - p3.x() * p1.y()) + s3 * (p2.x() * p1.y() - p1.x() * p2.y());
+
+    let x = -b / (2.0 * a);
+    let y = -c / (2.0 * a);
+
+    let r = ((b.powi(2) + c.powi(2) - 4.0 * a * d) / (4.0 * a.powi(2))).sqrt();
+
+    (P::new(x, y), r)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::point::Vec2DScreen;
@@ -305,5 +323,17 @@ mod tests {
         };
 
         assert_eq!(Angle::between(a, b), Angle::from_radians(0.0));
+    }
+
+    #[test]
+    fn circle_through_three_points() {
+        let a: Vec2DWorld = (-11.0, 4.0).into();
+        let b: Vec2DWorld = (-6.5, -1.6).into();
+        let c: Vec2DWorld = (2.44, 2.56).into();
+
+        let (center, radius) = circle_by_three_points(a, b, c);
+
+        assert_eq!(center, Vec2DWorld { x: -4.102742498255409, y: 4.93440334961619 });
+        assert!((dbg!(radius) - 6.96).abs() < 0.01);
     }
 }
