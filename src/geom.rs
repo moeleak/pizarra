@@ -27,7 +27,13 @@ impl Angle {
             return Angle::from_radians(0.0);
         }
 
-        Self::from_radians((dot(a, b)/(a.magnitude() * b.magnitude())).acos())
+        let angle = (dot(a, b)/(a.magnitude() * b.magnitude())).acos();
+
+        Self::from_radians(if a.x() * b.y() - a.y() * b.x() < 0.0 {
+            -angle
+        } else {
+            angle
+        })
     }
 }
 
@@ -280,6 +286,11 @@ mod tests {
         let b: Vec2DWorld = (-4.4,2.12).into();
 
         assert!((Angle::between(a, b).radians() - Angle::from_degrees(36.65).radians()).abs() < 0.001);
+
+        let a: Vec2DWorld = (-2.68,5.12).into();
+        let b: Vec2DWorld = (-4.4,2.12).into();
+
+        assert!((Angle::between(b, a).radians() - Angle::from_degrees(-36.65).radians()).abs() < 0.001);
     }
 
     #[test]
