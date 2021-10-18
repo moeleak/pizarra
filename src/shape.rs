@@ -30,13 +30,20 @@ pub enum ShapeFinished {
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum ShapeType {
     Path,
+    Circle,
+    Ellipse,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum ShapeTool {
+    Path,
     Polygon,
     Rectangle,
     Circle,
     ThreePointEllipse,
 }
 
-impl ShapeType {
+impl ShapeTool {
     pub fn start(&self, color: Color, initial: Vec2DWorld, stroke: f64) -> Box<dyn ShapeBuilder> {
         match *self {
             ShapeType::Path => Box::new(PathBuilder::start(color, initial, stroke)),
@@ -48,16 +55,16 @@ impl ShapeType {
     }
 }
 
-impl FromStr for ShapeType {
+impl FromStr for ShapeTool {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "path" => Ok(ShapeType::Path),
-            "polygon" => Ok(ShapeType::Polygon),
-            "rectangle" => Ok(ShapeType::Rectangle),
-            "circle" => Ok(ShapeType::Circle),
-            "ellipse" => Ok(ShapeType::ThreePointEllipse),
+            "path" => Ok(ShapeTool::Path),
+            "polygon" => Ok(ShapeTool::Polygon),
+            "rectangle" => Ok(ShapeTool::Rectangle),
+            "circle" => Ok(ShapeTool::CircleByCenterAndPoint),
+            "ellipse" => Ok(ShapeTool::ThreePointEllipse),
             _ => Err(()),
         }
     }

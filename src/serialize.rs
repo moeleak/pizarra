@@ -129,13 +129,13 @@ mod tests {
     use crate::color::Color;
     use crate::point::Vec2DScreen;
     use crate::app::{Pizarra, MouseButton, SelectedTool};
-    use crate::shape::ShapeType;
+    use crate::shape::ShapeTool;
 
     #[test]
     fn test_serialize() {
         let mut app = Pizarra::new(Vec2DScreen::new(40.0, 40.0));
 
-        app.set_tool(SelectedTool::Shape(ShapeType::Path));
+        app.set_tool(SelectedTool::Shape(ShapeTool::Path));
         app.set_color(Color::red());
         app.set_stroke(3.5);
 
@@ -149,7 +149,7 @@ mod tests {
     fn serialize_ellipse() {
         let mut app = Pizarra::new(Vec2DScreen::new(40.0, 40.0));
 
-        app.set_tool(SelectedTool::Shape(ShapeType::ThreePointEllipse));
+        app.set_tool(SelectedTool::Shape(ShapeTool::ThreePointEllipse));
         app.set_color(Color::red());
         app.set_stroke(3.5);
 
@@ -176,7 +176,7 @@ mod tests {
     fn test_serialize_color_with_alpha() {
         let mut app = Pizarra::new(Vec2DScreen::new(40.0, 40.0));
 
-        app.set_tool(SelectedTool::Shape(ShapeType::Polygon));
+        app.set_tool(SelectedTool::Shape(ShapeTool::Polygon));
         app.set_color(Color::green());
         app.set_alpha(0.5);
 
