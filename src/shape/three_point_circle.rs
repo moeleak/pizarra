@@ -93,8 +93,8 @@ impl ShapeBuilder for CircleByThreePointsBuilder {
                 let (center, radius) = circle_by_three_points(p1, p2, p3);
 
                 vec![DrawCommand::Circle {
-                    center: center,
-                    radius: radius,
+                    center,
+                    radius,
                     thickness: self.thickness,
                     color: self.color,
                 }]

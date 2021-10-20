@@ -32,7 +32,7 @@ impl PolygonBuilder {
     }
 
     fn touches_prev_point(&self, point: Vec2DWorld) -> Option<Vec2DWorld> {
-        self.points.iter().filter(|p| p.distance(point) <= TOUCH_RADIUS).map(|p| *p).next()
+        self.points.iter().filter(|p| p.distance(point) <= TOUCH_RADIUS).copied().next()
     }
 }
 
@@ -46,7 +46,7 @@ impl ShapeBuilder for PolygonBuilder {
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
         let drawing_pos = t.to_world_coordinates(pos);
 
-        if self.points.len() == 0 {
+        if self.points.is_empty() {
             self.points.push(drawing_pos);
             return ShapeFinished::No;
         }
@@ -85,7 +85,7 @@ impl ShapeBuilder for PolygonBuilder {
         }
 
         if let Some(p) = self.tip {
-            commands.push(if commands.len() == 0 {
+            commands.push(if commands.is_empty() {
                 PathCommand::MoveTo(p)
             } else {
                 PathCommand::LineTo(p)

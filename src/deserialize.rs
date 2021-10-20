@@ -238,24 +238,20 @@ impl FromStr for Color {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(c) = CSS_COLORS.get(&s.to_lowercase()) {
             Ok(*c)
+        } else if let Some(captures) = COLOR_REGEX.captures(s) {
+            Ok(Color::from_rgb(
+                captures["r"].parse::<f64>()?/ 100.0,
+                captures["g"].parse::<f64>()?/100.0,
+                captures["b"].parse::<f64>()?/100.0,
+            ))
+        } else if let Some(captures) = CSS_COLOR_REGEX.captures(s) {
+            Ok(Color::from_rgb(
+                u32::from_str_radix(&captures["r"], 16).unwrap() as f64 / 255.0,
+                u32::from_str_radix(&captures["g"], 16).unwrap() as f64 / 255.0,
+                u32::from_str_radix(&captures["b"], 16).unwrap() as f64 / 255.0,
+            ))
         } else {
-            if let Some(captures) = COLOR_REGEX.captures(s) {
-                Ok(Color::from_rgb(
-                    captures["r"].parse::<f64>()?/ 100.0,
-                    captures["g"].parse::<f64>()?/100.0,
-                    captures["b"].parse::<f64>()?/100.0,
-                ))
-            } else {
-                if let Some(captures) = CSS_COLOR_REGEX.captures(s) {
-                    Ok(Color::from_rgb(
-                        u32::from_str_radix(&captures["r"], 16).unwrap() as f64 / 255.0,
-                        u32::from_str_radix(&captures["g"], 16).unwrap() as f64 / 255.0,
-                        u32::from_str_radix(&captures["b"], 16).unwrap() as f64 / 255.0,
-                    ))
-                } else {
-                    Err(Error::CouldntUnderstandColor(s.into()))
-                }
-            }
+            Err(Error::CouldntUnderstandColor(s.into()))
         }
     }
 }

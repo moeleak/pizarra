@@ -207,6 +207,7 @@ pub fn foci_and_sum_from_center_and_radi<P: Point>(center: P, semimajor: f64, se
     ([center1, center2], sum)
 }
 
+#[allow(clippy::many_single_char_names)]
 pub fn circle_by_three_points<P: Point>(p1: P, p2: P, p3: P) -> (P, f64) {
     let s1 = p1.x().powi(2) + p1.y().powi(2);
     let s2 = p2.x().powi(2) + p2.y().powi(2);
