@@ -18,5 +18,6 @@ image: "rust:latest"
 test:cargo:
   script:
     - rustc --version && cargo --version  # Print version info for debugging
+    - rustup component add clippy
     - cargo clippy -- --deny warnings
     - cargo test
