@@ -138,9 +138,7 @@ impl Storage {
     /// Deletes a shape from this storage given its id if such id exists
     pub fn remove(&mut self, id: ShapeId) -> Option<Shape> {
         if let Some(bbox) = self.ids.get(&id) {
-            let maybe_shape = self.shapes.remove_with_selection_function(BBoxIdSelection::new(*bbox, id));
-
-            maybe_shape
+            self.shapes.remove_with_selection_function(BBoxIdSelection::new(*bbox, id))
         } else {
             None
         }
@@ -203,6 +201,12 @@ impl Storage {
                 ),
             ]
         }))
+    }
+}
+
+impl Default for Storage {
+    fn default() -> Storage {
+        Storage::new()
     }
 }
 

@@ -204,7 +204,7 @@ impl Pizarra {
                     self.erased.push(shape);
                 }
 
-                if self.erased.len() > 0 {
+                if !self.erased.is_empty() {
                     Action::Erase(self.erased.drain(..).collect())
                 } else {
                     Action::Empty
@@ -261,7 +261,7 @@ impl Pizarra {
             },
 
             Action::Redraw(ids) => {
-                let shapes = ids.into_iter().map(|id| self.storage.remove(id)).filter_map(|maybe_shape| maybe_shape).collect();
+                let shapes = ids.into_iter().map(|id| self.storage.remove(id)).flatten().collect();
 
                 Action::Erase(shapes)
             },
@@ -393,7 +393,7 @@ impl Pizarra {
 
         let delta = (self.dimensions * -1.0 + new_size) * 0.5;
 
-        self.translate(delta.into());
+        self.translate(delta);
         self.dimensions = new_size;
     }
 
@@ -541,18 +541,16 @@ impl Pizarra {
     pub fn handle_key_pressed(&mut self, key: Key) {
         log::debug!("handle_key_pressed({:?})", key);
 
-        match key {
-            Key::Shift => { self.is_shift_pressed = true; }
-            _ => { }
+        if let Key::Shift = key {
+           self.is_shift_pressed = true;
         }
     }
 
     pub fn handle_key_released(&mut self, key: Key) {
         log::debug!("handle_key_released({:?})", key);
 
-        match key {
-            Key::Shift => { self.is_shift_pressed = false; }
-            _ => { }
+        if let Key::Shift = key {
+            self.is_shift_pressed = false;
         }
     }
 

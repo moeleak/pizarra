@@ -454,16 +454,12 @@ impl<'b> PathParser<'b> {
     ) -> Result<(), ParseError> {
         let (mut x, mut y) = self.coordinate_pair()?;
 
-        if is_initial_moveto {
-            self.emit_move_to(x, y);
-        } else {
-            if !absolute {
-                x += self.current_x;
-                y += self.current_y;
-            }
-
-            self.emit_move_to(x, y);
+        if !is_initial_moveto && !absolute {
+            x += self.current_x;
+            y += self.current_y;
         }
+
+        self.emit_move_to(x, y);
 
         if self.match_comma().is_ok() || self.peek_number().is_some() {
             self.lineto_argument_sequence(absolute)

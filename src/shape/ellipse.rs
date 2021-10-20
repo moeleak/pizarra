@@ -156,7 +156,7 @@ impl ShapeStored for Ellipse {
         let x2 = fun_t_x(t + PI);
         let [min_x, max_x] = [x1.min(x2), x1.max(x2)];
 
-        let t = (self.semiminor / self.semiminor * (1.0 / self.angle.radians().tan())).atan();
+        let t = ((self.semiminor / self.semimajor) * (1.0 / self.angle.radians().tan())).atan();
         let y1 = fun_t_y(t);
         let y2 = fun_t_y(t + PI);
         let [min_y, max_y] = [y1.min(y2), y1.max(y2)];
@@ -327,8 +327,8 @@ mod tests {
         let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Default::default(), 1.0);
 
         assert_eq!(ellipse.bbox(), [
-            Vec2DWorld { x: -10.39314460317701, y: -6.076198854160735 },
-            Vec2DWorld { x: 4.3416846031770095, y: 8.601278854160736 },
+            Vec2DWorld { x: -10.39314460317701, y: -6.089827506715496 },
+            Vec2DWorld { x: 4.3416846031770095, y: 8.614907506715497 },
         ]);
     }
 }

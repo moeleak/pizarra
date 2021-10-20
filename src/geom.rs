@@ -45,27 +45,26 @@ pub fn bbox_from_points<I>(points: I) -> [Vec2DWorld; 2]
     where I: Iterator<Item=Vec2DWorld>
 {
     let bbox = points.fold([
-        Vec2DWorld::new(std::f64::INFINITY, std::f64::INFINITY), // bottom-left corner
-        Vec2DWorld::new(std::f64::NEG_INFINITY, std::f64::NEG_INFINITY), // top right corner
-    ], |acc, point| {
+        None, // bottom-left corner
+        None, // top right corner
+    ], |acc: [Option<Vec2DWorld>; 2], point| {
         [
-            Vec2DWorld::new(
-                if point.x < acc[0].x { point.x } else { acc[0].x },
-                if point.y < acc[0].y { point.y } else { acc[0].y },
-            ),
-            Vec2DWorld::new(
-                if point.x > acc[1].x { point.x } else { acc[1].x },
-                if point.y > acc[1].y { point.y } else { acc[1].y },
-            ),
+            acc[0].map(|acc| {
+                Vec2DWorld::new(
+                    if point.x < acc.x { point.x } else { acc.x },
+                    if point.y < acc.y { point.y } else { acc.y },
+                )
+            }).or(Some(point)),
+            acc[1].map(|acc | {
+                Vec2DWorld::new(
+                    if point.x > acc.x { point.x } else { acc.x },
+                    if point.y > acc.y { point.y } else { acc.y },
+                )
+            }).or(Some(point))
         ]
     });
 
-    assert_ne!(bbox[0].x, std::f64::INFINITY);
-    assert_ne!(bbox[0].y, std::f64::INFINITY);
-    assert_ne!(bbox[1].x, std::f64::NEG_INFINITY);
-    assert_ne!(bbox[1].y, std::f64::NEG_INFINITY);
-
-    bbox
+    [bbox[0].unwrap(), bbox[1].unwrap()]
 }
 
 pub fn project<P: Point>(point: P, [a, b]: [P; 2]) -> P {
@@ -185,7 +184,7 @@ pub fn ellipse_from_foci_and_sum<P: Point>(foci: [P; 2], sum: f64) -> (P, f64, f
     let semiminor = (semimajor.powi(2) - d.powi(2)).sqrt();
     let v = foci[1] - foci[0];
 
-    return ((foci[0] + foci[1]) / 2.0, semimajor, semiminor, v.angle());
+    ((foci[0] + foci[1]) / 2.0, semimajor, semiminor, v.angle())
 }
 
 pub fn foci_and_sum_from_center_and_radi<P: Point>(center: P, semimajor: f64, semiminor: f64, angle: Angle) -> ([P; 2], f64) {

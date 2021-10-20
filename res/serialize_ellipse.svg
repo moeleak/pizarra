@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="54.73482920635402" height="54.677477708321476" viewBox="-50.393144603177014 -46.07619885416074 54.73482920635402 54.677477708321476" version="1.1">
+<svg xmlns="http://www.w3.org/2000/svg" width="54.73482920635402" height="54.70473501343099" viewBox="-50.393144603177014 -46.089827506715494 54.73482920635402 54.70473501343099" version="1.1">
   <g id="storage">
-    <rect x="-50.393144603177014" y="-46.07619885416074" width="54.73482920635402" height="54.677477708321476" style="fill:#303633;fill-opacity:1;stroke:none;" />
+    <rect x="-50.393144603177014" y="-46.089827506715494" width="54.73482920635402" height="54.70473501343099" style="fill:#303633;fill-opacity:1;stroke:none;" />
     <ellipse cx="-23.025730000000003" cy="-18.73746" rx="7.793799303722535" ry="6.898753387548063" transform="rotate(-44.51746959257765 -23.025730000000003 -18.73746)" style="fill:none;stroke-width:3.5;stroke:#FF0000;stroke-opacity:1;stroke-miterlimit:10;" />
   </g>
 </svg>

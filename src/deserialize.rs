@@ -237,7 +237,7 @@ impl FromStr for Color {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(c) = CSS_COLORS.get(&s.to_lowercase()) {
-            Ok(c.clone())
+            Ok(*c)
         } else {
             if let Some(captures) = COLOR_REGEX.captures(s) {
                 Ok(Color::from_rgb(
@@ -345,21 +345,21 @@ trait Deserialize {
 
 impl Deserialize for Path{
     fn deserialize(attributes: HashMap<String, String>) -> Result<Box<dyn ShapeStored>, Error> {
-        let styleattr = attributes.get("style").ok_or(Error::MissingAttribute("style".into()))?;
-        let dattr = attributes.get("d").ok_or(Error::MissingAttribute("d".into()))?;
+        let styleattr = attributes.get("style").ok_or_else(|| Error::MissingAttribute("style".into()))?;
+        let dattr = attributes.get("d").ok_or_else(|| Error::MissingAttribute("d".into()))?;
 
-        Ok(Box::new(Path::from_xml_attributes(&styleattr, &dattr)?))
+        Ok(Box::new(Path::from_xml_attributes(styleattr, dattr)?))
     }
 }
 
 impl Deserialize for Ellipse {
     fn deserialize(attributes: HashMap<String, String>) -> Result<Box<dyn ShapeStored>, Error> {
-        let cx = attributes.get("cx").ok_or(Error::MissingAttribute("cx".into()))?;
-        let cy = attributes.get("cy").ok_or(Error::MissingAttribute("cy".into()))?;
-        let rx = attributes.get("rx").ok_or(Error::MissingAttribute("rx".into()))?;
-        let ry = attributes.get("ry").ok_or(Error::MissingAttribute("ry".into()))?;
+        let cx = attributes.get("cx").ok_or_else(|| Error::MissingAttribute("cx".into()))?;
+        let cy = attributes.get("cy").ok_or_else(|| Error::MissingAttribute("cy".into()))?;
+        let rx = attributes.get("rx").ok_or_else(|| Error::MissingAttribute("rx".into()))?;
+        let ry = attributes.get("ry").ok_or_else(|| Error::MissingAttribute("ry".into()))?;
         let angle= attributes.get("transform").map(|s| s.as_str()).unwrap_or("rotate(0)");
-        let styleattr = attributes.get("style").ok_or(Error::MissingAttribute("style".into()))?;
+        let styleattr = attributes.get("style").ok_or_else(|| Error::MissingAttribute("style".into()))?;
 
         let attrs = css_attrs_as_hashmap(styleattr);
 
