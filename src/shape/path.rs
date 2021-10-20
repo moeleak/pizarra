@@ -5,7 +5,9 @@ use crate::draw_commands::DrawCommand;
 use crate::color::Color;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::transform::Transform;
-use crate::geom::{segment_intersects_circle, bezier_intersects_circle};
+use crate::geom::{
+    segment_intersects_circle, bezier_intersects_circle, bbox_from_points,
+};
 
 use super::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
 
@@ -139,38 +141,6 @@ impl PathCommand {
         }
     }
 
-    fn min_x(&self) -> f64 {
-        match self {
-            PathCommand::MoveTo(p) => p.x,
-            PathCommand::LineTo(p) => p.x,
-            PathCommand::CurveTo(c) => c.pt1.x.min(c.pt2.x).min(c.to.x),
-        }
-    }
-
-    fn min_y(&self) -> f64 {
-        match self {
-            PathCommand::MoveTo(p) => p.y,
-            PathCommand::LineTo(p) => p.y,
-            PathCommand::CurveTo(c) => c.pt1.y.min(c.pt2.y).min(c.to.y),
-        }
-    }
-
-    fn max_x(&self) -> f64 {
-        match self {
-            PathCommand::MoveTo(p) => p.x,
-            PathCommand::LineTo(p) => p.x,
-            PathCommand::CurveTo(c) => c.pt1.x.max(c.pt2.x).max(c.to.x),
-        }
-    }
-
-    fn max_y(&self) -> f64 {
-        match self {
-            PathCommand::MoveTo(p) => p.y,
-            PathCommand::LineTo(p) => p.y,
-            PathCommand::CurveTo(c) => c.pt1.y.max(c.pt2.y).max(c.to.y),
-        }
-    }
-
     /// returns the point this path segment leads to
     pub fn to(&self) -> Vec2DWorld {
         match *self {
@@ -189,6 +159,14 @@ impl PathCommand {
             PathCommand::CurveTo(p) => {
                 p.to.distance(center) < radius || bezier_intersects_circle(prev, p.pt1, p.pt2, p.to, center, radius)
             }
+        }
+    }
+
+    fn points(&self) -> Box<dyn Iterator<Item=Vec2DWorld>> {
+        match *self {
+            PathCommand::MoveTo(p) => Box::new(IntoIterator::into_iter([p])),
+            PathCommand::LineTo(p) => Box::new(IntoIterator::into_iter([p])),
+            PathCommand::CurveTo(CubicBezierCurve { pt1, pt2, to }) => Box::new(IntoIterator::into_iter([pt1, pt2, to])),
         }
     }
 }
@@ -288,28 +266,9 @@ impl ShapeStored for Path {
 
     // The bounding box of the path needs to consider the beizer handles
     fn bbox(&self) -> [Vec2DWorld; 2] {
-        let bbox = self.commands.iter().fold([
-            Vec2DWorld::new(std::f64::INFINITY, std::f64::INFINITY), // bottom-left corner
-            Vec2DWorld::new(std::f64::NEG_INFINITY, std::f64::NEG_INFINITY), // top right corner
-        ], |acc, cmd| {
-            [
-                Vec2DWorld::new(
-                    cmd.min_x().min(acc[0].x),
-                    cmd.min_y().min(acc[0].y),
-                ),
-                Vec2DWorld::new(
-                    cmd.max_x().max(acc[1].x),
-                    cmd.max_y().max(acc[1].y),
-                ),
-            ]
-        });
+        let points = self.commands.iter().map(|c| c.points()).flatten();
 
-        assert_ne!(bbox[0].x, std::f64::INFINITY);
-        assert_ne!(bbox[0].y, std::f64::INFINITY);
-        assert_ne!(bbox[1].x, std::f64::NEG_INFINITY);
-        assert_ne!(bbox[1].y, std::f64::NEG_INFINITY);
-
-        bbox
+        bbox_from_points(points)
     }
 
     fn shape_type(&self) -> ShapeType {
