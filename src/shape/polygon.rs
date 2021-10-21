@@ -5,6 +5,7 @@ use crate::consts::TOUCH_RADIUS;
 use crate::draw_commands::DrawCommand;
 use crate::transform::Transform;
 
+#[derive(Debug)]
 pub struct PolygonBuilder {
     points: Vec<Vec2DWorld>,
     tip: Option<Vec2DWorld>,

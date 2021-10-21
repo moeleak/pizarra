@@ -5,6 +5,7 @@ use crate::transform::Transform;
 
 use super::{ShapeBuilder, ShapeFinished, path::{PathCommand, Path}};
 
+#[derive(Debug)]
 pub struct AxisAlignedRectangleBuilder {
     corners: [Vec2DWorld; 4],
     stroke: f64,

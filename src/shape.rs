@@ -58,7 +58,7 @@ impl ShapeTool {
     }
 }
 
-pub trait ShapeBuilder {
+pub trait ShapeBuilder: std::fmt::Debug {
     /// Must handle new coordinates given to this shape. If this method is
     /// called it means that the shape is being modified (thus this is the most
     /// recently added shape

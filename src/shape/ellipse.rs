@@ -20,6 +20,7 @@ enum State {
     }
 }
 
+#[derive(Debug)]
 pub struct ThreePointEllipseBuilder {
     state: State,
     thickness: f64,

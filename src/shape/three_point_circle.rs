@@ -15,6 +15,7 @@ enum State {
     Three(Vec2DWorld, Vec2DWorld, Vec2DWorld),
 }
 
+#[derive(Debug)]
 pub struct CircleByThreePointsBuilder {
     state: State,
     thickness: f64,

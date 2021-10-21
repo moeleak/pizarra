@@ -4,6 +4,7 @@ use crate::shape::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
 use crate::draw_commands::DrawCommand;
 use crate::transform::Transform;
 
+#[derive(Debug)]
 pub struct CircleBuilder {
     center: Vec2DWorld,
     radius: f64,
