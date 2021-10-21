@@ -82,8 +82,10 @@ pub trait Point: Sized + Copy + PartialEq +Add<Output=Self> + Sub<Output=Self> +
     }
 
     fn angle(self) -> Angle {
-        if self.x() == 0.0 {
+        if self.x() == 0.0 && self.y() == 0.0 {
             Angle::from_radians(0.0)
+        } else if self.x() == 0.0 {
+            Angle::from_degrees(90.0) * self.y().signum() * -1.0
         } else {
             Angle::from_radians((self.y() / self.x()).atan())
         }
@@ -347,5 +349,14 @@ mod tests {
         let p = Vec2DWorld { x: 200.4200439453125, y: -80.388671875 };
 
         assert_eq!((p - p).angle(), Angle::from_radians(0.0));
+    }
+
+    #[test]
+    fn angle_of_a_vertical_vector() {
+        let p1 = Vec2DWorld { x: 0.0, y: -80.388671875 };
+        let p2 = Vec2DWorld { x: 0.0, y: 80.388671875 };
+
+        assert_eq!(p1.angle(), Angle::from_degrees(90.0));
+        assert_eq!(p2.angle(), Angle::from_degrees(-90.0));
     }
 }

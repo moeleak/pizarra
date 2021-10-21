@@ -1,4 +1,5 @@
 //! All sorts of geometrical functions, constants and procedures
+use std::ops::Mul;
 
 use crate::point::{Point, Vec2DWorld};
 
@@ -34,6 +35,14 @@ impl Angle {
         } else {
             angle
         })
+    }
+}
+
+impl Mul<f64> for Angle {
+    type Output = Self;
+
+    fn mul(self, s: f64) -> Angle {
+        Angle::from_radians(self.radians() *  s)
     }
 }
 
