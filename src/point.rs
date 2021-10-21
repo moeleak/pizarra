@@ -82,7 +82,11 @@ pub trait Point: Sized + Copy + PartialEq +Add<Output=Self> + Sub<Output=Self> +
     }
 
     fn angle(self) -> Angle {
-        Angle::from_radians((self.y() / self.x()).atan())
+        if self.x() == 0.0 {
+            Angle::from_radians(0.0)
+        } else {
+            Angle::from_radians((self.y() / self.x()).atan())
+        }
     }
 }
 
@@ -336,5 +340,12 @@ mod tests {
         let p2 = Vec2DWorld::new(3.0, 4.0);
 
         assert_eq!(p1.distance(p2), 5.0);
+    }
+
+    #[test]
+    fn angle_between_two_identical_vectors_is_zero() {
+        let p = Vec2DWorld { x: 200.4200439453125, y: -80.388671875 };
+
+        assert_eq!((p - p).angle(), Angle::from_radians(0.0));
     }
 }
