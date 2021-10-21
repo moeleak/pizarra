@@ -103,6 +103,12 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
             } => {
                 let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, point);
 
+                let semiminor = if semiminor == 0.0 {
+                    1.0
+                } else {
+                    semiminor
+                };
+
                 vec![DrawCommand::Ellipse {
                     thickness: self.thickness,
                     color: self.color,
