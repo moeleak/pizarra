@@ -83,9 +83,13 @@ pub enum MouseButton {
 /// to mutate it according to events in the interface.
 pub struct Pizarra {
     storage: Storage,
+
+    /// What is happening with the board right now?
+    board_state: BoardState,
+    selected_tool: SelectedTool,
     current_shape: Option<Box<dyn ShapeBuilder>>,
 
-    selected_tool: SelectedTool,
+    /// Some paremeters used during drawing
     selected_color: Color,
     bgcolor: Color,
     stroke: f64,
@@ -105,8 +109,6 @@ pub struct Pizarra {
     undo_state: UndoState,
     undo_queue: Vec<Action>,
 
-    /// What is happening with the board right now?
-    board_state: BoardState,
     /// Is the shift key pressed on the keyboard?
     is_shift_pressed: bool,
 
@@ -389,7 +391,7 @@ impl Pizarra {
 
     /// Notify the application that the screen size has changed
     pub fn resize(&mut self, new_size: Vec2DScreen) {
-        log::debug!("resize({})", new_size);
+        log::debug!("resize({:?})", new_size);
 
         let delta = (self.dimensions * -1.0 + new_size) * 0.5;
 
