@@ -193,7 +193,13 @@ pub fn ellipse_from_foci_and_sum<P: Point>(foci: [P; 2], sum: f64) -> (P, f64, f
     let semiminor = (semimajor.powi(2) - d.powi(2)).sqrt();
     let v = foci[1] - foci[0];
 
-    ((foci[0] + foci[1]) / 2.0, semimajor, semiminor, v.angle())
+    let center = (foci[0] + foci[1]) / 2.0;
+    let angle = v.angle();
+
+    let semimajor = if semimajor == 0.0 { 1.0 } else { semimajor };
+    let semiminor = if semiminor == 0.0 { 1.0 } else { semiminor };
+
+    (center, semimajor, semiminor, angle)
 }
 
 pub fn foci_and_sum_from_center_and_radi<P: Point>(center: P, semimajor: f64, semiminor: f64, angle: Angle) -> ([P; 2], f64) {
@@ -344,5 +350,20 @@ mod tests {
 
         assert_eq!(center, Vec2DWorld { x: -4.102742498255409, y: 4.93440334961619 });
         assert!((dbg!(radius) - 6.96).abs() < 0.01);
+    }
+
+    #[test]
+    fn ellipse_from_foci_and_point_cannot_give_flat_or_null_ellipses() {
+        let p = Vec2DWorld { x: -4.102742498255409, y: 4.93440334961619 };
+
+        let (_, semimajor, semiminor, _) = ellipse_from_foci_and_point([p, p], p);
+
+        assert_ne!(semimajor, 0.0);
+        assert_ne!(semiminor, 0.0);
+
+        let (_, semimajor, semiminor, _) = ellipse_from_foci_and_sum([p, p], 0.0);
+
+        assert_ne!(semimajor, 0.0);
+        assert_ne!(semiminor, 0.0);
     }
 }
