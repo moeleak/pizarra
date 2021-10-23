@@ -233,6 +233,10 @@ pub fn circle_through_three_points<P: Point>(p1: P, p2: P, p3: P) -> (P, f64) {
     let c = s1 * (p2.x() - p3.x()) + s2 * (p3.x() - p1.x()) + s3 * (p1.x() - p2.x());
     let d = s1 * (p3.x() * p2.y() - p2.x() * p3.y()) + s2 * (p1.x() * p3.y() - p3.x() * p1.y()) + s3 * (p2.x() * p1.y() - p1.x() * p2.y());
 
+    if a == 0.0 {
+        return ((p1 + p2) / 2.0, 1.0);
+    }
+
     let x = -b / (2.0 * a);
     let y = -c / (2.0 * a);
 
@@ -365,5 +369,15 @@ mod tests {
 
         assert_ne!(semimajor, 0.0);
         assert_ne!(semiminor, 0.0);
+    }
+
+    #[test]
+    fn adimensional_circle_doesnt_explode() {
+        let p = Vec2DWorld { x: -4.102742498255409, y: 4.93440334961619 };
+
+        let (center, radius) = circle_through_three_points(p, p, p);
+
+        assert_eq!(center, p);
+        assert_eq!(radius, 1.0);
     }
 }
