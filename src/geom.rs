@@ -223,7 +223,7 @@ pub fn foci_and_sum_from_center_and_radi<P: Point>(center: P, semimajor: f64, se
 }
 
 #[allow(clippy::many_single_char_names)]
-pub fn circle_by_three_points<P: Point>(p1: P, p2: P, p3: P) -> (P, f64) {
+pub fn circle_through_three_points<P: Point>(p1: P, p2: P, p3: P) -> (P, f64) {
     let s1 = p1.x().powi(2) + p1.y().powi(2);
     let s2 = p2.x().powi(2) + p2.y().powi(2);
     let s3 = p3.x().powi(2) + p3.y().powi(2);
@@ -341,15 +341,15 @@ mod tests {
     }
 
     #[test]
-    fn circle_through_three_points() {
+    fn circle_through_three_points_works() {
         let a: Vec2DWorld = (-11.0, 4.0).into();
         let b: Vec2DWorld = (-6.5, -1.6).into();
         let c: Vec2DWorld = (2.44, 2.56).into();
 
-        let (center, radius) = circle_by_three_points(a, b, c);
+        let (center, radius) = circle_through_three_points(a, b, c);
 
         assert_eq!(center, Vec2DWorld { x: -4.102742498255409, y: 4.93440334961619 });
-        assert!((dbg!(radius) - 6.96).abs() < 0.01);
+        assert!((radius - 6.96).abs() < 0.01);
     }
 
     #[test]

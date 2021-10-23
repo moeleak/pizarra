@@ -3,7 +3,7 @@ use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::draw_commands::DrawCommand;
 use crate::transform::Transform;
-use crate::geom::circle_by_three_points;
+use crate::geom::circle_through_three_points;
 
 use super::circle::Circle;
 use super::path::PathCommand;
@@ -16,15 +16,15 @@ enum State {
 }
 
 #[derive(Debug)]
-pub struct CircleByThreePointsBuilder {
+pub struct CircleThroughThreePointsBuilder {
     state: State,
     thickness: f64,
     color: Color,
 }
 
-impl CircleByThreePointsBuilder {
-    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> CircleByThreePointsBuilder {
-        CircleByThreePointsBuilder {
+impl CircleThroughThreePointsBuilder {
+    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> CircleThroughThreePointsBuilder {
+        CircleThroughThreePointsBuilder {
             state: State::One(initial),
             thickness,
             color,
@@ -32,7 +32,7 @@ impl CircleByThreePointsBuilder {
     }
 }
 
-impl ShapeBuilder for CircleByThreePointsBuilder {
+impl ShapeBuilder for CircleThroughThreePointsBuilder {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
         match self.state {
             State::One(_) => {
@@ -64,7 +64,7 @@ impl ShapeBuilder for CircleByThreePointsBuilder {
                 ShapeFinished::No
             }
             State::Three(p1, p2, p3) => {
-                let (center, radius) = circle_by_three_points(p1, p2, p3);
+                let (center, radius) = circle_through_three_points(p1, p2, p3);
 
                 ShapeFinished::Yes(Box::new(
                     Circle::from_parts(
@@ -91,7 +91,7 @@ impl ShapeBuilder for CircleByThreePointsBuilder {
                 commands: vec![PathCommand::MoveTo(p1), PathCommand::LineTo(p2)],
             }],
             State::Three(p1, p2, p3) => {
-                let (center, radius) = circle_by_three_points(p1, p2, p3);
+                let (center, radius) = circle_through_three_points(p1, p2, p3);
 
                 vec![DrawCommand::Circle {
                     center,

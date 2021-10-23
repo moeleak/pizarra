@@ -18,7 +18,7 @@ use self::ellipse::ThreePointEllipseBuilder;
 use self::polygon::PolygonBuilder;
 use self::circle::CircleBuilder;
 use self::rectangle::AxisAlignedRectangleBuilder;
-use self::three_point_circle::CircleByThreePointsBuilder;
+use self::three_point_circle::CircleThroughThreePointsBuilder;
 
 /// Shapes handle input from the user, and they're responsible of notifying when
 /// they're finished, for example in the case of a polygon
@@ -41,7 +41,7 @@ pub enum ShapeTool {
     Polygon,
     Rectangle,
     CircleByCenterAndPoint,
-    CircleByThreePoints,
+    CircleThroughThreePoints,
     ThreePointEllipse,
 }
 
@@ -52,7 +52,7 @@ impl ShapeTool {
             ShapeTool::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(color, initial, stroke)),
             ShapeTool::Polygon => Box::new(PolygonBuilder::start(color, initial, stroke)),
             ShapeTool::CircleByCenterAndPoint => Box::new(CircleBuilder::start(color, initial, stroke)),
-            ShapeTool::CircleByThreePoints => Box::new(CircleByThreePointsBuilder::start(color, initial, stroke)),
+            ShapeTool::CircleThroughThreePoints => Box::new(CircleThroughThreePointsBuilder::start(color, initial, stroke)),
             ShapeTool::ThreePointEllipse => Box::new(ThreePointEllipseBuilder::start(color, initial, stroke)),
         }
     }
