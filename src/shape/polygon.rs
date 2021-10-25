@@ -32,8 +32,10 @@ impl PolygonBuilder {
         }
     }
 
-    fn touches_prev_point(&self, point: Vec2DWorld) -> Option<Vec2DWorld> {
-        self.points.iter().filter(|p| p.distance(point) <= TOUCH_RADIUS).copied().next()
+    fn touches_prev_point(&self, point: Vec2DWorld, t: Transform) -> Option<Vec2DWorld> {
+        let point = t.to_screen_coordinates(point);
+
+        self.points.iter().filter(|&&p| t.to_screen_coordinates(p).distance(point) <= TOUCH_RADIUS).copied().next()
     }
 }
 
@@ -52,7 +54,7 @@ impl ShapeBuilder for PolygonBuilder {
             return ShapeFinished::No;
         }
 
-        if let Some(point) = self.touches_prev_point(drawing_pos) {
+        if let Some(point) = self.touches_prev_point(drawing_pos, t) {
             self.points.push(point);
             self.tip = None;
 
@@ -166,5 +168,67 @@ mod tests {
             ],
             thickness: 3.0,
         });
+    }
+
+    fn make_this_poly(t: Transform) -> PolygonBuilder {
+        let center = Vec2DWorld::new(0.0, 0.0);
+        let pf = Vec2DWorld::new(0.0, -100.0);
+        let mut poly = PolygonBuilder::start(Default::default(), center, 4.0);
+
+        poly.handle_button_released(t.to_screen_coordinates(center), t);
+        poly.handle_mouse_moved(t.to_screen_coordinates(pf), t);
+        poly.handle_button_released(t.to_screen_coordinates(pf), t);
+
+        poly
+    }
+
+    #[test]
+    fn the_polygon_closes_itself_in_screen_units() {
+        // at home scale
+        let screen = Vec2DScreen::new(800.0, 600.0);
+        let center = screen / 2.0;
+
+        // No matter the zoom level the first point should finish a shape but
+        // the second shouldn't at the default 10 px radius
+        let p1 = center + Vec2DScreen::new(9.9, 0.0);
+        let p2 = center + Vec2DScreen::new(10.1, 0.0);
+
+        let t0 = Transform::default_for_viewport(screen);
+
+        // closes polygon at initial zoom
+        let mut poly = make_this_poly(t0);
+        let t = t0;
+        poly.handle_mouse_moved(p1, t);
+        if let ShapeFinished::No = poly.handle_button_released(p1, t) {
+            panic!();
+        }
+        poly.handle_mouse_moved(p2, t);
+        if let ShapeFinished::Yes(_) = poly.handle_button_released(p2, t) {
+            panic!();
+        }
+
+        // at zoomed in scale closes at shorter distance in world coordinates
+        let mut poly = make_this_poly(t0);
+        let t = t0.zoom(2.0, center);
+        poly.handle_mouse_moved(p1, t);
+        if let ShapeFinished::No = poly.handle_button_released(p1, t) {
+            panic!();
+        }
+        poly.handle_mouse_moved(p2, t);
+        if let ShapeFinished::Yes(_) = poly.handle_button_released(p2, t) {
+            panic!();
+        }
+
+        // at zoomed out scale closes at greater distance in world coordinates
+        let mut poly = make_this_poly(t0);
+        let t = t0.zoom(0.5, center);
+        poly.handle_mouse_moved(p1, t);
+        if let ShapeFinished::No = poly.handle_button_released(p1, t) {
+            panic!();
+        }
+        poly.handle_mouse_moved(p2, t);
+        if let ShapeFinished::Yes(_) = poly.handle_button_released(p2, t) {
+            panic!();
+        }
     }
 }
