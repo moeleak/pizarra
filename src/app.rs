@@ -82,6 +82,7 @@ pub enum MouseButton {
 /// This struct keeps the state of a drawing and exposes the methods necessary
 /// to mutate it according to events in the interface.
 pub struct Pizarra {
+    /// Finished shapes
     storage: Storage,
 
     /// What is happening with the board right now?
@@ -543,16 +544,36 @@ impl Pizarra {
     pub fn handle_key_pressed(&mut self, key: Key) {
         log::debug!("handle_key_pressed({:?})", key);
 
-        if let Key::Shift = key {
-           self.is_shift_pressed = true;
+        match key {
+            Key::Shift => {
+               self.is_shift_pressed = true;
+            }
+            Key::Escape => {
+            }
+            Key::Unknown => {}
         }
     }
 
-    pub fn handle_key_released(&mut self, key: Key) {
+    pub fn handle_key_released(&mut self, key: Key) -> ShouldRedraw {
         log::debug!("handle_key_released({:?})", key);
 
-        if let Key::Shift = key {
-            self.is_shift_pressed = false;
+        match key {
+            Key::Shift => {
+                self.is_shift_pressed = false;
+
+                ShouldRedraw::No
+            }
+            Key::Escape => {
+                if self.current_shape.is_some() {
+                    self.current_shape = None;
+                    self.board_state = BoardState::Idle;
+                }
+
+                ShouldRedraw::All
+            }
+            Key::Unknown => {
+                ShouldRedraw::No
+            }
         }
     }
 
@@ -1145,8 +1166,22 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn esc_clears_current_shape() {
-        assert!(false, "pressing the esc button should clear the current shape");
+        let mut app = Pizarra::new(Vec2DScreen::new(100.0, 100.0));
+
+        app.set_tool(SelectedTool::Shape(ShapeTool::Polygon));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 0.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(0.0, 0.0));
+
+        assert_eq!(app.board_state, BoardState::UsingTool);
+        assert_eq!(app.undo_state, UndoState::Reset);
+
+        app.handle_key_pressed(Key::Escape);
+        assert_eq!(app.handle_key_released(Key::Escape), ShouldRedraw::All);
+
+        assert_eq!(app.board_state, BoardState::Idle);
+        assert!(app.current_shape.is_none());
+        assert_eq!(app.undo_state, UndoState::Reset);
+        assert_eq!(app.save_status, SaveStatus::NewAndEmpty);
     }
 }
