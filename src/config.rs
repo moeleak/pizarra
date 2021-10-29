@@ -1,6 +1,10 @@
+use serde::{Serialize, Deserialize};
+use serde_with::{serde_as, DisplayFromStr};
+
 use crate::color::Color;
 
-#[derive(Copy, Clone, Debug)]
+#[serde_as]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     /// Thikness in pixels used by default while drawing.
     pub thickness: f64,
@@ -23,10 +27,12 @@ pub struct Config {
 
     /// When creating a new drawing this will be the background color. Specified
     /// in CSS hexadecimal format, like '#cebada'
+    #[serde_as(as = "DisplayFromStr")]
     pub background_color: Color,
 
     /// When creating a new drawing this will be the starting color of the pen.
     /// Specified in CSS hexadecimal format.
+    #[serde_as(as = "DisplayFromStr")]
     pub stroke_color: Color,
 }
 
