@@ -62,11 +62,11 @@ pub trait ShapeBuilder: std::fmt::Debug {
     /// Must handle new coordinates given to this shape. If this method is
     /// called it means that the shape is being modified (thus this is the most
     /// recently added shape
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, transform: Transform);
+    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, transform: Transform, snap: f64);
 
-    fn handle_button_pressed(&mut self, pos: Vec2DScreen, transform: Transform);
+    fn handle_button_pressed(&mut self, pos: Vec2DScreen, transform: Transform, snap: f64);
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, transform: Transform) -> ShapeFinished;
+    fn handle_button_released(&mut self, pos: Vec2DScreen, transform: Transform, snap: f64) -> ShapeFinished;
 
     /// Must return the necessary commands to display this shape on the screen
     /// when building it

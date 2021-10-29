@@ -33,7 +33,7 @@ impl CircleThroughThreePointsBuilder {
 }
 
 impl ShapeBuilder for CircleThroughThreePointsBuilder {
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
+    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
         match self.state {
             State::One(_) => {
                 self.state = State::One(t.to_world_coordinates(pos));
@@ -47,10 +47,10 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
         }
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform) {}
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) {}
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
-        self.handle_mouse_moved(pos, t);
+    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
+        self.handle_mouse_moved(pos, t, snap);
 
         match self.state {
             State::One(p1) => {

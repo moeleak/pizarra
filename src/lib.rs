@@ -50,9 +50,9 @@ pub mod action;
 pub mod point;
 pub mod transform;
 pub mod deserialize;
-pub mod consts;
 pub mod serialize;
 pub mod geom;
 pub mod key;
+pub mod config;
 
 pub mod prelude;

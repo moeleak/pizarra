@@ -24,14 +24,14 @@ impl CircleBuilder {
 }
 
 impl ShapeBuilder for CircleBuilder {
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
+    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
         self.radius = self.center.distance(t.to_world_coordinates(pos));
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform) {}
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) {}
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
-        self.handle_mouse_moved(pos, t);
+    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
+        self.handle_mouse_moved(pos, t, snap);
 
         ShapeFinished::Yes(Box::new(
             Circle::from_parts(

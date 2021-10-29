@@ -8,10 +8,10 @@ use crate::color::Color;
 use crate::action::Action;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::transform::Transform;
-use crate::consts::{DEFAULT_THICKNESS, TOUCH_RADIUS};
 use crate::deserialize;
 use crate::geom::{Angle, bbox_from_points};
 use crate::key::Key;
+use crate::config::Config;
 
 #[derive(Copy,Clone,Debug, PartialEq, Eq)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -82,6 +82,9 @@ pub enum MouseButton {
 /// This struct keeps the state of a drawing and exposes the methods necessary
 /// to mutate it according to events in the interface.
 pub struct Pizarra {
+    /// The settings that where loaded at app start
+    config: Config,
+
     /// Finished shapes
     storage: Storage,
 
@@ -150,7 +153,7 @@ impl Pizarra {
         match self.selected_tool {
             SelectedTool::Shape(shape) => {
                 if let Some(shape) = self.current_shape.as_mut() {
-                    shape.handle_button_pressed(point, self.transform);
+                    shape.handle_button_pressed(point, self.transform, self.config.point_snap_radius);
                 } else {
                     let new_shape = shape.start(self.selected_color.with_alpha(self.alpha), transformed_point, self.transform.to_world_units(self.stroke));
 
@@ -182,7 +185,7 @@ impl Pizarra {
         match self.selected_tool {
             SelectedTool::Shape(_shape) => {
                 let finished = if let Some(shape) = self.current_shape.as_mut() {
-                    shape.handle_button_released(point, self.transform)
+                    shape.handle_button_released(point, self.transform, self.config.point_snap_radius)
                 } else {
                     ShapeFinished::No
                 };
@@ -222,7 +225,7 @@ impl Pizarra {
         match self.selected_tool {
             SelectedTool::Shape(_shape_type) => {
                 if let Some(shape) = self.current_shape.as_mut() {
-                    shape.handle_mouse_moved(point, self.transform);
+                    shape.handle_mouse_moved(point, self.transform, self.config.point_snap_radius);
                     ShouldRedraw::Shape
                 } else {
                     ShouldRedraw::No
@@ -320,16 +323,18 @@ impl Pizarra {
     /// Create a new instance of Pizarra's controller. Only one is needed and it
     /// can be put inside an Rc<RefCell<_>> to use it inside event callbacks in
     /// UI implementations.
-    pub fn new(dimensions: Vec2DScreen) -> Pizarra {
+    pub fn new(dimensions: Vec2DScreen, config: Config) -> Pizarra {
         Pizarra {
+            config,
+
             storage: Storage::new(),
             current_shape: None,
 
             selected_tool: SelectedTool::Shape(ShapeTool::Path),
             bgcolor: Color::black(),
-            stroke: DEFAULT_THICKNESS,
+            stroke: config.thickness,
             alpha: 1.0,
-            erase_radius: TOUCH_RADIUS,
+            erase_radius: config.erase_radius,
 
             /// a vector from the top-left corner of the screen to the origin
             /// of coordinates in the storage
@@ -350,10 +355,20 @@ impl Pizarra {
         }
     }
 
+    #[cfg(test)]
+    pub fn new_for_testing() -> Pizarra {
+        Pizarra::new(Vec2DScreen::new(80.0, 60.0), Default::default())
+    }
+
     /// Returns a transform object needed for proper rendering. This object can
     /// translate a point from storage coordinates to screen coordinates.
     pub fn get_transform(&self) -> Transform {
         self.transform
+    }
+
+    /// Returns the current config
+    pub fn config(&self) -> Config {
+        self.config
     }
 
     /// Returns the dimensions of the screen
@@ -736,7 +751,7 @@ impl Pizarra {
 
     pub fn open(&mut self, svg: &str) -> Result<(), deserialize::Error> {
         self.reset();
-        self.storage = Storage::from_svg(svg)?;
+        self.storage = Storage::from_svg(svg, self.config)?;
 
         Ok(())
     }
@@ -747,14 +762,13 @@ mod tests {
     use super::*;
     use crate::{
         draw_commands::DrawCommand, app::SelectedTool,
-        consts::DEFAULT_THICKNESS,
         shape::path::{PathCommand, CubicBezierCurve},
     };
     use PathCommand::*;
 
     #[test]
     fn draw_a_line() {
-        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new_for_testing();
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Path));
 
@@ -776,13 +790,13 @@ mod tests {
                     to: Vec2DWorld { x: -39.0, y: -30.0 }
                 }),
             ],
-            thickness: DEFAULT_THICKNESS,
+            thickness: Config::default().thickness,
         });
     }
 
     #[test]
     fn draw_a_line_in_zoom() {
-        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new_for_testing();
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Path));
 
@@ -806,13 +820,13 @@ mod tests {
                     to: Vec2DWorld { x: -19.5, y: -15.0 }
                 }),
             ],
-            thickness: DEFAULT_THICKNESS/2.0,
+            thickness: Config::default().thickness / 2.0,
         });
     }
 
     #[test]
     fn erase() {
-        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new_for_testing();
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Path));
 
@@ -834,7 +848,9 @@ mod tests {
 
     #[test]
     fn erase_with_zoom() {
-        let mut app = Pizarra::new(Vec2DScreen::new(4.0, 4.0));
+        let mut app = Pizarra::new_for_testing();
+
+        app.resize(Vec2DScreen::new(4.0, 4.0));
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Path));
 
@@ -868,7 +884,7 @@ mod tests {
 
     #[test]
     fn zoom_out_is_plugged() {
-        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new_for_testing();
 
         app.zoom_out();
 
@@ -877,7 +893,7 @@ mod tests {
 
     #[test]
     fn do_do_do_undo_redo_redo_undo() {
-        let mut app = Pizarra::new(Vec2DScreen::new(800.0, 600.0));
+        let mut app = Pizarra::new_for_testing();
 
         // Do
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
@@ -906,7 +922,7 @@ mod tests {
 
     #[test]
     fn do_undo_redo_undo() {
-        let mut app = Pizarra::new(Vec2DScreen::new(800.0, 600.0));
+        let mut app = Pizarra::new_for_testing();
 
         // Do
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
@@ -924,7 +940,7 @@ mod tests {
 
     #[test]
     fn do_undo_do_do_undo() {
-        let mut app = Pizarra::new(Vec2DScreen::new(800.0, 600.0));
+        let mut app = Pizarra::new_for_testing();
 
         // Do
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
@@ -950,7 +966,7 @@ mod tests {
 
     #[test]
     fn do_undo_do_undo_undo() {
-        let mut app = Pizarra::new(Vec2DScreen::new(800.0, 600.0));
+        let mut app = Pizarra::new_for_testing();
 
         // Do
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 1.0));
@@ -972,7 +988,7 @@ mod tests {
 
     #[test]
     fn r#move() {
-        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new_for_testing();
 
         assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-40.0, -30.0), Vec2DWorld::new(40.0, 30.0)]);
 
@@ -984,7 +1000,7 @@ mod tests {
 
     #[test]
     fn move_while_in_zoom_is_coherent() {
-        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new_for_testing();
 
         assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-40.0, -30.0), Vec2DWorld::new(40.0, 30.0)]);
 
@@ -1000,7 +1016,7 @@ mod tests {
 
     #[test]
     fn move_while_drawing() {
-        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new_for_testing();
 
         assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-40.0, -30.0), Vec2DWorld::new(40.0, 30.0)]);
 
@@ -1023,7 +1039,7 @@ mod tests {
 
         assert_eq!(commands[0], DrawCommand::Path {
             color: Default::default(),
-            thickness: DEFAULT_THICKNESS,
+            thickness: Config::default().thickness,
             commands: vec![
                 MoveTo(Vec2DWorld { x: -30.0, y: -20.0 }),
                 CurveTo(CubicBezierCurve {
@@ -1042,7 +1058,7 @@ mod tests {
 
     #[test]
     fn zoom_must_be_idempotent() {
-        let mut app = Pizarra::new(Vec2DScreen::new(80.0, 60.0));
+        let mut app = Pizarra::new_for_testing();
 
         assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-40.0, -30.0), Vec2DWorld::new(40.0, 30.0)]);
 
@@ -1057,7 +1073,9 @@ mod tests {
 
     #[test]
     fn cache_invalidation_on_ctrl_z() {
-        let mut app = Pizarra::new(Vec2DScreen::new(10.0, 10.0));
+        let mut app = Pizarra::new_for_testing();
+
+        app.resize(Vec2DScreen::new(10.0, 10.0));
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Rectangle));
 
@@ -1110,7 +1128,7 @@ mod tests {
         // it gets erased
         //
         // it's expeceted for the eraser not to erase the shape
-        let mut app = Pizarra::new(Vec2DScreen::new(100.0, 100.0));
+        let mut app = Pizarra::new_for_testing();
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Rectangle));
 
@@ -1133,7 +1151,7 @@ mod tests {
 
     #[test]
     fn app_state_after_finished_shape() {
-        let mut app = Pizarra::new(Vec2DScreen::new(100.0, 100.0));
+        let mut app = Pizarra::new_for_testing();
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Path));
 
@@ -1156,7 +1174,9 @@ mod tests {
 
     #[test]
     fn resize_screen_keeps_center() {
-        let mut app = Pizarra::new(Vec2DScreen::new(100.0, 100.0));
+        let mut app = Pizarra::new_for_testing();
+
+        app.resize(Vec2DScreen::new(100.0, 100.0));
 
         assert_eq!(app.visible_bbox(), [Vec2DWorld::new(-50.0, -50.0), Vec2DWorld::new(50.0, 50.0)]);
 
@@ -1167,7 +1187,7 @@ mod tests {
 
     #[test]
     fn esc_clears_current_shape() {
-        let mut app = Pizarra::new(Vec2DScreen::new(100.0, 100.0));
+        let mut app = Pizarra::new_for_testing();
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Polygon));
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 0.0));

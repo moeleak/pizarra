@@ -11,9 +11,9 @@ use lazy_static::lazy_static;
 use crate::storage::Storage;
 use crate::shape::{ShapeStored, path::Path, ellipse::Ellipse};
 use crate::color::Color;
-use crate::consts::DEFAULT_THICKNESS;
 use crate::point::{Point, Vec2DWorld};
 use crate::geom::Angle;
+use crate::config::Config;
 
 mod path;
 
@@ -302,7 +302,7 @@ fn xml_attrs_as_hashmap(attrs: Vec<OwnedAttribute>) -> HashMap<String, String> {
 }
 
 impl Path {
-    pub fn from_xml_attributes(style: &str, path: &str) -> Result<Path, Error> {
+    pub fn from_xml_attributes(style: &str, path: &str, config: Config) -> Result<Path, Error> {
         let attrs = css_attrs_as_hashmap(style);
 
         let color = if let Some(color_str) = attrs.get("stroke") {
@@ -318,7 +318,7 @@ impl Path {
         let thickness = if let Some(thickness_str) = attrs.get("stroke-width") {
                 thickness_str.parse()?
             } else {
-                DEFAULT_THICKNESS
+                config.thickness
             };
 
         let alpha = if let Some(alpha_str) = attrs.get("stroke-opacity") {
@@ -336,20 +336,20 @@ impl Path {
 }
 
 trait Deserialize {
-    fn deserialize(attributes: HashMap<String, String>) -> Result<Box<dyn ShapeStored>, Error>;
+    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>, Error>;
 }
 
-impl Deserialize for Path{
-    fn deserialize(attributes: HashMap<String, String>) -> Result<Box<dyn ShapeStored>, Error> {
+impl Deserialize for Path {
+    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>, Error> {
         let styleattr = attributes.get("style").ok_or_else(|| Error::MissingAttribute("style".into()))?;
         let dattr = attributes.get("d").ok_or_else(|| Error::MissingAttribute("d".into()))?;
 
-        Ok(Box::new(Path::from_xml_attributes(styleattr, dattr)?))
+        Ok(Box::new(Path::from_xml_attributes(styleattr, dattr, config)?))
     }
 }
 
 impl Deserialize for Ellipse {
-    fn deserialize(attributes: HashMap<String, String>) -> Result<Box<dyn ShapeStored>, Error> {
+    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>, Error> {
         let cx = attributes.get("cx").ok_or_else(|| Error::MissingAttribute("cx".into()))?;
         let cy = attributes.get("cy").ok_or_else(|| Error::MissingAttribute("cy".into()))?;
         let rx = attributes.get("rx").ok_or_else(|| Error::MissingAttribute("rx".into()))?;
@@ -360,7 +360,7 @@ impl Deserialize for Ellipse {
         let attrs = css_attrs_as_hashmap(styleattr);
 
         let color: Color = attrs.get("stroke").map(|c| c.parse()).transpose()?.unwrap_or_default();
-        let thickness = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or(DEFAULT_THICKNESS);
+        let thickness = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or(config.thickness);
         let alpha = attrs.get("stroke-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
 
         let angle: Angle = angle.parse()?;
@@ -381,17 +381,17 @@ impl Deserialize for Ellipse {
 }
 
 impl Storage {
-    pub fn from_svg(svg: &str) -> Result<Storage, Error> {
+    pub fn from_svg(svg: &str, config: Config) -> Result<Storage, Error> {
         let parser = EventReader::from_str(svg);
         let mut storage = Storage::new();
 
         for e in parser {
             match e {
                 Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
-                    storage.add(Path::deserialize(xml_attrs_as_hashmap(attributes))?);
+                    storage.add(Path::deserialize(xml_attrs_as_hashmap(attributes), config)?);
                 }
                 Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
-                    storage.add(Ellipse::deserialize(xml_attrs_as_hashmap(attributes))?);
+                    storage.add(Ellipse::deserialize(xml_attrs_as_hashmap(attributes), config)?);
                 }
                 Err(e) => {
                     return Err(e.into());
@@ -414,7 +414,7 @@ mod tests {
     #[test]
     fn test_from_svg() {
         let svg_data = include_str!("../res/simple_file_load.svg");
-        let storage = Storage::from_svg(svg_data).unwrap();
+        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
 
         assert_eq!(storage.shape_count(), 1);
     }
@@ -422,7 +422,7 @@ mod tests {
     #[test]
     fn test_from_custom_svg() {
         let svg_data = include_str!("../res/serialize_test.svg");
-        let storage = Storage::from_svg(svg_data).unwrap();
+        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
 
         assert_eq!(storage.shape_count(), 1);
     }
@@ -430,7 +430,7 @@ mod tests {
     #[test]
     fn test_can_deserialize_circle() {
         let svg_data = include_str!("../res/circle.svg");
-        let storage = Storage::from_svg(svg_data).unwrap();
+        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
 
         assert_eq!(storage.shape_count(), 1);
     }
@@ -438,7 +438,7 @@ mod tests {
     #[test]
     fn test_can_deserialize_ellipse() {
         let svg_data = include_str!("../res/ellipse.svg");
-        let storage = Storage::from_svg(svg_data).unwrap();
+        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
 
         assert_eq!(storage.shape_count(), 1);
     }
@@ -446,14 +446,14 @@ mod tests {
     #[test]
     fn test_point_bug() {
         let svg_data = include_str!("../res/bug_opening.svg");
-        let storage = Storage::from_svg(svg_data).unwrap();
+        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
 
         assert_eq!(storage.shape_count(), 4);
     }
 
     #[test]
     fn test_line_from_xml_attributes() {
-        let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(53.90625%,88.28125%,20.3125%);stroke-opacity:1;stroke-miterlimit:10;", "M 147.570312 40.121094 L 146.9375 40.121094 L 145.296875 40.460938 L 142.519531 41.710938 L 139.613281 43.304688 L 138.097656 44.894531 L 137.339844 46.714844 L 138.097656 47.621094 L 139.992188 47.851562 L 142.898438 47.621094 L 146.179688 47.167969 L 150.097656 47.964844 L 151.738281 49.667969 L 152.496094 51.714844 L 152.875 53.191406 ").unwrap();
+        let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(53.90625%,88.28125%,20.3125%);stroke-opacity:1;stroke-miterlimit:10;", "M 147.570312 40.121094 L 146.9375 40.121094 L 145.296875 40.460938 L 142.519531 41.710938 L 139.613281 43.304688 L 138.097656 44.894531 L 137.339844 46.714844 L 138.097656 47.621094 L 139.992188 47.851562 L 142.898438 47.621094 L 146.179688 47.167969 L 150.097656 47.964844 L 151.738281 49.667969 L 152.496094 51.714844 L 152.875 53.191406 ", Default::default()).unwrap();
 
         if let DrawCommand::Path {
             color,
@@ -511,7 +511,7 @@ mod tests {
 
     #[test]
     fn test_parse_alpha() {
-        let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:#FF0000;stroke-opacity:0.8;stroke-miterlimit:10;", "M 10 10 L 20 20").unwrap();
+        let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:#FF0000;stroke-opacity:0.8;stroke-miterlimit:10;", "M 10 10 L 20 20", Default::default()).unwrap();
 
         assert_eq!(line.color(), Color::red().with_alpha(0.8));
     }
@@ -527,7 +527,7 @@ mod tests {
             ("style".into(), "stroke:#cabada;stroke-width:3.5;stroke-opacity:0.8".into()),
         ].into_iter().collect();
 
-        let deserialized = Ellipse::deserialize(attrs).unwrap();
+        let deserialized = Ellipse::deserialize(attrs, Default::default()).unwrap();
 
         match deserialized.draw_commands() {
             DrawCommand::Ellipse { center, semimajor, semiminor, angle, color, thickness } => {
@@ -546,6 +546,6 @@ mod tests {
     fn can_deserialize_ellipse_serialization_test() {
         let svg_data = include_str!("../res/serialize_ellipse.svg");
 
-        Storage::from_svg(svg_data).unwrap();
+        Storage::from_svg(svg_data, Default::default()).unwrap();
     }
 }

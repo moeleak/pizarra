@@ -1,0 +1,45 @@
+use crate::color::Color;
+
+#[derive(Copy, Clone, Debug)]
+pub struct Config {
+    /// Thikness in pixels used by default while drawing.
+    pub thickness: f64,
+
+    /// Padding in pixels added to drawings while exporting.
+    pub export_padding: f64,
+
+    /// If the cursor's distance to a shape is less than this it will be
+    /// considered to be touching and thus be erased.
+    pub erase_radius: f64,
+
+    /// When drawing polygons and possibly other shapes in the future this
+    /// radius in screen units is used to decide if the cursor is touching a
+    /// previous point of the current shape.
+    pub point_snap_radius: f64,
+
+    /// When pressing + and - keys on the keyboard the zoom increases and
+    /// decreases by this factor (must be > 1 so that + zooms in).
+    pub zoom_factor: f64,
+
+    /// When creating a new drawing this will be the background color. Specified
+    /// in CSS hexadecimal format, like '#cebada'
+    pub background_color: Color,
+
+    /// When creating a new drawing this will be the starting color of the pen.
+    /// Specified in CSS hexadecimal format.
+    pub stroke_color: Color,
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            thickness: 3.0,
+            export_padding: 20.0,
+            erase_radius: 10.0,
+            point_snap_radius: 10.0,
+            zoom_factor: 2.0,
+            background_color: Color::black(),
+            stroke_color: Color::white(),
+        }
+    }
+}

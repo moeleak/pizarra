@@ -219,13 +219,13 @@ impl ShapeBuilder for PathBuilder {
     //    control point respecting its length. It sets correctly the length of
     //    its two control points but the last one sits in the segment between
     //    the last two points.
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
+    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
         add_point(&mut self.commands, t.to_world_coordinates(pos));
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) { }
 
-    fn handle_button_released(&mut self, _pos: Vec2DScreen, _t: Transform) -> ShapeFinished {
+    fn handle_button_released(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) -> ShapeFinished {
         ShapeFinished::Yes(Box::new(Path::from_parts(
             self.commands.clone(), self.color, self.thickness,
         )))

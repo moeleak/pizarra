@@ -1,6 +1,5 @@
 use xml::writer::{EmitterConfig, XmlEvent, EventWriter};
 
-use crate::consts::EXPORT_PADDING;
 use crate::point::{Point, Vec2DWorld};
 use crate::draw_commands::DrawCommand;
 use crate::app::Pizarra;
@@ -79,12 +78,14 @@ impl Pizarra {
                 .perform_indent(true)
                 .create_writer(&mut output);
 
-            let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2DWorld::new(EXPORT_PADDING*2.0, EXPORT_PADDING*2.0);
+            let export_padding = self.config().export_padding;
+
+            let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2DWorld::new(export_padding*2.0, export_padding*2.0);
             let width = svg_dimensions.x.to_string();
             let height = svg_dimensions.y.to_string();
             let min = bbox[0].min(bbox[1]);
-            let min_x = (min.x - EXPORT_PADDING).to_string();
-            let min_y = (min.y - EXPORT_PADDING).to_string();
+            let min_x = (min.x - export_padding).to_string();
+            let min_y = (min.y - export_padding).to_string();
             let view_box = format!("{} {} {} {}", &min_x, &min_y, width, height);
             let background_style = format!("fill:{fill};fill-opacity:1;stroke:none;", fill = self.bgcolor().css());
 
@@ -133,7 +134,9 @@ mod tests {
 
     #[test]
     fn test_serialize() {
-        let mut app = Pizarra::new(Vec2DScreen::new(40.0, 40.0));
+        let mut app = Pizarra::new_for_testing();
+
+        app.resize(Vec2DScreen::new(40.0, 40.0));
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Path));
         app.set_color(Color::red());
@@ -147,7 +150,9 @@ mod tests {
 
     #[test]
     fn serialize_ellipse() {
-        let mut app = Pizarra::new(Vec2DScreen::new(40.0, 40.0));
+        let mut app = Pizarra::new_for_testing();
+
+        app.resize(Vec2DScreen::new(40.0, 40.0));
 
         app.set_tool(SelectedTool::Shape(ShapeTool::ThreePointEllipse));
         app.set_color(Color::red());
@@ -174,7 +179,9 @@ mod tests {
 
     #[test]
     fn test_serialize_color_with_alpha() {
-        let mut app = Pizarra::new(Vec2DScreen::new(40.0, 40.0));
+        let mut app = Pizarra::new_for_testing();
+
+        app.resize(Vec2DScreen::new(40.0, 40.0));
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Polygon));
         app.set_color(Color::green());

@@ -38,7 +38,7 @@ impl ThreePointEllipseBuilder {
 }
 
 impl ShapeBuilder for ThreePointEllipseBuilder {
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
+    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
         match self.state {
             State::One(_) => {
                 self.state = State::One(t.to_world_coordinates(pos));
@@ -57,9 +57,9 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
         }
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _: Transform) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _: Transform, _snap: f64) { }
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
+    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) -> ShapeFinished {
         match self.state {
             State::One(f1) => {
                 self.state = State::Foci([f1, t.to_world_coordinates(pos)]);
@@ -198,6 +198,8 @@ mod tests {
 
     use super::*;
 
+    const SNAP: f64 = 10.0;
+
     #[test]
     fn test_intersects_circle() {
         let f1: Vec2DWorld = (-20.22222, -13.24752).into();
@@ -236,7 +238,7 @@ mod tests {
         let mut builder = ThreePointEllipseBuilder::start(Default::default(), t.to_world_coordinates(a0), 1.0);
 
         // move the pen without releasing
-        builder.handle_mouse_moved(a1, t);
+        builder.handle_mouse_moved(a1, t, SNAP);
 
         // assert that the first point moves
         assert_eq!(builder.draw_commands()[0], DrawCommand::Path {
@@ -248,8 +250,8 @@ mod tests {
         });
 
         // release the pen at a point A, this will be the first focus
-        builder.handle_mouse_moved(a, t);
-        builder.handle_button_released(a, t);
+        builder.handle_mouse_moved(a, t, SNAP);
+        builder.handle_button_released(a, t, SNAP);
 
         // a line is drawn connecting A and A
         assert_eq!(builder.draw_commands()[0], DrawCommand::Path {
@@ -262,7 +264,7 @@ mod tests {
         });
 
         // move the pen to a point B
-        builder.handle_mouse_moved(b, t);
+        builder.handle_mouse_moved(b, t, SNAP);
 
         // a line is drawn connecting A and B
         assert_eq!(builder.draw_commands()[0], DrawCommand::Path {
@@ -275,11 +277,11 @@ mod tests {
         });
 
         // release pen at point C
-        builder.handle_mouse_moved(c, t);
-        builder.handle_button_released(c, t);
+        builder.handle_mouse_moved(c, t, SNAP);
+        builder.handle_button_released(c, t, SNAP);
 
         // now move pen to point D
-        builder.handle_mouse_moved(d, t);
+        builder.handle_mouse_moved(d, t, SNAP);
 
         // and check that a first ellipse is built
         assert_eq!(builder.draw_commands()[0], DrawCommand::Ellipse {
@@ -292,9 +294,9 @@ mod tests {
         });
 
         // finish the ellipse at a point E
-        builder.handle_mouse_moved(e, t);
+        builder.handle_mouse_moved(e, t, SNAP);
 
-        match builder.handle_button_released(e, t) {
+        match builder.handle_button_released(e, t, SNAP) {
             ShapeFinished::Yes(shape) => {
                 assert_eq!(shape.draw_commands(), DrawCommand::Ellipse {
                     color: Default::default(),

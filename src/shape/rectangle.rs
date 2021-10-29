@@ -37,7 +37,7 @@ fn draw_commands(corners: [Vec2DWorld; 4]) -> Vec<PathCommand> {
 }
 
 impl ShapeBuilder for AxisAlignedRectangleBuilder {
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform) {
+    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
         let first_point = self.corners[0];
         let first_point_screen = t.to_screen_coordinates(self.corners[0]);
 
@@ -49,10 +49,10 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
         ];
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) { }
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform) -> ShapeFinished {
-        self.handle_mouse_moved(pos, t);
+    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
+        self.handle_mouse_moved(pos, t, snap);
 
         ShapeFinished::Yes(Box::new(Path::from_parts(
             draw_commands(self.all_four_corners()), self.color, self.stroke,
@@ -74,6 +74,8 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
 mod tests {
     use super::*;
 
+    const SNAP: f64 = 10.0;
+
     #[test]
     fn finished_shape_has_all_sides() {
         let a: Vec2DScreen = (4.0, 5.0).into();
@@ -82,7 +84,7 @@ mod tests {
 
         let mut rect = AxisAlignedRectangleBuilder::start(Default::default(), t.to_world_coordinates(a), 1.0);
 
-        rect.handle_mouse_moved(b, t);
+        rect.handle_mouse_moved(b, t, SNAP);
 
         // while being drawn
         assert_eq!(rect.draw_commands()[0], DrawCommand::Path {
@@ -98,7 +100,7 @@ mod tests {
         });
 
         // while finished
-        match rect.handle_button_released(b, t) {
+        match rect.handle_button_released(b, t, SNAP) {
             ShapeFinished::Yes(s) => {
                 assert_eq!(s.draw_commands(), DrawCommand::Path {
                     color: Default::default(),
