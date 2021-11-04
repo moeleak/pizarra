@@ -97,7 +97,6 @@ pub struct Pizarra {
     selected_color: Color,
     bgcolor: Color,
     stroke: f64,
-    alpha: f64,
     erase_radius: f64,
 
     /// The transformation matrix that takes points from the drawing coordinate
@@ -155,7 +154,7 @@ impl Pizarra {
                 if let Some(shape) = self.current_shape.as_mut() {
                     shape.handle_button_pressed(point, self.transform, self.config.point_snap_radius);
                 } else {
-                    let new_shape = shape.start(self.selected_color.with_alpha(self.alpha), transformed_point, self.transform.to_world_units(self.stroke));
+                    let new_shape = shape.start(self.selected_color, transformed_point, self.transform.to_world_units(self.stroke));
 
                     self.current_shape = Some(new_shape);
                 }
@@ -333,7 +332,7 @@ impl Pizarra {
             selected_tool: SelectedTool::Shape(ShapeTool::Path),
             bgcolor: Color::black(),
             stroke: config.thickness,
-            alpha: 1.0,
+            selected_color: config.stroke_color,
             erase_radius: config.erase_radius,
 
             /// a vector from the top-left corner of the screen to the origin
@@ -348,8 +347,6 @@ impl Pizarra {
 
             undo_state: UndoState::Reset,
             undo_queue: Vec::new(),
-
-            selected_color: Default::default(),
 
             save_status: SaveStatus::NewAndEmpty,
         }
@@ -379,6 +376,10 @@ impl Pizarra {
     /// Returns current background color
     pub fn bgcolor(&self) -> Color {
         self.bgcolor
+    }
+
+    pub fn selected_color(&self) -> Color {
+        self.selected_color
     }
 
     /// Returns an iterator over the draw commands required to render the visible
@@ -429,10 +430,10 @@ impl Pizarra {
         self.stroke = stroke;
     }
 
-    pub fn set_alpha(&mut self, alpha: f64) {
+    pub fn set_alpha(&mut self, alpha: u8) {
         log::debug!("set_alpha({})", alpha);
 
-        self.alpha = alpha;
+        self.selected_color = self.selected_color.with_alpha(alpha);
     }
 
     /// Set the background color of the drawing

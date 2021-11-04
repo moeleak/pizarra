@@ -173,105 +173,133 @@ lazy_static! {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Color {
-    pub r: f64,
-    pub g: f64,
-    pub b: f64,
-    pub a: f64,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
 }
 
 impl Color {
-    pub fn with_alpha(self, alpha: f64) -> Color {
+    pub fn with_alpha(self, alpha: u8) -> Color {
         Color {
             a: alpha,
             ..self
         }
     }
 
-    pub fn alpha(self) -> f64 {
+    pub fn with_float_alpha(self, alpha: f64) -> Color {
+        Color {
+            a: (alpha * 255.0) as u8,
+            ..self
+        }
+    }
+
+    pub fn alpha(self) -> u8 {
         self.a
+    }
+
+    pub fn float_r(self) -> f64 {
+        self.r as f64 / 255.0
+    }
+
+    pub fn float_g(self) -> f64 {
+        self.g as f64 / 255.0
+    }
+
+    pub fn float_b(self) -> f64 {
+        self.b as f64 / 255.0
+    }
+
+    pub fn float_alpha(self) -> f64 {
+        self.a as f64 / 255.0
     }
 
     /// Creates a color from its integer rgb codes
     pub fn from_int_rgb(r: u8, g: u8, b: u8) -> Color {
         Color {
-            r: r as f64 / 255.0,
-            g: g as f64 / 255.0,
-            b: b as f64 / 255.0,
-            a: 1.0,
+            r, g, b,
+            a: 255,
         }
     }
 
     /// Creates a color from its integer rgba codes
     pub fn from_int_rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
         Color {
-            r: r as f64 / 255.0,
-            g: g as f64 / 255.0,
-            b: b as f64 / 255.0,
-            a: a as f64 / 255.0,
+            r, g, b, a
         }
     }
 
-    /// Creates an opaque color from rgb
-    pub fn from_rgb(r: f64, g: f64, b: f64) -> Color {
+    /// Creates an opaque color from float rgb.
+    ///
+    /// Values must be between 0.0 and 1.0
+    pub fn from_float_rgb(r: f64, g: f64, b: f64) -> Color {
         Color {
-            r, g, b, a: 1.0,
+            r: (r * 255.0) as u8,
+            g: (g * 255.0) as u8,
+            b: (b * 255.0) as u8,
+            a: 255,
         }
     }
 
     /// Creates a color from rgba values
-    pub fn from_rgba(r: f64, g: f64, b: f64, a: f64) -> Color {
+    ///
+    /// Values must be between 0.0 and 1.0
+    pub fn from_float_rgba(r: f64, g: f64, b: f64, a: f64) -> Color {
         Color {
-            r, g, b, a,
+            r: (r * 255.0) as u8,
+            g: (g * 255.0) as u8,
+            b: (b * 255.0) as u8,
+            a: (a * 255.0) as u8,
         }
     }
 
     pub fn green() -> Color {
         Color {
-            r: 138.0/255.0,
-            g: 226.0/255.0,
-            b: 52.0/255.0,
-            a: 1.0,
+            r: 138,
+            g: 226,
+            b: 52,
+            a: 255,
         }
     }
 
     pub fn red() -> Color {
         Color {
-            r: 1.0,
-            g: 0.0,
-            b: 0.0,
-            a: 1.0,
+            r: 255,
+            g: 0,
+            b: 0,
+            a: 255,
         }
     }
 
     pub fn blue() -> Color {
         Color {
-            r: 0.0,
-            g: 0.0,
-            b: 1.0,
-            a: 1.0,
+            r: 0,
+            g: 0,
+            b: 255,
+            a: 255,
         }
     }
 
     pub fn white() -> Color {
         Color {
-            r: 1.0,
-            g: 1.0,
-            b: 1.0,
-            a: 1.0,
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
         }
     }
 
     pub fn black() -> Color {
         Color {
-            r: 48.0/255.0,
-            g: 54.0/255.0,
-            b: 51.0/255.0,
-            a: 1.0,
+            r: 48,
+            g: 54,
+            b: 51,
+            a: 255,
         }
     }
 
     pub fn css(&self) -> String {
-        format!("#{:02X}{:02X}{:02X}", (self.r*255.0) as u32, (self.g*255.0) as u32, (self.b*255.0) as u32)
+        format!("#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
     }
 }
 
@@ -283,12 +311,7 @@ impl Default for Color {
 
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "#{:X}{:X}{:X}{:X}",
-            (self.r*255.0) as u32,
-            (self.g*255.0) as u32,
-            (self.b*255.0) as u32,
-            (self.a*255.0) as u32,
-        )
+        write!(f, "#{:X}{:X}{:X}{:X}", self.r, self.g, self.b, self.a)
     }
 }
 
@@ -299,20 +322,20 @@ impl FromStr for Color {
         if let Some(c) = CSS_COLORS.get(&s.to_lowercase()) {
             Ok(*c)
         } else if let Some(captures) = COLOR_REGEX.captures(s) {
-            Ok(Color::from_rgb(
+            Ok(Color::from_float_rgb(
                 captures["r"].parse::<f64>()?/ 100.0,
                 captures["g"].parse::<f64>()?/100.0,
                 captures["b"].parse::<f64>()?/100.0,
             ))
         } else if let Some(captures) = CSS_COLOR_REGEX.captures(s) {
-            let c = Color::from_rgb(
-                u32::from_str_radix(&captures["r"], 16).unwrap() as f64 / 255.0,
-                u32::from_str_radix(&captures["g"], 16).unwrap() as f64 / 255.0,
-                u32::from_str_radix(&captures["b"], 16).unwrap() as f64 / 255.0,
+            let c = Color::from_int_rgb(
+                u8::from_str_radix(&captures["r"], 16).unwrap(),
+                u8::from_str_radix(&captures["g"], 16).unwrap(),
+                u8::from_str_radix(&captures["b"], 16).unwrap(),
             );
 
             Ok(if let Some(m) = captures.name("a") {
-                c.with_alpha(u32::from_str_radix(m.as_str(), 16).unwrap() as f64 / 255.0)
+                c.with_alpha(u8::from_str_radix(m.as_str(), 16).unwrap())
             } else {
                 c
             })
@@ -337,33 +360,34 @@ mod tests {
     fn test_with_alpha() {
         let c = Color::red();
 
-        assert_eq!(c.alpha(), 1.0);
-        assert_eq!(c.with_alpha(0.8).alpha(), 0.8);
+        assert_eq!(c.alpha(), 255);
+        assert_eq!(c.with_alpha(204).alpha(), 204);
     }
 
     #[test]
     fn test_parse_color() {
         let color: Color = "rgb(53.90625%,88.28125%,20.3125%)".parse().unwrap();
 
-        assert_eq!(color, Color::from_rgb(0.5390625, 0.8828125, 0.203125));
+        assert_eq!(color, Color::from_float_rgb(0.5390625, 0.8828125, 0.203125));
     }
 
     #[test]
     fn test_parse_css_color() {
         let color: Color = "#FF2030".parse().unwrap();
 
-        assert_eq!(color, Color::from_rgb(1.0, 0.12549019607843137, 0.18823529411764706));
+        assert_eq!(color, Color::from_float_rgb(1.0, 0.12549019607843137, 0.18823529411764706));
 
         let color: Color = "#FF2003".parse().unwrap();
 
-        assert_eq!(color, Color::from_rgb(1.0, 0.12549019607843137, 0.011764705882352941));
+        assert_eq!(color, Color::from_float_rgb(1.0, 0.12549019607843137, 0.011764705882352941));
     }
 
     #[test]
     fn parse_css_color_with_alpha() {
         let color: Color = "#FF203080".parse().unwrap();
 
-        assert_eq!(color, Color::from_rgb(1.0, 0.12549019607843137, 0.18823529411764706).with_alpha(0.5019607843137255));
+        assert_eq!(color, Color::from_float_rgb(1.0, 0.12549019607843137, 0.18823529411764706).with_float_alpha(0.5019607843137255));
+        assert_eq!(color, Color::from_int_rgba(0xff, 0x20, 0x30, 0x80));
     }
 
     #[test]

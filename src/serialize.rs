@@ -17,7 +17,7 @@ impl DrawCommand {
                         "fill:none;stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
                         stroke = thickness,
                         color = color.css(),
-                        alpha = color.alpha(),
+                        alpha = color.float_alpha(),
                     ))
                     .attr("d", &d)).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
@@ -34,7 +34,7 @@ impl DrawCommand {
                         "fill:none;stroke-width:{stroke};stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10",
                         stroke = thickness,
                         color = color.css(),
-                        alpha = color.alpha(),
+                        alpha = color.float_alpha(),
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
@@ -61,7 +61,7 @@ impl DrawCommand {
                             stroke-miterlimit:10;",
                         stroke = thickness,
                         color = color.css(),
-                        alpha = color.alpha(),
+                        alpha = color.float_alpha(),
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
@@ -185,7 +185,7 @@ mod tests {
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Polygon));
         app.set_color(Color::green());
-        app.set_alpha(0.5);
+        app.set_alpha(127);
 
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(10.0, 10.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(30.0, 30.0));

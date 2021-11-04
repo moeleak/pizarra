@@ -147,7 +147,7 @@ impl Path {
 
         parse_path(path, &mut builder)?;
 
-        Ok(Path::from_parts(builder.into_path(), color.with_alpha(alpha), thickness))
+        Ok(Path::from_parts(builder.into_path(), color.with_float_alpha(alpha), thickness))
     }
 }
 
@@ -190,7 +190,7 @@ impl Deserialize for Ellipse {
             rx,
             ry,
             angle,
-            color.with_alpha(alpha),
+            color.with_float_alpha(alpha),
             thickness,
         )))
     }
@@ -276,7 +276,7 @@ mod tests {
             commands,
             thickness,
         } = line.draw_commands() {
-            assert_eq!(color, Color::from_rgb(0.5390625, 0.8828125, 0.203125));
+            assert_eq!(color, Color::from_float_rgb(0.5390625, 0.8828125, 0.203125));
             assert_eq!(commands, vec![
                 PathCommand::MoveTo(Vec2DWorld::new(147.570312, 40.121094)),
                 PathCommand::LineTo(Vec2DWorld::new(146.9375, 40.121094)),
@@ -311,7 +311,7 @@ mod tests {
     fn test_parse_alpha() {
         let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:#FF0000;stroke-opacity:0.8;stroke-miterlimit:10;", "M 10 10 L 20 20", Default::default()).unwrap();
 
-        assert_eq!(line.color(), Color::red().with_alpha(0.8));
+        assert_eq!(line.color(), Color::red().with_float_alpha(0.8));
     }
 
     #[test]
@@ -333,7 +333,7 @@ mod tests {
                 assert_eq!(semimajor, 5.6);
                 assert_eq!(semiminor, 3.5);
                 assert_eq!(angle.degrees(), 34.5);
-                assert_eq!(color, Color::from_int_rgb(0xca, 0xba, 0xda).with_alpha(0.8));
+                assert_eq!(color, Color::from_int_rgb(0xca, 0xba, 0xda).with_float_alpha(0.8));
                 assert_eq!(thickness, 3.5);
             },
             _ => panic!()
