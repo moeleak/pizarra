@@ -607,32 +607,13 @@ impl Pizarra {
         self.transform = self.transform.zoom(0.5, self.dimensions / 2.0);
     }
 
-    pub fn scroll_up(&mut self) {
-        log::debug!("scroll_up()");
+    pub fn scroll(&mut self, delta: Vec2DScreen) {
+        log::debug!("scroll({})", delta);
         if self.is_shift_pressed {
-            self.rotate(Angle::from_degrees(10.0), self.dimensions / 2.0);
+            self.rotate(Angle::from_degrees(delta.y * self.config.scroll_factor), self.dimensions / 2.0);
         } else {
-            self.translate(Vec2DScreen::new(0.0, 10.0));
+            self.translate(delta * self.config.scroll_factor);
         }
-    }
-
-    pub fn scroll_down(&mut self) {
-        log::debug!("scroll_down()");
-        if self.is_shift_pressed {
-            self.rotate(Angle::from_degrees(-10.0), self.dimensions / 2.0);
-        } else {
-            self.translate(Vec2DScreen::new(0.0, -10.0));
-        }
-    }
-
-    pub fn scroll_right(&mut self) {
-        log::debug!("scroll_right()");
-        self.translate(Vec2DScreen::new(-10.0, 0.0));
-    }
-
-    pub fn scroll_left(&mut self) {
-        log::debug!("scroll_left()");
-        self.translate(Vec2DScreen::new(10.0, 0.0));
     }
 
     /// Resets the center and zoom level of the view to its original place
