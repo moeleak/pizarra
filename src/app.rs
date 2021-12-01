@@ -12,6 +12,7 @@ use crate::deserialize;
 use crate::geom::{Angle, bbox_from_points};
 use crate::key::Key;
 use crate::config::Config;
+use crate::ui::Flags;
 
 #[derive(Copy,Clone,Debug, PartialEq, Eq)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -111,9 +112,6 @@ pub struct Pizarra {
     /// Undo
     undo_state: UndoState,
     undo_queue: Vec<Action>,
-
-    /// Is the shift key pressed on the keyboard?
-    is_shift_pressed: bool,
 
     /// File management
     save_status: SaveStatus,
@@ -283,16 +281,16 @@ impl Pizarra {
     }
 
     /// Handles the canvas moving logic. Must be kept private
-    fn handle_move(&mut self, old_point: Vec2DScreen, new_point: Vec2DScreen) {
-        if self.is_shift_pressed {
+    fn handle_move(&mut self, old: Vec2DScreen, new: Vec2DScreen, flags: Flags) {
+        if flags.shift {
             let center = self.dimensions / 2.0;
 
-            let a = old_point - center;
-            let b = new_point - center;
+            let a = old - center;
+            let b = new - center;
 
             self.rotate(Angle::between(a, b), center);
         } else {
-            let delta = new_point - old_point;
+            let delta = new - old;
 
             self.translate(delta);
         }
@@ -343,7 +341,6 @@ impl Pizarra {
             erased: Vec::new(),
 
             board_state: BoardState::Idle,
-            is_shift_pressed: false,
 
             undo_state: UndoState::Reset,
             undo_queue: Vec::new(),
@@ -479,7 +476,7 @@ impl Pizarra {
 
     /// Public method that the UI must call whenever a button of the mouse or pen
     /// is released.
-    pub fn handle_mouse_button_released(&mut self, button: MouseButton, point: Vec2DScreen) -> ShouldRedraw {
+    pub fn handle_mouse_button_released_flags(&mut self, button: MouseButton, point: Vec2DScreen, flags: Flags) -> ShouldRedraw {
         log::debug!("handle_mouse_button_released({:?}, {:?})", button, point);
 
         let (new_board_state, should_redraw) = match self.board_state {
@@ -497,20 +494,19 @@ impl Pizarra {
                 MouseButton::Right => (current, ShouldRedraw::No),
                 MouseButton::Unknown => (current, ShouldRedraw::No),
             },
-            BoardState::Moving(old_point) => match button {
-                MouseButton::Left => (BoardState::Moving(old_point), ShouldRedraw::No),
+            current@BoardState::Moving(old_point) => match button {
+                MouseButton::Left => (current, ShouldRedraw::No),
                 MouseButton::Middle => {
-                    self.handle_move(old_point, point);
+                    self.handle_move(old_point, point, flags);
 
                     (BoardState::Idle, ShouldRedraw::All)
                 },
-                MouseButton::Right => (BoardState::Moving(old_point), ShouldRedraw::No),
-                MouseButton::Unknown => (BoardState::Moving(old_point), ShouldRedraw::No),
+                MouseButton::Right => (current, ShouldRedraw::No),
+                MouseButton::Unknown => (current, ShouldRedraw::No),
             },
-            // TODO check if https://github.com/rust-lang/rust/issues/65490 is resolved
-            BoardState::MovingWhileUsingTool(old_point) => match button {
+            current@BoardState::MovingWhileUsingTool(old_point) => match button {
                 MouseButton::Left => match self.handle_tool_button_released(point) {
-                        Action::Unfinished => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::All),
+                        Action::Unfinished => (current, ShouldRedraw::All),
                         Action::Empty => (BoardState::Moving(point), ShouldRedraw::All),
                         x => {
                             self.conclude_action(x);
@@ -519,12 +515,12 @@ impl Pizarra {
                         }
                 },
                 MouseButton::Middle => {
-                    self.handle_move(old_point, point);
+                    self.handle_move(old_point, point, flags);
 
                     (BoardState::UsingTool, ShouldRedraw::All)
                 },
-                MouseButton::Right => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::No),
-                MouseButton::Unknown => (BoardState::MovingWhileUsingTool(old_point), ShouldRedraw::No),
+                MouseButton::Right => (current, ShouldRedraw::No),
+                MouseButton::Unknown => (current, ShouldRedraw::No),
             },
         };
 
@@ -533,20 +529,24 @@ impl Pizarra {
         should_redraw
     }
 
+    pub fn handle_mouse_button_released(&mut self, button: MouseButton, point: Vec2DScreen) -> ShouldRedraw {
+        self.handle_mouse_button_released_flags(button, point, Default::default())
+    }
+
     /// Public methid that the UI must call with updates on the cursor position
-    pub fn handle_mouse_move(&mut self, pos: Vec2DScreen) -> ShouldRedraw {
+    pub fn handle_mouse_move_flags(&mut self, pos: Vec2DScreen, flags: Flags) -> ShouldRedraw {
         log::debug!("handle_mouse_move({:?})", pos);
 
         let (new_board_state, should_redraw) = match self.board_state {
             BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
             BoardState::UsingTool => (BoardState::UsingTool, self.handle_tool_mouse_move(pos)),
             BoardState::Moving(old_point) => {
-                self.handle_move(old_point, pos);
+                self.handle_move(old_point, pos, flags);
 
                 (BoardState::Moving(pos), ShouldRedraw::All)
             },
             BoardState::MovingWhileUsingTool(old_point) => {
-                self.handle_move(old_point, pos);
+                self.handle_move(old_point, pos, flags);
 
                 (BoardState::MovingWhileUsingTool(pos), ShouldRedraw::All)
             },
@@ -557,28 +557,18 @@ impl Pizarra {
         should_redraw
     }
 
+    pub fn handle_mouse_move(&mut self, pos: Vec2DScreen) -> ShouldRedraw {
+        self.handle_mouse_move_flags(pos, Default::default())
+    }
+
     pub fn handle_key_pressed(&mut self, key: Key) {
         log::debug!("handle_key_pressed({:?})", key);
-
-        match key {
-            Key::Shift => {
-               self.is_shift_pressed = true;
-            }
-            Key::Escape => {
-            }
-            Key::Unknown => {}
-        }
     }
 
     pub fn handle_key_released(&mut self, key: Key) -> ShouldRedraw {
         log::debug!("handle_key_released({:?})", key);
 
         match key {
-            Key::Shift => {
-                self.is_shift_pressed = false;
-
-                ShouldRedraw::No
-            }
             Key::Escape => {
                 if self.current_shape.is_some() {
                     self.current_shape = None;
@@ -587,7 +577,7 @@ impl Pizarra {
 
                 ShouldRedraw::All
             }
-            Key::Unknown => {
+            _ => {
                 ShouldRedraw::No
             }
         }
@@ -607,9 +597,9 @@ impl Pizarra {
         self.transform = self.transform.zoom(0.5, self.dimensions / 2.0);
     }
 
-    pub fn scroll(&mut self, delta: Vec2DScreen) {
+    pub fn scroll(&mut self, delta: Vec2DScreen, flags: Flags) {
         log::debug!("scroll({})", delta);
-        if self.is_shift_pressed {
+        if flags.shift {
             self.rotate(Angle::from_degrees(delta.y * self.config.scroll_factor), self.dimensions / 2.0);
         } else {
             self.translate(delta * self.config.scroll_factor);
