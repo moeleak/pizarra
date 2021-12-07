@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Flags {
     pub shift: bool,
     pub ctrl: bool,

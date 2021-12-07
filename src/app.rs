@@ -54,7 +54,7 @@ pub enum ShouldRedraw {
     No,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum SelectedTool {
     Shape(ShapeTool),
     Eraser,
@@ -144,10 +144,10 @@ impl Pizarra {
         };
     }
 
-    fn handle_tool_button_pressed(&mut self, point: Vec2DScreen) -> ShouldRedraw {
+    fn handle_tool_button_pressed(&mut self, point: Vec2DScreen, tool_override: Option<SelectedTool>) -> ShouldRedraw {
         let transformed_point = self.transform.to_world_coordinates(point);
 
-        match self.selected_tool {
+        match tool_override.unwrap_or(self.selected_tool) {
             SelectedTool::Shape(shape) => {
                 if let Some(shape) = self.current_shape.as_mut() {
                     shape.handle_button_pressed(point, self.transform, self.config.point_snap_radius);
@@ -176,10 +176,10 @@ impl Pizarra {
         }
     }
 
-    fn handle_tool_button_released(&mut self, point: Vec2DScreen) -> Action {
+    fn handle_tool_button_released(&mut self, point: Vec2DScreen, tool_override: Option<SelectedTool>) -> Action {
         let transformed_point = self.transform.to_world_coordinates(point);
 
-        match self.selected_tool {
+        match tool_override.unwrap_or(self.selected_tool) {
             SelectedTool::Shape(_shape) => {
                 let finished = if let Some(shape) = self.current_shape.as_mut() {
                     shape.handle_button_released(point, self.transform, self.config.point_snap_radius)
@@ -216,10 +216,10 @@ impl Pizarra {
         }
     }
 
-    fn handle_tool_mouse_move(&mut self, point: Vec2DScreen) -> ShouldRedraw {
+    fn handle_tool_mouse_move(&mut self, point: Vec2DScreen, tool_override: Option<SelectedTool>) -> ShouldRedraw {
         let transformed_point = self.transform.to_world_coordinates(point);
 
-        match self.selected_tool {
+        match tool_override.unwrap_or(self.selected_tool) {
             SelectedTool::Shape(_shape_type) => {
                 if let Some(shape) = self.current_shape.as_mut() {
                     shape.handle_mouse_moved(point, self.transform, self.config.point_snap_radius);
@@ -449,18 +449,18 @@ impl Pizarra {
 
     /// Public method that the UI must call whenever a button of the mouse or
     /// pen is pressed.
-    pub fn handle_mouse_button_pressed(&mut self, button: MouseButton, point: Vec2DScreen) -> ShouldRedraw {
-        log::debug!("handle_mouse_button_pressed({:?}, {:?})", button, point);
+    pub fn handle_mouse_button_pressed_flags(&mut self, button: MouseButton, point: Vec2DScreen, tool_override: Option<SelectedTool>) -> ShouldRedraw {
+        log::debug!("handle_mouse_button_pressed_flags({:?}, {:?}, {:?})", button, point, tool_override);
 
         let (new_board_state, should_redraw) = match self.board_state {
             current@BoardState::Idle => match button {
-                MouseButton::Left => (BoardState::UsingTool, self.handle_tool_button_pressed(point)),
+                MouseButton::Left => (BoardState::UsingTool, self.handle_tool_button_pressed(point, tool_override)),
                 MouseButton::Middle => (BoardState::Moving(point), ShouldRedraw::No),
                 MouseButton::Right => (current, ShouldRedraw::No),
                 MouseButton::Unknown => (current, ShouldRedraw::No),
             },
             current@BoardState::UsingTool => match button {
-                MouseButton::Left => (current, self.handle_tool_button_pressed(point)),
+                MouseButton::Left => (current, self.handle_tool_button_pressed(point, tool_override)),
                 MouseButton::Middle => (BoardState::MovingWhileUsingTool(point), ShouldRedraw::No),
                 MouseButton::Right => (current, ShouldRedraw::No),
                 MouseButton::Unknown => (current, ShouldRedraw::No),
@@ -474,15 +474,19 @@ impl Pizarra {
         should_redraw
     }
 
+    pub fn handle_mouse_button_pressed(&mut self, button: MouseButton, point: Vec2DScreen) -> ShouldRedraw {
+        self.handle_mouse_button_pressed_flags(button, point, None)
+    }
+
     /// Public method that the UI must call whenever a button of the mouse or pen
     /// is released.
-    pub fn handle_mouse_button_released_flags(&mut self, button: MouseButton, point: Vec2DScreen, flags: Flags) -> ShouldRedraw {
-        log::debug!("handle_mouse_button_released({:?}, {:?})", button, point);
+    pub fn handle_mouse_button_released_flags(&mut self, button: MouseButton, point: Vec2DScreen, flags: Flags, tool_override: Option<SelectedTool>) -> ShouldRedraw {
+        log::debug!("handle_mouse_button_released_flags({:?}, {:?}, {:?}, {:?})", button, point, flags, tool_override);
 
         let (new_board_state, should_redraw) = match self.board_state {
             current@BoardState::Idle => (current, ShouldRedraw::No),
             current@BoardState::UsingTool => match button {
-                MouseButton::Left => match self.handle_tool_button_released(point) {
+                MouseButton::Left => match self.handle_tool_button_released(point, tool_override) {
                     Action::Unfinished => (current, ShouldRedraw::Shape),
                     Action::Empty => (BoardState::Idle, ShouldRedraw::No),
                     x => {
@@ -505,7 +509,7 @@ impl Pizarra {
                 MouseButton::Unknown => (current, ShouldRedraw::No),
             },
             current@BoardState::MovingWhileUsingTool(old_point) => match button {
-                MouseButton::Left => match self.handle_tool_button_released(point) {
+                MouseButton::Left => match self.handle_tool_button_released(point, tool_override) {
                         Action::Unfinished => (current, ShouldRedraw::All),
                         Action::Empty => (BoardState::Moving(point), ShouldRedraw::All),
                         x => {
@@ -530,16 +534,16 @@ impl Pizarra {
     }
 
     pub fn handle_mouse_button_released(&mut self, button: MouseButton, point: Vec2DScreen) -> ShouldRedraw {
-        self.handle_mouse_button_released_flags(button, point, Default::default())
+        self.handle_mouse_button_released_flags(button, point, Default::default(), None)
     }
 
     /// Public methid that the UI must call with updates on the cursor position
-    pub fn handle_mouse_move_flags(&mut self, pos: Vec2DScreen, flags: Flags) -> ShouldRedraw {
-        log::debug!("handle_mouse_move({:?})", pos);
+    pub fn handle_mouse_move_flags(&mut self, pos: Vec2DScreen, flags: Flags, tool_override: Option<SelectedTool>) -> ShouldRedraw {
+        log::debug!("handle_mouse_move_flags({:?}, {:?}, {:?})", pos, flags, tool_override);
 
         let (new_board_state, should_redraw) = match self.board_state {
             BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
-            BoardState::UsingTool => (BoardState::UsingTool, self.handle_tool_mouse_move(pos)),
+            BoardState::UsingTool => (BoardState::UsingTool, self.handle_tool_mouse_move(pos, tool_override)),
             BoardState::Moving(old_point) => {
                 self.handle_move(old_point, pos, flags);
 
@@ -558,7 +562,7 @@ impl Pizarra {
     }
 
     pub fn handle_mouse_move(&mut self, pos: Vec2DScreen) -> ShouldRedraw {
-        self.handle_mouse_move_flags(pos, Default::default())
+        self.handle_mouse_move_flags(pos, Default::default(), None)
     }
 
     pub fn handle_key_pressed(&mut self, key: Key) {
@@ -1175,5 +1179,138 @@ mod tests {
         assert!(app.current_shape.is_none());
         assert_eq!(app.undo_state, UndoState::Reset);
         assert_eq!(app.save_status, SaveStatus::NewAndEmpty);
+    }
+
+    #[test]
+    fn tool_override_can_be_undone() {
+        let mut app = Pizarra::new_for_testing();
+
+        use super::MouseButton::Left;
+        use super::SelectedTool::Eraser;
+
+        app.resize(Vec2DScreen { x: 800.0, y: 600.0 });
+
+        // draw the shape
+        app.handle_mouse_move_flags(Vec2DScreen { x: 403.578857421875, y: 281.02178955078125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_button_pressed(Left, Vec2DScreen { x: 403.578857421875, y: 281.02178955078125 });
+        app.handle_mouse_move_flags(Vec2DScreen { x: 400.51129150390625, y: 279.93914794921875 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 399.669189453125, y: 278.4234619140625 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 399.6090087890625, y: 278.0986328125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 399.6090087890625, y: 277.88214111328125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 399.6090087890625, y: 277.88214111328125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 399.6090087890625, y: 277.88214111328125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 399.6090087890625, y: 277.88214111328125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 399.54888916015625, y: 278.04449462890625 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 399.18798828125, y: 278.85650634765625 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 397.74444580078125, y: 281.23834228515625 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 395.5189208984375, y: 287.5177001953125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 395.5791015625, y: 289.3040771484375 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 397.08282470703125, y: 291.0904541015625 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 398.16546630859375, y: 292.2813720703125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 400.03009033203125, y: 294.554931640625 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 402.25555419921875, y: 297.4781494140625 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 405.92462158203125, y: 301.700439453125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 410.6162109375, y: 304.1905517578125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 419.9993896484375, y: 303.05377197265625 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 428.54046630859375, y: 298.29010009765625 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 434.13427734375, y: 292.93096923828125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 435.938720703125, y: 285.29827880859375 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 431.06671142578125, y: 277.2325439453125 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 424.69097900390625, y: 275.716796875 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 416.8115234375, y: 277.17840576171875 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 411.097412109375, y: 279.7767333984375 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 408.33056640625, y: 281.5631103515625 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 406.64642333984375, y: 283.72845458984375 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 406.10504150390625, y: 284.91937255859375 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_button_released_flags(Left, Vec2DScreen { x: 406.10504150390625, y: 284.91937255859375 }, Flags { shift: false, ctrl: false, alt: false }, None);
+
+        // there must be a line
+        assert_eq!(app.storage.shape_count(), 1);
+
+        app.handle_mouse_move_flags(Vec2DScreen { x: 405.3231201171875, y: 287.9508056640625 }, Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.6610107421875, y: 291.14459228515625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+
+        // use the hardware eraser
+        app.handle_mouse_button_pressed(Left, Vec2DScreen { x: 420.6610107421875, y: 291.14459228515625 });
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.6610107421875, y: 291.14459228515625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.6610107421875, y: 291.14459228515625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.6610107421875, y: 291.14459228515625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.54071044921875, y: 290.982177734375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.54071044921875, y: 290.982177734375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.54071044921875, y: 290.982177734375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.54071044921875, y: 290.982177734375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.54071044921875, y: 290.982177734375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.4805908203125, y: 291.14459228515625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.600830078125, y: 291.415283203125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.6610107421875, y: 291.57763671875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.78131103515625, y: 291.74005126953125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.901611328125, y: 291.9024658203125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.901611328125, y: 291.9024658203125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.901611328125, y: 291.9024658203125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 420.901611328125, y: 291.9024658203125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 421.1422119140625, y: 291.84832763671875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 421.3828125, y: 291.74005126953125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 421.68353271484375, y: 291.5235595703125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 422.04443359375, y: 291.19873046875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 422.525634765625, y: 290.7115478515625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 423.00677490234375, y: 290.0078125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 423.6082763671875, y: 289.1417236328125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 424.20977783203125, y: 288.1131591796875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 424.87139892578125, y: 286.97637939453125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 425.59320068359375, y: 285.839599609375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 426.31494140625, y: 284.70281982421875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 427.096923828125, y: 283.62017822265625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 427.87884521484375, y: 282.645751953125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 428.6005859375, y: 281.7796630859375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 429.26226806640625, y: 281.02178955078125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 429.92388916015625, y: 280.53460693359375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 430.4652099609375, y: 280.1015625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 430.88623046875, y: 279.83087158203125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 431.30731201171875, y: 279.6143798828125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 431.6080322265625, y: 279.45196533203125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 431.8486328125, y: 279.34368896484375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 432.14935302734375, y: 279.1812744140625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 432.38995361328125, y: 279.07305908203125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 432.7508544921875, y: 278.8023681640625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 433.171875, y: 278.47760009765625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 433.653076171875, y: 277.93621826171875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 434.19439697265625, y: 277.17840576171875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 434.8560791015625, y: 276.0416259765625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 435.6981201171875, y: 274.36346435546875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 436.72064208984375, y: 272.19818115234375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 437.7431640625, y: 269.8704833984375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 438.58526611328125, y: 267.975830078125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 439.24688720703125, y: 266.5142822265625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 439.547607421875, y: 265.7022705078125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 439.90850830078125, y: 265.1068115234375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 440.2694091796875, y: 264.5113525390625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 440.510009765625, y: 264.024169921875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 440.7506103515625, y: 263.6993408203125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 440.9310302734375, y: 263.5369873046875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 440.9310302734375, y: 263.5369873046875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 441.2318115234375, y: 263.48284912109375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 441.4122314453125, y: 263.48284912109375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 441.4122314453125, y: 263.48284912109375 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 441.59271240234375, y: 263.59112548828125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 441.59271240234375, y: 263.59112548828125 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 441.65283203125, y: 263.75347900390625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 441.65283203125, y: 263.75347900390625 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 441.65283203125, y: 263.9158935546875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 441.65283203125, y: 263.9158935546875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(Vec2DScreen { x: 441.65283203125, y: 263.9158935546875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_button_released_flags(Left, Vec2DScreen { x: 441.65283203125, y: 263.9158935546875 }, Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+
+        // there must be no line
+        assert_eq!(app.storage.shape_count(), 0);
+
+        app.undo();
+
+        // line is visible because erasing was undone
+        assert_eq!(app.storage.shape_count(), 1);
+
+        app.undo();
+
+        // no line because line itself was undone
+        assert_eq!(app.storage.shape_count(), 0);
     }
 }
