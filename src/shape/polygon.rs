@@ -27,7 +27,7 @@ enum BuilderState {
     /// End is detected on the pressed event but this event doesn't return a
     /// finished shape, so this state is transitioned to on pressed and then
     /// detected on relesease to return the built shape
-    End(Vec2DWorld),
+    End,
 }
 
 #[derive(Debug)]
@@ -76,21 +76,18 @@ impl ShapeBuilder for PolygonBuilder {
             BuilderState::Handle { point, .. } => {
                 self.tip = BuilderState::Handle { point, handle: pos };
             }
-            BuilderState::End(_) => {}
+            BuilderState::End => {}
         }
     }
 
     fn handle_button_pressed(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) {
-        match self.tip {
-            BuilderState::FreePoint(p) => {
-                if let Some(point) = self.touches_prev_point(pos, t, snap) {
-                    self.points.push(PathCommand::LineTo(point));
-                    self.tip = BuilderState::End(point);
-                } else {
-                    self.tip = BuilderState::PointStart(p);
-                }
+        if let BuilderState::FreePoint(p) = self.tip {
+            if let Some(point) = self.touches_prev_point(pos, t, snap) {
+                self.points.push(PathCommand::LineTo(point));
+                self.tip = BuilderState::End;
+            } else {
+                self.tip = BuilderState::PointStart(p);
             }
-            _ => {}
         }
     }
 
@@ -98,7 +95,13 @@ impl ShapeBuilder for PolygonBuilder {
         let pos = t.to_world_coordinates(pos);
 
         match self.tip {
-            BuilderState::Init(p) | BuilderState::PointStart(p) => {
+            BuilderState::Init(p) => {
+                self.points.push(PathCommand::MoveTo(p));
+                self.tip = BuilderState::FreePoint(pos);
+
+                ShapeFinished::No
+            }
+            BuilderState::PointStart(p) => {
                 self.points.push(PathCommand::LineTo(p));
                 self.tip = BuilderState::FreePoint(pos);
 
@@ -116,7 +119,7 @@ impl ShapeBuilder for PolygonBuilder {
                 ShapeFinished::No
             }
             BuilderState::FreePoint(_) => ShapeFinished::No,
-            BuilderState::End(_) => {
+            BuilderState::End => {
                 ShapeFinished::Yes(Box::new(Path::from_parts(
                     self.points.clone(),
                     self.color,
@@ -130,7 +133,9 @@ impl ShapeBuilder for PolygonBuilder {
         let mut path_commands = self.points.clone();
 
         match self.tip {
-            BuilderState::Init(_) => {}
+            BuilderState::Init(p) => {
+                path_commands.push(PathCommand::MoveTo(p));
+            }
             BuilderState::Handle { point, handle } => {
                 path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
                     pt1: handle,
@@ -144,9 +149,7 @@ impl ShapeBuilder for PolygonBuilder {
             BuilderState::PointStart(p) => {
                 path_commands.push(PathCommand::LineTo(p));
             }
-            BuilderState::End(p) => {
-                path_commands.push(PathCommand::LineTo(p));
-            }
+            BuilderState::End => {}
         }
 
         let mut commands = Vec::with_capacity(self.points.len() * 2);
@@ -176,6 +179,9 @@ mod tests {
 
     const SNAP: f64 = 10.0;
 
+    /// This tests the polygon's normal behavior of clicking here and there
+    /// until some last click falls very close (in screen units) from one of the
+    /// previous ones
     #[test]
     fn it_behaves() {
         let mut poly = PolygonBuilder::start(Default::default(), Vec2DWorld::new(0.0, 0.0), 4.0);
@@ -184,34 +190,41 @@ mod tests {
         poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP);
 
         poly.handle_mouse_moved(Vec2DScreen::new(20.0, 0.0), t, SNAP);
+        poly.handle_button_pressed(Vec2DScreen::new(20.0, 0.0), t, SNAP);
         if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2DScreen::new(20.0, 0.0), t, SNAP) {
             panic!()
         }
 
         poly.handle_mouse_moved(Vec2DScreen::new(20.0, 20.0), t, SNAP);
+        poly.handle_button_pressed(Vec2DScreen::new(20.0, 20.0), t, SNAP);
         if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2DScreen::new(20.0, 20.0), t, SNAP) {
             panic!()
         }
 
         poly.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t, SNAP);
+        poly.handle_button_pressed(Vec2DScreen::new(20.0, 20.0), t, SNAP);
         if let ShapeFinished::No = poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP) {
             panic!()
         }
     }
 
+    /// To close a line you have to click somewhere near a previous point. This
+    /// test checks that the end point of a polygon matches exactly the point
+    /// the user was aiming to even if the event is registered somewhere else.
     #[test]
     fn no_clunky_path_ends() {
-        let mut poly = PolygonBuilder::start(Default::default(), Vec2DWorld::new(1.0, 0.0), 4.0);
+        let mut poly = PolygonBuilder::start(Default::default(), Vec2DWorld::new(0.0, 0.0), 4.0);
         let t = Default::default();
 
-        poly.handle_mouse_moved(Vec2DScreen::new(1.0, 1.0), t, SNAP);
         poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP);
 
-        poly.handle_mouse_moved(Vec2DScreen::new(31.0, 0.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2DScreen::new(30.0, 0.0), t, SNAP);
+        poly.handle_button_pressed(Vec2DScreen::new(30.0, 0.0), t, SNAP);
         poly.handle_button_released(Vec2DScreen::new(30.0, 0.0), t, SNAP);
 
         poly.handle_mouse_moved(Vec2DScreen::new(29.0, 0.0), t, SNAP);
-        if let ShapeFinished::No = poly.handle_button_released(Vec2DScreen::new(33.0, 0.0), t, SNAP) {
+        poly.handle_button_pressed(Vec2DScreen::new(29.0, 0.0), t, SNAP);
+        if let ShapeFinished::No = poly.handle_button_released(Vec2DScreen::new(29.0, 0.0), t, SNAP) {
             panic!()
         }
 
@@ -247,6 +260,7 @@ mod tests {
 
         poly.handle_button_released(t.to_screen_coordinates(center), t, SNAP);
         poly.handle_mouse_moved(t.to_screen_coordinates(pf), t, SNAP);
+        poly.handle_button_pressed(t.to_screen_coordinates(pf), t, SNAP);
         poly.handle_button_released(t.to_screen_coordinates(pf), t, SNAP);
 
         poly
@@ -269,10 +283,13 @@ mod tests {
         let mut poly = make_this_poly(t0);
         let t = t0;
         poly.handle_mouse_moved(p1, t, SNAP);
+        poly.handle_button_pressed(p1, t, SNAP);
         if let ShapeFinished::No = poly.handle_button_released(p1, t, SNAP) {
             panic!();
         }
+        let mut poly = make_this_poly(t0);
         poly.handle_mouse_moved(p2, t, SNAP);
+        poly.handle_button_pressed(p2, t, SNAP);
         if let ShapeFinished::Yes(_) = poly.handle_button_released(p2, t, SNAP) {
             panic!();
         }
@@ -281,10 +298,13 @@ mod tests {
         let mut poly = make_this_poly(t0);
         let t = t0.zoom(2.0, center);
         poly.handle_mouse_moved(p1, t, SNAP);
+        poly.handle_button_pressed(p1, t, SNAP);
         if let ShapeFinished::No = poly.handle_button_released(p1, t, SNAP) {
             panic!();
         }
+        let mut poly = make_this_poly(t0);
         poly.handle_mouse_moved(p2, t, SNAP);
+        poly.handle_button_pressed(p2, t, SNAP);
         if let ShapeFinished::Yes(_) = poly.handle_button_released(p2, t, SNAP) {
             panic!();
         }
@@ -293,10 +313,13 @@ mod tests {
         let mut poly = make_this_poly(t0);
         let t = t0.zoom(0.5, center);
         poly.handle_mouse_moved(p1, t, SNAP);
+        poly.handle_button_pressed(p1, t, SNAP);
         if let ShapeFinished::No = poly.handle_button_released(p1, t, SNAP) {
             panic!();
         }
+        let mut poly = make_this_poly(t0);
         poly.handle_mouse_moved(p2, t, SNAP);
+        poly.handle_button_pressed(p2, t, SNAP);
         if let ShapeFinished::Yes(_) = poly.handle_button_released(p2, t, SNAP) {
             panic!();
         }
