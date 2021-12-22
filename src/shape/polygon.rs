@@ -147,7 +147,7 @@ mod tests {
             panic!()
         }
 
-        assert_eq!(poly.draw_commands()[0], DrawCommand::Path {
+        assert_eq!(poly.draw_commands(t, SNAP)[0], DrawCommand::Path {
             color: Default::default(),
             commands: vec![
                 PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
@@ -160,9 +160,10 @@ mod tests {
 
     #[test]
     fn can_render_first_point_when_building() {
+        let t = Default::default();
         let poly = PolygonBuilder::start(Default::default(), Vec2DWorld::new(0.0, 0.0), 3.0);
 
-        assert_eq!(poly.draw_commands()[0], DrawCommand::Path {
+        assert_eq!(poly.draw_commands(t, SNAP)[0], DrawCommand::Path {
             color: Default::default(),
             commands: vec![
                 PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),

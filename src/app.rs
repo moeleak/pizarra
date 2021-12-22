@@ -400,7 +400,7 @@ impl Pizarra {
     /// returns only the draw commands needed to paint the current shape on the
     /// screen.
     pub fn draw_commands_for_current_shape(&self) -> Option<Vec<DrawCommand>> {
-        self.current_shape.as_ref().map(|s| s.draw_commands())
+        self.current_shape.as_ref().map(|s| s.draw_commands(self.transform, self.config.point_snap_radius))
     }
 
     /// Notify the application that the screen size has changed
@@ -738,7 +738,7 @@ mod tests {
     use super::*;
     use crate::{
         draw_commands::DrawCommand, app::SelectedTool,
-        shape::path::{PathCommand, CubicBezierCurve},
+        path_command::{PathCommand, CubicBezierCurve},
     };
     use PathCommand::*;
 

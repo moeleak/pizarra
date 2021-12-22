@@ -222,7 +222,7 @@ impl Storage {
 
 #[cfg(test)]
 mod tests {
-    use crate::shape::path::PathCommand;
+    use crate::path_command::PathCommand;
     use crate::draw_commands::DrawCommand;
 
     use super::*;

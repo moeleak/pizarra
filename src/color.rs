@@ -298,6 +298,15 @@ impl Color {
         }
     }
 
+    pub fn gray() -> Color {
+        Color {
+            r: 0x94,
+            g: 0x94,
+            b: 0x94,
+            a: 0xff,
+        }
+    }
+
     pub fn css(&self) -> String {
         format!("#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
     }

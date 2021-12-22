@@ -4,7 +4,7 @@ use std::iter::Enumerate;
 use std::str;
 use std::str::Bytes;
 
-use crate::shape::path::{PathCommand::{self, *}, CubicBezierCurve};
+use crate::path_command::{PathCommand::{self, *}, CubicBezierCurve};
 use crate::point::{Point, Vec2DWorld};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -177,7 +177,7 @@ impl Iterator for Lexer<'_> {
 }
 
 pub struct PathBuilder {
-    commands: Vec<PathCommand>,
+    commands: Vec<PathCommand<Vec2DWorld>>,
 }
 
 impl PathBuilder {
@@ -187,7 +187,7 @@ impl PathBuilder {
         }
     }
 
-    pub fn into_path(self) -> Vec<PathCommand> {
+    pub fn into_path(self) -> Vec<PathCommand<Vec2DWorld>> {
         self.commands
     }
 
@@ -809,7 +809,7 @@ mod tests {
     fn test_parser(
         path_str: &str,
         error_pos_str: &str,
-        expected_commands: &[PathCommand],
+        expected_commands: &[PathCommand<Vec2DWorld>],
         expected_error_kind: Option<ErrorKind>,
     ) {
         let expected_result = make_parse_result(error_pos_str, expected_error_kind);
@@ -822,15 +822,15 @@ mod tests {
         assert_eq!(expected_result, result);
     }
 
-    fn moveto(x: f64, y: f64) -> PathCommand {
+    fn moveto(x: f64, y: f64) -> PathCommand<Vec2DWorld> {
         PathCommand::MoveTo(Vec2DWorld::new(x, y))
     }
 
-    fn lineto(x: f64, y: f64) -> PathCommand {
+    fn lineto(x: f64, y: f64) -> PathCommand<Vec2DWorld> {
         PathCommand::LineTo(Vec2DWorld::new(x, y))
     }
 
-    fn curveto(x2: f64, y2: f64, x3: f64, y3: f64, x4: f64, y4: f64) -> PathCommand {
+    fn curveto(x2: f64, y2: f64, x3: f64, y3: f64, x4: f64, y4: f64) -> PathCommand<Vec2DWorld> {
         PathCommand::CurveTo(CubicBezierCurve {
             pt1: Vec2DWorld::new(x2, y2),
             pt2: Vec2DWorld::new(x3, y3),
@@ -843,7 +843,7 @@ mod tests {
         test_parser(
             "",
             "",
-            &Vec::<PathCommand>::new(),
+            &Vec::<PathCommand<Vec2DWorld>>::new(),
             None,
         );
     }

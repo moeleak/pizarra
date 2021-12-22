@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 //! All sorts of geometrical functions, constants and procedures
 use std::ops::Mul;
 
@@ -245,6 +246,28 @@ pub fn circle_through_three_points<P: Point>(p1: P, p2: P, p3: P) -> (P, f64) {
     (P::new(x, y), r)
 }
 
+/// Given two points return the points in their 1/3 and 2/3 of the segment from
+/// a to b.
+pub fn thirds<P: Point>(a: P, b: P) -> (P, P) {
+    let v = b - a;
+
+    (v*1.0/3.0 + a, v*2.0/3.0 + a)
+}
+
+/// return a vector of magnitude 1 that has the slope of the external bisector
+/// of the angle described by the three given points.
+///
+/// B is the vertex of the angle. The returned vector points towads C
+pub fn bisector<P: Point>(A: P, B: P, C: P) -> P {
+    let Ap = (A - B) * -1.0 + B;
+    let (a, b, c) = (B.distance(C), A.distance(C), A.distance(B));
+    let incenter = (Ap * a + B * b + C * c) / (a + b + c);
+
+    let vec = incenter - B;
+
+    vec / vec.magnitude()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::point::Vec2DScreen;
@@ -379,5 +402,24 @@ mod tests {
 
         assert_eq!(center, p);
         assert_eq!(radius, 1.0);
+    }
+
+    #[test]
+    fn test_thirds() {
+        assert_eq!(thirds(Vec2DWorld::new(3.0, 0.0), Vec2DWorld::new(6.0, 0.0)), (Vec2DWorld::new(4.0, 0.0), Vec2DWorld::new(5.0, 0.0)));
+        assert_eq!(thirds(Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(6.0, 6.0)), (Vec2DWorld::new(2.0, 2.0), Vec2DWorld::new(4.0, 4.0)));
+        assert_eq!(thirds(Vec2DWorld::new(-15.0, 30.0), Vec2DWorld::new(-18.0, 27.0)), (Vec2DWorld::new(-16.0, 29.0), Vec2DWorld::new(-17.0, 28.0)));
+    }
+
+    #[test]
+    fn test_bisector() {
+        let a: Vec2DWorld = (-2.0, 3.0).into();
+        let b: Vec2DWorld = (1.0, 6.0).into();
+        let c: Vec2DWorld = (5.0, 2.0).into();
+        let expected_bisector = Vec2DWorld::new(1.0, 0.0);
+        let given_bisector = bisector(a, b, c);
+
+        assert!(expected_bisector.x - given_bisector.x.abs() < 0.001);
+        assert!(expected_bisector.y - given_bisector.y.abs() < 0.001);
     }
 }

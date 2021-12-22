@@ -1,44 +1,18 @@
-#![allow(non_snake_case)]
-use std::fmt;
-
 use crate::draw_commands::DrawCommand;
 use crate::color::Color;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::transform::Transform;
-use crate::geom::{
-    segment_intersects_circle, bezier_intersects_circle, bbox_from_points,
-};
+use crate::geom::{bbox_from_points, thirds, bisector};
+use crate::path_command::{PathCommand, CubicBezierCurve};
 
 use super::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
-
-/// Given two points return the points in their 1/3 and 2/3 of the segment from
-/// a to b.
-fn thirds(a: Vec2DWorld, b: Vec2DWorld) -> (Vec2DWorld, Vec2DWorld) {
-    let v = b - a;
-
-    (v*1.0/3.0 + a, v*2.0/3.0 + a)
-}
-
-/// return a vector of magnitude 1 that has the slope of the external bisector
-/// of the angle described by the three given points.
-///
-/// B is the vertex of the angle. The returned vector points towads C
-fn bisector(A: Vec2DWorld, B: Vec2DWorld, C: Vec2DWorld) -> Vec2DWorld {
-    let Ap = (A - B) * -1.0 + B;
-    let (a, b, c) = (B.distance(C), A.distance(C), A.distance(B));
-    let incenter = (Ap * a + B * b + C * c) / (a + b + c);
-
-    let vec = incenter - B;
-
-    vec / vec.magnitude()
-}
 
 /// Given the last two commands of a path and a new point given as input compute
 /// what the last two commands of the path should be.
 ///
 /// This means that the command at the last position before the operation must
 /// be replaced with the one provided first by this function.
-fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Vec2DWorld) -> (PathCommand, Option<PathCommand>) {
+fn add_smooth<T: 'static + Point>(sec: Option<PathCommand<T>>, last: PathCommand<T>, pos: T) -> (PathCommand<T>, Option<PathCommand<T>>) {
     match last {
         PathCommand::MoveTo(p) | PathCommand::LineTo(p) => {
             // Second point, put pt1 and pt2 at 1/3 and 2/3 of the
@@ -91,7 +65,7 @@ fn add_smooth(sec: Option<PathCommand>, last: PathCommand, pos: Vec2DWorld) -> (
     }
 }
 
-fn add_point(commands: &mut Vec<PathCommand>, pos: Vec2DWorld) {
+fn add_point<T: 'static + Point>(commands: &mut Vec<PathCommand<T>>, pos: T) {
     let sub = commands
         .len()
         .checked_sub(2)
@@ -109,81 +83,9 @@ fn add_point(commands: &mut Vec<PathCommand>, pos: Vec2DWorld) {
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub struct CubicBezierCurve {
-    /// The (x, y) coordinates of the first control point.
-    pub pt1: Vec2DWorld,
-    /// The (x, y) coordinates of the second control point.
-    pub pt2: Vec2DWorld,
-    /// The (x, y) coordinates of the end point of this path segment.
-    pub to: Vec2DWorld,
-}
-
-impl CubicBezierCurve {
-    pub fn is_nan(&self) -> bool {
-        self.pt1.is_nan() || self.pt2.is_nan() || self.to.is_nan()
-    }
-}
-
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub enum PathCommand {
-    MoveTo(Vec2DWorld),
-    LineTo(Vec2DWorld),
-    CurveTo(CubicBezierCurve),
-}
-
-impl PathCommand {
-    pub fn is_nan(&self) -> bool {
-        match self {
-            PathCommand::MoveTo(p) => p.is_nan(),
-            PathCommand::LineTo(p) => p.is_nan(),
-            PathCommand::CurveTo(c) => c.is_nan(),
-        }
-    }
-
-    /// returns the point this path segment leads to
-    pub fn to(&self) -> Vec2DWorld {
-        match *self {
-            PathCommand::MoveTo(p) => p,
-            PathCommand::LineTo(p) => p,
-            PathCommand::CurveTo(c) => c.to,
-        }
-    }
-
-    pub fn intersects_circle(&self, center: Vec2DWorld, radius: f64, prev: Option<Vec2DWorld>) -> bool {
-        match *self {
-            PathCommand::MoveTo(p) => p.distance(center) < radius,
-            PathCommand::LineTo(p) => {
-                p.distance(center) < radius || segment_intersects_circle(prev, p, center, radius)
-            }
-            PathCommand::CurveTo(p) => {
-                p.to.distance(center) < radius || bezier_intersects_circle(prev, p.pt1, p.pt2, p.to, center, radius)
-            }
-        }
-    }
-
-    fn points(&self) -> Box<dyn Iterator<Item=Vec2DWorld>> {
-        match *self {
-            PathCommand::MoveTo(p) => Box::new(IntoIterator::into_iter([p])),
-            PathCommand::LineTo(p) => Box::new(IntoIterator::into_iter([p])),
-            PathCommand::CurveTo(CubicBezierCurve { pt1, pt2, to }) => Box::new(IntoIterator::into_iter([pt1, pt2, to])),
-        }
-    }
-}
-
-impl fmt::Display for PathCommand {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            PathCommand::MoveTo(p) => write!(f, "M {} ", p),
-            PathCommand::LineTo(p) => write!(f, "L {} ", p),
-            PathCommand::CurveTo(c) => write!(f, "C {}, {}, {} ", c.pt1, c.pt2, c.to),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq)]
 pub struct PathBuilder {
-    commands: Vec<PathCommand>,
+    commands: Vec<PathCommand<Vec2DWorld>>,
     thickness: f64,
     color: Color,
 }
@@ -201,7 +103,7 @@ impl PathBuilder {
         }
     }
 
-    pub fn with_params(color: Color, commands: Vec<PathCommand>, thickness: f64) -> PathBuilder {
+    pub fn with_params(color: Color, commands: Vec<PathCommand<Vec2DWorld>>, thickness: f64) -> PathBuilder {
         PathBuilder {
             commands, color, thickness,
         }
@@ -231,7 +133,7 @@ impl ShapeBuilder for PathBuilder {
         )))
     }
 
-    fn draw_commands(&self) -> Vec<DrawCommand> {
+    fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
         vec![DrawCommand::Path {
             commands: self.commands.clone(),
             thickness: self.thickness,
@@ -242,13 +144,13 @@ impl ShapeBuilder for PathBuilder {
 
 #[derive(Debug)]
 pub struct Path {
-    commands: Vec<PathCommand>,
+    commands: Vec<PathCommand<Vec2DWorld>>,
     color: Color,
     thickness: f64,
 }
 
 impl Path {
-    pub fn from_parts(commands: Vec<PathCommand>, color: Color, thickness: f64) -> Path {
+    pub fn from_parts(commands: Vec<PathCommand<Vec2DWorld>>, color: Color, thickness: f64) -> Path {
         Path {
             commands, color, thickness,
         }
@@ -300,25 +202,6 @@ mod tests {
 
     use crate::color::Color;
     use crate::point::Vec2DWorld;
-
-    #[test]
-    fn test_thirds() {
-        assert_eq!(thirds(Vec2DWorld::new(3.0, 0.0), Vec2DWorld::new(6.0, 0.0)), (Vec2DWorld::new(4.0, 0.0), Vec2DWorld::new(5.0, 0.0)));
-        assert_eq!(thirds(Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(6.0, 6.0)), (Vec2DWorld::new(2.0, 2.0), Vec2DWorld::new(4.0, 4.0)));
-        assert_eq!(thirds(Vec2DWorld::new(-15.0, 30.0), Vec2DWorld::new(-18.0, 27.0)), (Vec2DWorld::new(-16.0, 29.0), Vec2DWorld::new(-17.0, 28.0)));
-    }
-
-    #[test]
-    fn test_bisector() {
-        let a = (-2.0, 3.0).into();
-        let b = (1.0, 6.0).into();
-        let c = (5.0, 2.0).into();
-        let expected_bisector = Vec2DWorld::new(1.0, 0.0);
-        let given_bisector = bisector(a, b, c);
-
-        assert!(expected_bisector.x - given_bisector.x.abs() < 0.001);
-        assert!(expected_bisector.y - given_bisector.y.abs() < 0.001);
-    }
 
     #[test]
     fn test_bbox() {

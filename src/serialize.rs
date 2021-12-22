@@ -1,8 +1,22 @@
+use std::fmt;
+
 use xml::writer::{EmitterConfig, XmlEvent, EventWriter};
 
 use crate::point::{Point, Vec2DWorld};
 use crate::draw_commands::DrawCommand;
-use crate::app::Pizarra;
+use crate::path_command::PathCommand;
+use crate::storage::Storage;
+use crate::color::Color;
+
+impl fmt::Display for PathCommand<Vec2DWorld> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PathCommand::MoveTo(p) => write!(f, "M {} ", p),
+            PathCommand::LineTo(p) => write!(f, "L {} ", p),
+            PathCommand::CurveTo(c) => write!(f, "C {}, {}, {} ", c.pt1, c.pt2, c.to),
+        }
+    }
+}
 
 impl DrawCommand {
     fn serialize(self, writer: &mut EventWriter<&mut Vec<u8>>) {
@@ -21,7 +35,8 @@ impl DrawCommand {
                     ))
                     .attr("d", &d)).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
-            },
+            }
+
             DrawCommand::Circle {
                 color, thickness, center, radius,
             } => {
@@ -38,7 +53,8 @@ impl DrawCommand {
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
-            },
+            }
+
             DrawCommand::Ellipse {
                 thickness, color, center, semimajor, semiminor, angle,
             } => {
@@ -65,7 +81,9 @@ impl DrawCommand {
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
-            },
+            }
+
+            DrawCommand::ScreenPath { .. } | DrawCommand::ScreenCircle { .. } => {}
         }
     }
 }
@@ -131,6 +149,8 @@ mod tests {
     use crate::point::Vec2DScreen;
     use crate::app::{Pizarra, MouseButton, SelectedTool};
     use crate::shape::ShapeTool;
+    use crate::shape::path::Path;
+    use crate::path_command::PathCommand;
 
     #[test]
     fn test_serialize() {

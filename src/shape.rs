@@ -70,7 +70,7 @@ pub trait ShapeBuilder: std::fmt::Debug {
 
     /// Must return the necessary commands to display this shape on the screen
     /// when building it
-    fn draw_commands(&self) -> Vec<DrawCommand>;
+    fn draw_commands(&self, transform: Transform, snap: f64) -> Vec<DrawCommand>;
 }
 
 pub trait ShapeStored: fmt::Debug {

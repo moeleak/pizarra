@@ -4,9 +4,9 @@ use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::draw_commands::DrawCommand;
 use crate::transform::Transform;
 use crate::geom::circle_through_three_points;
+use crate::path_command::PathCommand;
 
 use super::circle::Circle;
-use super::path::PathCommand;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -78,7 +78,7 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
         }
     }
 
-    fn draw_commands(&self) -> Vec<DrawCommand> {
+    fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
         match self.state {
             State::One(f1) => vec![DrawCommand::Path {
                 color: self.color,

@@ -228,9 +228,9 @@ mod tests {
 
     use crate::shape::{
         ShapeId,
-        path::PathCommand,
         circle::Circle, path::Path,
     };
+    use crate::path_command::PathCommand;
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;
     use crate::point::Vec2DWorld;

@@ -43,7 +43,7 @@ impl ShapeBuilder for CircleBuilder {
         ))
     }
 
-    fn draw_commands(&self) -> Vec<DrawCommand> {
+    fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
         vec![DrawCommand::Circle {
             center: self.center,
             radius: self.radius,

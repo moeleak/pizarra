@@ -6,7 +6,7 @@ use crate::transform::Transform;
 use crate::geom::{
     Angle, ellipse_from_foci_and_point, foci_and_sum_from_center_and_radi,
 };
-use crate::shape::path::PathCommand;
+use crate::path_command::PathCommand;
 
 use super::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
 
@@ -86,7 +86,7 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
         }
     }
 
-    fn draw_commands(&self) -> Vec<DrawCommand> {
+    fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
         match self.state {
             State::One(f1) => vec![DrawCommand::Path {
                 color: self.color,
@@ -241,7 +241,7 @@ mod tests {
         builder.handle_mouse_moved(a1, t, SNAP);
 
         // assert that the first point moves
-        assert_eq!(builder.draw_commands()[0], DrawCommand::Path {
+        assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Path {
             color: Default::default(),
             thickness: 1.0,
             commands: vec![
@@ -254,7 +254,7 @@ mod tests {
         builder.handle_button_released(a, t, SNAP);
 
         // a line is drawn connecting A and A
-        assert_eq!(builder.draw_commands()[0], DrawCommand::Path {
+        assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Path {
             color: Default::default(),
             thickness: 1.0,
             commands: vec![
@@ -267,7 +267,7 @@ mod tests {
         builder.handle_mouse_moved(b, t, SNAP);
 
         // a line is drawn connecting A and B
-        assert_eq!(builder.draw_commands()[0], DrawCommand::Path {
+        assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Path {
             color: Default::default(),
             thickness: 1.0,
             commands: vec![
@@ -284,7 +284,7 @@ mod tests {
         builder.handle_mouse_moved(d, t, SNAP);
 
         // and check that a first ellipse is built
-        assert_eq!(builder.draw_commands()[0], DrawCommand::Ellipse {
+        assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Ellipse {
             color: Default::default(),
             thickness: 1.0,
             center: Vec2DWorld::new(-3.0257300000000003, 1.26254),

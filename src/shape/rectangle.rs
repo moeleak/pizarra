@@ -2,8 +2,9 @@ use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::draw_commands::DrawCommand;
 use crate::color::Color;
 use crate::transform::Transform;
+use crate::path_command::PathCommand;
 
-use super::{ShapeBuilder, ShapeFinished, path::{PathCommand, Path}};
+use super::{ShapeBuilder, ShapeFinished, path::Path};
 
 #[derive(Debug)]
 pub struct AxisAlignedRectangleBuilder {
@@ -26,7 +27,7 @@ impl AxisAlignedRectangleBuilder {
     }
 }
 
-fn draw_commands(corners: [Vec2DWorld; 4]) -> Vec<PathCommand> {
+fn draw_commands(corners: [Vec2DWorld; 4]) -> Vec<PathCommand<Vec2DWorld>> {
     let mut commands = Vec::with_capacity(5);
     let mut points_iter = corners.iter().cycle().take(5);
 
@@ -59,7 +60,7 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
         )))
     }
 
-    fn draw_commands(&self) -> Vec<DrawCommand> {
+    fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
         let corners = self.all_four_corners();
 
         vec![DrawCommand::Path {
@@ -87,7 +88,7 @@ mod tests {
         rect.handle_mouse_moved(b, t, SNAP);
 
         // while being drawn
-        assert_eq!(rect.draw_commands()[0], DrawCommand::Path {
+        assert_eq!(rect.draw_commands(t, SNAP)[0], DrawCommand::Path {
             color: Default::default(),
             thickness: 1.0,
             commands: vec![
