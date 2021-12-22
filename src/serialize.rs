@@ -88,56 +88,69 @@ impl DrawCommand {
     }
 }
 
-impl Pizarra {
-    pub fn to_svg(&self) -> Option<String> {
+pub struct Settings {
+    pub export_padding: f64,
+    pub bgcolor: Color,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            export_padding: 20.0,
+            bgcolor: Color::black(),
+        }
+    }
+}
+
+impl Storage {
+    pub fn to_svg(&self, settings: Settings) -> String {
+        let mut output = Vec::new();
+        let mut writer = EmitterConfig::new()
+            .perform_indent(true)
+            .create_writer(&mut output);
+
+        let export_padding = settings.export_padding;
+
+        let bbox = self.get_bounds().unwrap_or([Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(0.0, 0.0)]);
+        let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2DWorld::new(export_padding*2.0, export_padding*2.0);
+        let width = svg_dimensions.x.to_string();
+        let height = svg_dimensions.y.to_string();
+        let min = bbox[0].min(bbox[1]);
+        let min_x = (min.x - export_padding).to_string();
+        let min_y = (min.y - export_padding).to_string();
+        let view_box = format!("{} {} {} {}", &min_x, &min_y, width, height);
+        let background_style = format!("fill:{fill};fill-opacity:1;stroke:none;", fill = settings.bgcolor.css());
+
+        writer.write(XmlEvent::start_element("svg")
+            .ns("", "http://www.w3.org/2000/svg")
+            .attr("width", &width)
+            .attr("height", &height)
+            .attr("viewBox", &view_box)
+            .attr("version", "1.1")).unwrap();
+
+        writer.write(XmlEvent::start_element("g")
+            .attr("id", "storage")).unwrap();
+
+        writer.write(XmlEvent::start_element("rect")
+            .attr("x", &min_x)
+            .attr("y", &min_y)
+            .attr("width", &width)
+            .attr("height", &height)
+            .attr("style", &background_style)).unwrap();
+        writer.write(XmlEvent::end_element()).unwrap();
+
         if let Some(bbox) = self.get_bounds() {
-            let mut output = Vec::new();
-            let mut writer = EmitterConfig::new()
-                .perform_indent(true)
-                .create_writer(&mut output);
-
-            let export_padding = self.config().export_padding;
-
-            let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2DWorld::new(export_padding*2.0, export_padding*2.0);
-            let width = svg_dimensions.x.to_string();
-            let height = svg_dimensions.y.to_string();
-            let min = bbox[0].min(bbox[1]);
-            let min_x = (min.x - export_padding).to_string();
-            let min_y = (min.y - export_padding).to_string();
-            let view_box = format!("{} {} {} {}", &min_x, &min_y, width, height);
-            let background_style = format!("fill:{fill};fill-opacity:1;stroke:none;", fill = self.bgcolor().css());
-
-            writer.write(XmlEvent::start_element("svg")
-                .ns("", "http://www.w3.org/2000/svg")
-                .attr("width", &width)
-                .attr("height", &height)
-                .attr("viewBox", &view_box)
-                .attr("version", "1.1")).unwrap();
-
-            writer.write(XmlEvent::start_element("g")
-                .attr("id", "storage")).unwrap();
-
-            writer.write(XmlEvent::start_element("rect")
-                .attr("x", &min_x)
-                .attr("y", &min_y)
-                .attr("width", &width)
-                .attr("height", &height)
-                .attr("style", &background_style)).unwrap();
-            writer.write(XmlEvent::end_element()).unwrap();
-
-            for command in self.draw_commands_for_drawing() {
+            for command in self.draw_commands(bbox) {
                 command.serialize(&mut writer);
             }
-
-            writer.write(XmlEvent::end_element()).unwrap(); // g
-            writer.write(XmlEvent::end_element()).unwrap(); // svg
-
-            output.push(b'\n');
-
-            Some(String::from_utf8(output).unwrap())
-        } else {
-            None
         }
+
+        writer.write(XmlEvent::end_element()).unwrap(); // g
+        writer.write(XmlEvent::end_element()).unwrap(); // svg
+
+        output.push(b'\n');
+
+        String::from_utf8(output).unwrap()
     }
 }
 
@@ -165,7 +178,7 @@ mod tests {
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(20.0, 20.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(21.0, 20.0));
 
-        assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_test.svg"));
+        assert_eq!(app.to_svg(), include_str!("../res/serialize_test.svg"));
     }
 
     #[test]
@@ -194,23 +207,25 @@ mod tests {
         app.handle_mouse_move(e);
         app.handle_mouse_button_released(MouseButton::Left, e);
 
-        assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_ellipse.svg"));
+        assert_eq!(app.to_svg(), include_str!("../res/serialize_ellipse.svg"));
     }
 
     #[test]
     fn test_serialize_color_with_alpha() {
-        let mut app = Pizarra::new_for_testing();
+        let mut storage = Storage::new();
 
-        app.resize(Vec2DScreen::new(40.0, 40.0));
+        storage.add(Box::new(Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DWorld::new(10.0, 10.0)),
+            PathCommand::LineTo(Vec2DWorld::new(10.0, 10.0)),
+        ], Color::green().with_alpha(127), 3.0)));
 
-        app.set_tool(SelectedTool::Shape(ShapeTool::Polygon));
-        app.set_color(Color::green());
-        app.set_alpha(127);
+        assert_eq!(storage.to_svg(Default::default()), include_str!("../res/serialize_alpha.svg"));
+    }
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(10.0, 10.0));
-        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(30.0, 30.0));
-        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(30.0, 30.0));
+    #[test]
+    fn an_empty_drawing_is_serializable() {
+        let storage = Storage::new();
 
-        assert_eq!(app.to_svg().unwrap(), include_str!("../res/serialize_alpha.svg"));
+        assert_eq!(storage.to_svg(Default::default()), include_str!("../res/serialize_empty.svg"));
     }
 }

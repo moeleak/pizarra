@@ -13,6 +13,7 @@ use crate::geom::{Angle, bbox_from_points};
 use crate::key::Key;
 use crate::config::Config;
 use crate::ui::Flags;
+use crate::serialize;
 
 #[derive(Copy,Clone,Debug, PartialEq, Eq)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -730,6 +731,15 @@ impl Pizarra {
         self.storage = Storage::from_svg(svg, self.config)?;
 
         Ok(())
+    }
+
+    pub fn to_svg(&self) -> String {
+        let settings = serialize::Settings {
+            export_padding: self.config.export_padding,
+            bgcolor: self.bgcolor,
+        };
+
+        self.storage.to_svg(settings)
     }
 }
 
