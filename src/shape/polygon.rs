@@ -1,13 +1,39 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
-use crate::shape::{ShapeBuilder, ShapeFinished, path::{Path, PathCommand}};
+use crate::path_command::{PathCommand, CubicBezierCurve};
+use crate::shape::{ShapeBuilder, ShapeFinished, path::Path};
 use crate::draw_commands::DrawCommand;
 use crate::transform::Transform;
 
+/// Enum that handles the states of building a bezier-polygon
+#[derive(Debug, Copy, Clone)]
+enum BuilderState {
+    /// Initial state, only on initialization
+    Init(Vec2DWorld),
+
+    /// Transition to this state on pressed and change to something else
+    /// immediatly after
+    PointStart(Vec2DWorld),
+
+    /// Transition to this from PointStart if the next event is mouse move
+    Handle {
+        point: Vec2DWorld,
+        handle: Vec2DWorld,
+    },
+
+    /// Transition to this after a release event
+    FreePoint(Vec2DWorld),
+
+    /// End is detected on the pressed event but this event doesn't return a
+    /// finished shape, so this state is transitioned to on pressed and then
+    /// detected on relesease to return the built shape
+    End(Vec2DWorld),
+}
+
 #[derive(Debug)]
 pub struct PolygonBuilder {
-    points: Vec<Vec2DWorld>,
-    tip: Option<Vec2DWorld>,
+    points: Vec<PathCommand<Vec2DWorld>>,
+    tip: BuilderState,
     thickness: f64,
     color: Color,
 }
@@ -18,87 +44,129 @@ impl PolygonBuilder {
 
         PolygonBuilder {
             points: init_vec,
-            tip: Some(initial),
+            tip: BuilderState::Init(initial),
             thickness,
             color,
         }
     }
 
-    pub fn with_params(color: Color, points: Vec<Vec2DWorld>, thickness: f64) -> PolygonBuilder {
-        PolygonBuilder {
-            tip: None,
-            points, color, thickness,
-        }
-    }
-
-    fn touches_prev_point(&self, point: Vec2DWorld, t: Transform, radius: f64) -> Option<Vec2DWorld> {
-        let point = t.to_screen_coordinates(point);
-
-        self.points.iter().filter(|&&p| t.to_screen_coordinates(p).distance(point) <= radius).copied().next()
+    fn touches_prev_point(&self, point: Vec2DScreen, t: Transform, radius: f64) -> Option<Vec2DWorld> {
+        self.points.iter().map(|p| p.to()).find(|&p| {
+            t.to_screen_coordinates(p).distance(point) <= radius
+        })
     }
 }
 
 impl ShapeBuilder for PolygonBuilder {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
-        self.tip = Some(t.to_world_coordinates(pos));
+        let pos = t.to_world_coordinates(pos);
+
+        match self.tip {
+            BuilderState::Init(p) => {
+                self.points.push(PathCommand::MoveTo(p));
+
+                self.tip = BuilderState::Handle { point: p, handle: pos };
+            }
+            BuilderState::PointStart(p) => {
+                self.tip = BuilderState::Handle { point: p, handle: pos };
+            }
+            BuilderState::FreePoint(_) => {
+                self.tip = BuilderState::FreePoint(pos);
+            }
+            BuilderState::Handle { point, .. } => {
+                self.tip = BuilderState::Handle { point, handle: pos };
+            }
+            BuilderState::End(_) => {}
+        }
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) {}
-
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
-        let drawing_pos = t.to_world_coordinates(pos);
-
-        if self.points.is_empty() {
-            self.points.push(drawing_pos);
-            return ShapeFinished::No;
-        }
-
-        if let Some(point) = self.touches_prev_point(drawing_pos, t, snap) {
-            self.points.push(point);
-            self.tip = None;
-
-            let commands = self.points.iter().enumerate().map(|(i, &p)| {
-                if i == 0 {
-                    PathCommand::MoveTo(p)
+    fn handle_button_pressed(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) {
+        match self.tip {
+            BuilderState::FreePoint(p) => {
+                if let Some(point) = self.touches_prev_point(pos, t, snap) {
+                    self.points.push(PathCommand::LineTo(point));
+                    self.tip = BuilderState::End(point);
                 } else {
-                    PathCommand::LineTo(p)
+                    self.tip = BuilderState::PointStart(p);
                 }
-            }).collect();
-
-            ShapeFinished::Yes(Box::new(Path::from_parts(
-                commands,
-                self.color,
-                self.thickness,
-            )))
-        } else {
-            self.points.push(drawing_pos);
-
-            ShapeFinished::No
+            }
+            _ => {}
         }
     }
 
-    fn draw_commands(&self) -> Vec<DrawCommand> {
-        let mut points_iter = self.points.iter();
-        let mut commands = Vec::with_capacity(self.points.len());
+    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) -> ShapeFinished {
+        let pos = t.to_world_coordinates(pos);
 
-        if let Some(p) = points_iter.next() {
-            commands.push(PathCommand::MoveTo(*p));
-            commands.extend(points_iter.map(|p| PathCommand::LineTo(*p)));
+        match self.tip {
+            BuilderState::Init(p) | BuilderState::PointStart(p) => {
+                self.points.push(PathCommand::LineTo(p));
+                self.tip = BuilderState::FreePoint(pos);
+
+                ShapeFinished::No
+            }
+            BuilderState::Handle { point, handle } => {
+                self.points.push(PathCommand::CurveTo(CubicBezierCurve {
+                    pt1: handle,
+                    pt2: point,
+                    to: point,
+                }));
+
+                self.tip = BuilderState::FreePoint(pos);
+
+                ShapeFinished::No
+            }
+            BuilderState::FreePoint(_) => ShapeFinished::No,
+            BuilderState::End(_) => {
+                ShapeFinished::Yes(Box::new(Path::from_parts(
+                    self.points.clone(),
+                    self.color,
+                    self.thickness,
+                )))
+            }
+        }
+    }
+
+    fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
+        let mut path_commands = self.points.clone();
+
+        match self.tip {
+            BuilderState::Init(_) => {}
+            BuilderState::Handle { point, handle } => {
+                path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
+                    pt1: handle,
+                    pt2: point,
+                    to: point,
+                }));
+            }
+            BuilderState::FreePoint(p) => {
+                path_commands.push(PathCommand::LineTo(p));
+            }
+            BuilderState::PointStart(p) => {
+                path_commands.push(PathCommand::LineTo(p));
+            }
+            BuilderState::End(p) => {
+                path_commands.push(PathCommand::LineTo(p));
+            }
         }
 
-        if let Some(p) = self.tip {
-            commands.push(if commands.is_empty() {
-                PathCommand::MoveTo(p)
-            } else {
-                PathCommand::LineTo(p)
-            });
-        }
+        let mut commands = Vec::with_capacity(self.points.len() * 2);
 
-        vec![DrawCommand::Path {
-            commands,
+        commands.push(DrawCommand::Path {
+            commands: path_commands,
             thickness: self.thickness,
             color: self.color,
-        }]
+        });
+
+        commands.extend(self.points.iter().map(|p| {
+            DrawCommand::ScreenCircle {
+                center: t.to_screen_coordinates(p.to()),
+                radius: snap,
+                color: Color::gray(),
+                thickness: 1.0,
+            }
+        }));
+
+        commands
     }
 }
 
