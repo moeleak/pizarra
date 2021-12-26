@@ -767,7 +767,8 @@ mod tests {
         let commands = app.draw_commands_for_screen();
 
         assert_eq!(commands[0], DrawCommand::Path {
-            color: Default::default(),
+            color: Some(Default::default()),
+            fill: None,
             commands: vec![
                 MoveTo(Vec2DWorld { x: -40.0, y: -30.0 }),
                 CurveTo(CubicBezierCurve {
@@ -797,7 +798,8 @@ mod tests {
         let commands = app.draw_commands_for_screen();
 
         assert_eq!(commands[0], DrawCommand::Path {
-            color: Default::default(),
+            color: Some(Default::default()),
+            fill: None,
             commands: vec![
                 MoveTo(Vec2DWorld { x: -20.0, y: -15.0 }),
                 CurveTo(CubicBezierCurve {
@@ -1024,7 +1026,8 @@ mod tests {
         assert_eq!(commands.len(), 1);
 
         assert_eq!(commands[0], DrawCommand::Path {
-            color: Default::default(),
+            color: Some(Default::default()),
+            fill: None,
             thickness: Config::default().thickness,
             commands: vec![
                 MoveTo(Vec2DWorld { x: -30.0, y: -20.0 }),

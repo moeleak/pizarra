@@ -81,12 +81,14 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
     fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
         match self.state {
             State::One(f1) => vec![DrawCommand::Path {
-                color: self.color,
+                color: Some(self.color),
+                fill: None,
                 thickness: self.thickness,
                 commands: vec![PathCommand::MoveTo(f1)],
             }],
             State::Two(p1, p2) => vec![DrawCommand::Path {
-                color: self.color,
+                color: Some(self.color),
+                fill: None,
                 thickness: self.thickness,
                 commands: vec![PathCommand::MoveTo(p1), PathCommand::LineTo(p2)],
             }],
@@ -97,7 +99,8 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                     center,
                     radius,
                     thickness: self.thickness,
-                    color: self.color,
+                    color: Some(self.color),
+                    fill: None,
                 }]
             }
         }

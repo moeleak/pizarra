@@ -1,6 +1,6 @@
 use std::f64::consts::PI;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
-use crate::draw_commands::DrawCommand;
+use crate::draw_commands::{DrawCommand, self};
 use crate::color::Color;
 use crate::transform::Transform;
 use crate::geom::{
@@ -80,7 +80,7 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
                 let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, t.to_world_coordinates(pos));
 
                 ShapeFinished::Yes(Box::new(Ellipse::from_parts(
-                    center, semimajor, semiminor, angle, self.color, self.thickness,
+                    center, semimajor, semiminor, angle, Some(self.color), None, self.thickness,
                 )))
             }
         }
@@ -89,12 +89,14 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
     fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
         match self.state {
             State::One(f1) => vec![DrawCommand::Path {
-                color: self.color,
+                color: Some(self.color),
+                fill: None,
                 thickness: self.thickness,
                 commands: vec![PathCommand::MoveTo(f1)],
             }],
             State::Foci([f1, f2]) => vec![DrawCommand::Path {
-                color: self.color,
+                color: Some(self.color),
+                fill: None,
                 thickness: self.thickness,
                 commands: vec![PathCommand::MoveTo(f1), PathCommand::LineTo(f2)],
             }],
@@ -103,11 +105,12 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
             } => {
                 let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, point);
 
-                vec![DrawCommand::Ellipse {
+                vec![DrawCommand::Ellipse(draw_commands::Ellipse {
                     thickness: self.thickness,
-                    color: self.color,
+                    color: Some(self.color),
+                    fill: None,
                     center, semimajor, semiminor, angle,
-                }]
+                })]
             }
         }
     }
@@ -119,28 +122,30 @@ pub struct Ellipse {
     semimajor: f64,
     semiminor: f64,
     angle: Angle,
-    color: Color,
+    color: Option<Color>,
+    fill: Option<Color>,
     thickness: f64,
 }
 
 impl Ellipse {
-    pub fn from_parts(center: Vec2DWorld, semimajor: f64, semiminor: f64, angle: Angle, color: Color, thickness: f64) -> Ellipse {
+    pub fn from_parts(center: Vec2DWorld, semimajor: f64, semiminor: f64, angle: Angle, color: Option<Color>, fill: Option<Color>, thickness: f64) -> Ellipse {
         Ellipse {
-            center, semimajor, semiminor, angle, color, thickness
+            center, semimajor, semiminor, angle, color, fill, thickness
         }
     }
 }
 
 impl ShapeStored for Ellipse {
     fn draw_commands(&self) -> DrawCommand {
-        DrawCommand::Ellipse {
+        DrawCommand::Ellipse(draw_commands::Ellipse {
             center: self.center,
             semimajor: self.semimajor,
             semiminor: self.semiminor,
             angle: self.angle,
             color: self.color,
+            fill: self.fill,
             thickness: self.thickness,
-        }
+        })
     }
 
     fn bbox(&self) -> [Vec2DWorld; 2] {
@@ -187,8 +192,12 @@ impl ShapeStored for Ellipse {
         sum_of_distances >= sum - 2.0*radius
     }
 
-    fn color(&self) -> Color {
+    fn color(&self) -> Option<Color> {
         self.color
+    }
+
+    fn fill(&self) -> Option<Color> {
+        self.fill
     }
 }
 
@@ -208,7 +217,7 @@ mod tests {
 
         let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_sum([f1, f2], sum);
 
-        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Default::default(), 1.0);
+        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Some(Default::default()), None, 1.0);
 
         let cases = [
             ((-18.23673, -15.70531), true),
@@ -242,7 +251,8 @@ mod tests {
 
         // assert that the first point moves
         assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Default::default(),
+            color: Some(Default::default()),
+            fill: None,
             thickness: 1.0,
             commands: vec![
                 PathCommand::MoveTo(t.to_world_coordinates(a1)),
@@ -255,7 +265,8 @@ mod tests {
 
         // a line is drawn connecting A and A
         assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Default::default(),
+            color: Some(Default::default()),
+            fill: None,
             thickness: 1.0,
             commands: vec![
                 PathCommand::MoveTo(t.to_world_coordinates(a)),
@@ -268,7 +279,8 @@ mod tests {
 
         // a line is drawn connecting A and B
         assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Default::default(),
+            color: Some(Default::default()),
+            fill: None,
             thickness: 1.0,
             commands: vec![
                 PathCommand::MoveTo(t.to_world_coordinates(a)),
@@ -284,28 +296,30 @@ mod tests {
         builder.handle_mouse_moved(d, t, SNAP);
 
         // and check that a first ellipse is built
-        assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Ellipse {
-            color: Default::default(),
+        assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Ellipse(draw_commands::Ellipse {
+            color: Some(Default::default()),
+            fill: None,
             thickness: 1.0,
             center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
             semimajor: 5.838320272867801,
             semiminor: 4.575529950080007,
             angle: Angle::from_radians(-0.7769764190469384),
-        });
+        }));
 
         // finish the ellipse at a point E
         builder.handle_mouse_moved(e, t, SNAP);
 
         match builder.handle_button_released(e, t, SNAP) {
             ShapeFinished::Yes(shape) => {
-                assert_eq!(shape.draw_commands(), DrawCommand::Ellipse {
-                    color: Default::default(),
+                assert_eq!(shape.draw_commands(), DrawCommand::Ellipse(draw_commands::Ellipse {
+                    color: Some(Default::default()),
+                    fill: None,
                     thickness: 1.0,
                     center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
                     semimajor: 7.793799303722533,
                     semiminor: 6.898753387548061,
                     angle: Angle::from_radians(-0.7769764190469384),
-                });
+                }));
             },
             _ => panic!(),
         }
@@ -318,7 +332,7 @@ mod tests {
         let semiminor = 6.898753387548061;
 
         // axis aligned
-        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, Angle::from_radians(0.0), Default::default(), 1.0);
+        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, Angle::from_radians(0.0), Some(Default::default()), None, 1.0);
 
         assert_eq!(ellipse.bbox(), [
             center - Vec2DWorld::new(semimajor, semiminor),
@@ -327,7 +341,7 @@ mod tests {
 
         // rotated
         let angle = Angle::from_radians(-0.7769764190469384);
-        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Default::default(), 1.0);
+        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Some(Default::default()), None, 1.0);
 
         assert_eq!(ellipse.bbox(), [
             Vec2DWorld { x: -10.39314460317701, y: -6.089827506715496 },

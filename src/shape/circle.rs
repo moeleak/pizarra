@@ -48,7 +48,8 @@ impl ShapeBuilder for CircleBuilder {
             center: self.center,
             radius: self.radius,
             thickness: self.thickness,
-            color: self.color,
+            color: Some(self.color),
+            fill: None,
         }]
     }
 }
@@ -87,8 +88,12 @@ impl ShapeStored for Circle {
         (d <= self.radius + radius) && (d >= self.radius - radius)
     }
 
-    fn color(&self) -> Color {
-        self.color
+    fn color(&self) -> Option<Color> {
+        Some(self.color)
+    }
+
+    fn fill(&self) -> Option<Color> {
+        None
     }
 
     fn draw_commands(&self) -> DrawCommand {
@@ -96,7 +101,8 @@ impl ShapeStored for Circle {
             center: self.center,
             radius: self.radius,
             thickness: self.thickness,
-            color: self.color,
+            color: Some(self.color),
+            fill: None,
         }
     }
 }

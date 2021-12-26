@@ -72,10 +72,12 @@ impl fmt::Display for Error {
 impl std::error::Error for Error {
 }
 
+type Result<T> = std::result::Result<T, Error>;
+
 impl FromStr for Vec2DWorld {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self> {
         if let Some(captures) = POINT_REGEX.captures(s) {
             Ok(Vec2DWorld::new(
                 captures["x"].parse::<f64>()?,
@@ -90,7 +92,7 @@ impl FromStr for Vec2DWorld {
 impl FromStr for Angle {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Angle, Self::Err> {
+    fn from_str(s: &str) -> Result<Angle> {
         if let Some(angle) = ANGLE_REGEX.captures(s) {
             Ok(Angle::from_degrees(angle["angle"].parse()?))
         } else {
@@ -117,46 +119,43 @@ fn xml_attrs_as_hashmap(attrs: Vec<OwnedAttribute>) -> HashMap<String, String> {
     }).collect()
 }
 
+fn parse_color(color_str: &str) -> Result<Option<Color>> {
+    if color_str.to_lowercase() == "none" {
+        Ok(None)
+    } else {
+        Ok(Some(color_str.parse()?))
+    }
+}
+
 impl Path {
-    pub fn from_xml_attributes(style: &str, path: &str, config: Config) -> Result<Path, Error> {
+    pub fn from_xml_attributes(style: &str, path: &str, config: Config) -> Result<Path> {
         let attrs = css_attrs_as_hashmap(style);
 
-        let color = if let Some(color_str) = attrs.get("stroke") {
-                if let Ok(c) = color_str.parse() {
-                    c
-                } else {
-                    Color::white()
-                }
-            } else {
-                Color::white()
-            };
-
-        let thickness = if let Some(thickness_str) = attrs.get("stroke-width") {
-                thickness_str.parse()?
-            } else {
-                config.thickness
-            };
-
-        let alpha = if let Some(alpha_str) = attrs.get("stroke-opacity") {
-                alpha_str.parse()?
-            } else {
-                1.0
-            };
+        let color: Option<Color> = attrs.get("stroke").map(|s| parse_color(s)).transpose()?.flatten();
+        let fill: Option<Color> = attrs.get("fill").map(|s| parse_color(s)).transpose()?.flatten();
+        let thickness = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or(config.thickness);
+        let alpha = attrs.get("stroke-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
+        let fill_alpha = attrs.get("fill-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
 
         let mut builder = SvgPathBuilder::new();
 
         parse_path(path, &mut builder)?;
 
-        Ok(Path::from_parts(builder.into_path(), color.with_float_alpha(alpha), thickness))
+        Ok(Path::from_parts(
+            builder.into_path(),
+            color.map(|c| c.with_float_alpha(alpha)),
+            fill.map(|c| c.with_float_alpha(fill_alpha)),
+            thickness,
+        ))
     }
 }
 
 trait Deserialize {
-    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>, Error>;
+    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>>;
 }
 
 impl Deserialize for Path {
-    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>, Error> {
+    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>> {
         let styleattr = attributes.get("style").ok_or_else(|| Error::MissingAttribute("style".into()))?;
         let dattr = attributes.get("d").ok_or_else(|| Error::MissingAttribute("d".into()))?;
 
@@ -165,7 +164,7 @@ impl Deserialize for Path {
 }
 
 impl Deserialize for Ellipse {
-    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>, Error> {
+    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>> {
         let cx = attributes.get("cx").ok_or_else(|| Error::MissingAttribute("cx".into()))?;
         let cy = attributes.get("cy").ok_or_else(|| Error::MissingAttribute("cy".into()))?;
         let rx = attributes.get("rx").ok_or_else(|| Error::MissingAttribute("rx".into()))?;
@@ -175,9 +174,11 @@ impl Deserialize for Ellipse {
 
         let attrs = css_attrs_as_hashmap(styleattr);
 
-        let color: Color = attrs.get("stroke").map(|c| c.parse()).transpose()?.unwrap_or_default();
+        let color: Option<Color> = attrs.get("stroke").map(|s| parse_color(s)).transpose()?.flatten();
+        let fill: Option<Color> = attrs.get("fill").map(|s| parse_color(s)).transpose()?.flatten();
         let thickness = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or(config.thickness);
         let alpha = attrs.get("stroke-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
+        let fill_alpha = attrs.get("fill-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
 
         let angle: Angle = angle.parse()?;
 
@@ -190,14 +191,15 @@ impl Deserialize for Ellipse {
             rx,
             ry,
             angle,
-            color.with_float_alpha(alpha),
+            color.map(|c| c.with_float_alpha(alpha)),
+            fill.map(|c| c.with_float_alpha(fill_alpha)),
             thickness,
         )))
     }
 }
 
 impl Storage {
-    pub fn from_svg(svg: &str, config: Config) -> Result<Storage, Error> {
+    pub fn from_svg(svg: &str, config: Config) -> Result<Storage> {
         let parser = EventReader::from_str(svg);
         let mut storage = Storage::new();
 
@@ -272,11 +274,9 @@ mod tests {
         let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(53.90625%,88.28125%,20.3125%);stroke-opacity:1;stroke-miterlimit:10;", "M 147.570312 40.121094 L 146.9375 40.121094 L 145.296875 40.460938 L 142.519531 41.710938 L 139.613281 43.304688 L 138.097656 44.894531 L 137.339844 46.714844 L 138.097656 47.621094 L 139.992188 47.851562 L 142.898438 47.621094 L 146.179688 47.167969 L 150.097656 47.964844 L 151.738281 49.667969 L 152.496094 51.714844 L 152.875 53.191406 ", Default::default()).unwrap();
 
         if let DrawCommand::Path {
-            color,
-            commands,
-            thickness,
+            color, commands, thickness, ..
         } = line.draw_commands() {
-            assert_eq!(color, Color::from_float_rgb(0.5390625, 0.8828125, 0.203125));
+            assert_eq!(color, Some(Color::from_float_rgb(0.5390625, 0.8828125, 0.203125)));
             assert_eq!(commands, vec![
                 PathCommand::MoveTo(Vec2DWorld::new(147.570312, 40.121094)),
                 PathCommand::LineTo(Vec2DWorld::new(146.9375, 40.121094)),
@@ -311,7 +311,7 @@ mod tests {
     fn test_parse_alpha() {
         let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:#FF0000;stroke-opacity:0.8;stroke-miterlimit:10;", "M 10 10 L 20 20", Default::default()).unwrap();
 
-        assert_eq!(line.color(), Color::red().with_float_alpha(0.8));
+        assert_eq!(line.color().unwrap(), Color::red().with_float_alpha(0.8));
     }
 
     #[test]
@@ -328,13 +328,13 @@ mod tests {
         let deserialized = Ellipse::deserialize(attrs, Default::default()).unwrap();
 
         match deserialized.draw_commands() {
-            DrawCommand::Ellipse { center, semimajor, semiminor, angle, color, thickness } => {
-                assert_eq!(center, Vec2DWorld::new(20.4, -30.5));
-                assert_eq!(semimajor, 5.6);
-                assert_eq!(semiminor, 3.5);
-                assert_eq!(angle.degrees(), 34.5);
-                assert_eq!(color, Color::from_int_rgb(0xca, 0xba, 0xda).with_float_alpha(0.8));
-                assert_eq!(thickness, 3.5);
+            DrawCommand::Ellipse(e) => {
+                assert_eq!(e.center, Vec2DWorld::new(20.4, -30.5));
+                assert_eq!(e.semimajor, 5.6);
+                assert_eq!(e.semiminor, 3.5);
+                assert_eq!(e.angle.degrees(), 34.5);
+                assert_eq!(e.color, Some(Color::from_int_rgb(0xca, 0xba, 0xda).with_float_alpha(0.8)));
+                assert_eq!(e.thickness, 3.5);
             },
             _ => panic!()
         }
@@ -345,5 +345,29 @@ mod tests {
         let svg_data = include_str!("../res/serialize_ellipse.svg");
 
         Storage::from_svg(svg_data, Default::default()).unwrap();
+    }
+
+    #[test]
+    fn fill_and_stroke_can_be_none_in_path() {
+        let svg_data = include_str!("../res/color_fill_none_path.svg");
+        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
+
+        let commands = storage.draw_commands(storage.get_bounds().unwrap());
+        let command = &commands[0];
+
+        assert_eq!(command.color(), None);
+        assert_eq!(command.fill(), None);
+    }
+
+    #[test]
+    fn fill_and_stroke_can_be_none_in_ellipse() {
+        let svg_data = include_str!("../res/color_fill_none_ellipse.svg");
+        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
+
+        let commands = storage.draw_commands(storage.get_bounds().unwrap());
+        let command = &commands[0];
+
+        assert_eq!(command.color(), None);
+        assert_eq!(command.fill(), None);
     }
 }

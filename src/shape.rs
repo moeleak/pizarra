@@ -87,7 +87,10 @@ pub trait ShapeStored: fmt::Debug {
     fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool;
 
     /// returns the color of this shape
-    fn color(&self) -> Color;
+    fn color(&self) -> Option<Color>;
+
+    /// returns the fill color of this shape
+    fn fill(&self) -> Option<Color>;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -142,7 +145,7 @@ impl Shape {
         self.z_index
     }
 
-    pub fn color(&self) -> Color {
+    pub fn color(&self) -> Option<Color> {
         self.shape_impl.color()
     }
 
@@ -157,6 +160,6 @@ impl Shape {
 
 impl fmt::Debug for Shape {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Shape({:?}, {}, {})", self.shape_impl.shape_type(), self.id, self.color())
+        write!(f, "Shape({:?}, {}, {:?})", self.shape_impl.shape_type(), self.id, self.color())
     }
 }

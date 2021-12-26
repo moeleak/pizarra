@@ -268,6 +268,13 @@ pub fn bisector<P: Point>(A: P, B: P, C: P) -> P {
     vec / vec.magnitude()
 }
 
+/// Mirrors the first point given through the second one
+pub fn mirror<P: Point>(point: P, through: P) -> P {
+    let c = through - point;
+
+    through + c
+}
+
 #[cfg(test)]
 mod tests {
     use crate::point::Vec2DScreen;
@@ -421,5 +428,13 @@ mod tests {
 
         assert!(expected_bisector.x - given_bisector.x.abs() < 0.001);
         assert!(expected_bisector.y - given_bisector.y.abs() < 0.001);
+    }
+
+    #[test]
+    fn mirror_mirrors() {
+        let j: Vec2DWorld = (180.0, 120.0).into();
+        let i: Vec2DWorld = (160.0, 100.0).into();
+
+        assert_eq!(mirror(j, i), (140.0, 80.0).into());
     }
 }

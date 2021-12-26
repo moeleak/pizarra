@@ -129,7 +129,7 @@ impl ShapeBuilder for PathBuilder {
 
     fn handle_button_released(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) -> ShapeFinished {
         ShapeFinished::Yes(Box::new(Path::from_parts(
-            self.commands.clone(), self.color, self.thickness,
+            self.commands.clone(), Some(self.color), None, self.thickness,
         )))
     }
 
@@ -137,7 +137,8 @@ impl ShapeBuilder for PathBuilder {
         vec![DrawCommand::Path {
             commands: self.commands.clone(),
             thickness: self.thickness,
-            color: self.color,
+            color: Some(self.color),
+            fill: None,
         }]
     }
 }
@@ -145,14 +146,15 @@ impl ShapeBuilder for PathBuilder {
 #[derive(Debug)]
 pub struct Path {
     commands: Vec<PathCommand<Vec2DWorld>>,
-    color: Color,
+    color: Option<Color>,
+    fill: Option<Color>,
     thickness: f64,
 }
 
 impl Path {
-    pub fn from_parts(commands: Vec<PathCommand<Vec2DWorld>>, color: Color, thickness: f64) -> Path {
+    pub fn from_parts(commands: Vec<PathCommand<Vec2DWorld>>, color: Option<Color>, fill: Option<Color>, thickness: f64) -> Path {
         Path {
-            commands, color, thickness,
+            commands, color, fill, thickness,
         }
     }
 }
@@ -163,6 +165,7 @@ impl ShapeStored for Path {
             commands: self.commands.clone(),
             thickness: self.thickness,
             color: self.color,
+            fill: None,
         }
     }
 
@@ -191,8 +194,12 @@ impl ShapeStored for Path {
         false
     }
 
-    fn color(&self) -> Color {
+    fn color(&self) -> Option<Color> {
         self.color
+    }
+
+    fn fill(&self) -> Option<Color> {
+        self.fill
     }
 }
 
@@ -208,7 +215,7 @@ mod tests {
         let line = Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DWorld::new(1.0, 0.0)),
             PathCommand::LineTo(Vec2DWorld::new(0.0, 1.0)),
-        ], Color::green(), 4.0);
+        ], Some(Color::green()), None, 4.0);
 
         assert_eq!(line.bbox(), [Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(1.0, 1.0)]);
     }
@@ -220,7 +227,7 @@ mod tests {
             PathCommand::LineTo(Vec2DWorld::new(-5.0, 0.0)),
             PathCommand::LineTo(Vec2DWorld::new(-2.0, 7.0)),
             PathCommand::LineTo(Vec2DWorld::new(2.0, -8.0)),
-        ], Color::green(), 1.0);
+        ], Some(Color::green()), None, 1.0);
 
         assert_eq!(line.bbox(), [Vec2DWorld::new(-12.0, -8.0), Vec2DWorld::new(2.0, 7.0)]);
     }
@@ -229,7 +236,7 @@ mod tests {
     fn can_delete_single_point_paths() {
         let poly = Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
-        ], Color::green(), 1.0);
+        ], Some(Color::green()), None, 1.0);
 
         assert!(poly.intersects_circle(Vec2DWorld::new(0.0, 0.0), 10.0));
     }
@@ -243,7 +250,7 @@ mod tests {
                 pt2: Vec2DWorld::new(171.0, 70.0),
                 to: Vec2DWorld::new(196.0, 113.0),
             }),
-        ], Default::default(), 1.0);
+        ], Some(Color::green()), None, 1.0);
 
         let cases = [
              (Vec2DWorld::new(37.0, 129.0), true),
@@ -264,7 +271,7 @@ mod tests {
         let path = Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DWorld::new(33.0, 135.0)),
             PathCommand::LineTo(Vec2DWorld::new(196.0, 113.0)),
-        ], Default::default(), 1.0);
+        ], Default::default(), None, 1.0);
 
         let cases = [
              (Vec2DWorld::new(37.0, 129.0), true),

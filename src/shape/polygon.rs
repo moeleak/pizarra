@@ -17,8 +17,8 @@ enum BuilderState {
 
     /// Transition to this from PointStart if the next event is mouse move
     Handle {
-        point: Vec2DWorld,
-        handle: Vec2DWorld,
+        to: Vec2DWorld,
+        pt1: Vec2DWorld,
     },
 
     /// Transition to this after a release event
@@ -40,7 +40,9 @@ pub struct PolygonBuilder {
 
 impl PolygonBuilder {
     pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> PolygonBuilder {
-        let init_vec = Vec::with_capacity(8);
+        let mut init_vec = Vec::with_capacity(8);
+
+        init_vec.push(PathCommand::MoveTo(initial));
 
         PolygonBuilder {
             points: init_vec,
@@ -65,29 +67,32 @@ impl ShapeBuilder for PolygonBuilder {
             BuilderState::Init(p) => {
                 self.points.push(PathCommand::MoveTo(p));
 
-                self.tip = BuilderState::Handle { point: p, handle: pos };
+                self.tip = BuilderState::Handle { to: pos, pt1: pos };
             }
             BuilderState::PointStart(p) => {
-                self.tip = BuilderState::Handle { point: p, handle: pos };
+                self.tip = BuilderState::Handle { to: p, pt1: pos };
             }
             BuilderState::FreePoint(_) => {
                 self.tip = BuilderState::FreePoint(pos);
             }
-            BuilderState::Handle { point, .. } => {
-                self.tip = BuilderState::Handle { point, handle: pos };
+            BuilderState::Handle { .. } => {
+                self.tip = BuilderState::Handle { to: pos, pt1: pos };
             }
             BuilderState::End => {}
         }
     }
 
     fn handle_button_pressed(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) {
-        if let BuilderState::FreePoint(p) = self.tip {
-            if let Some(point) = self.touches_prev_point(pos, t, snap) {
-                self.points.push(PathCommand::LineTo(point));
-                self.tip = BuilderState::End;
-            } else {
-                self.tip = BuilderState::PointStart(p);
+        match self.tip {
+            BuilderState::FreePoint(p) => {
+                if let Some(point) = self.touches_prev_point(pos, t, snap) {
+                    self.points.push(PathCommand::LineTo(point));
+                    self.tip = BuilderState::End;
+                } else {
+                    self.tip = BuilderState::PointStart(p);
+                }
             }
+            _ => {}
         }
     }
 
@@ -107,11 +112,11 @@ impl ShapeBuilder for PolygonBuilder {
 
                 ShapeFinished::No
             }
-            BuilderState::Handle { point, handle } => {
+            BuilderState::Handle { to, pt1 } => {
                 self.points.push(PathCommand::CurveTo(CubicBezierCurve {
-                    pt1: handle,
-                    pt2: point,
-                    to: point,
+                    pt1,
+                    pt2: to,
+                    to,
                 }));
 
                 self.tip = BuilderState::FreePoint(pos);
@@ -122,7 +127,8 @@ impl ShapeBuilder for PolygonBuilder {
             BuilderState::End => {
                 ShapeFinished::Yes(Box::new(Path::from_parts(
                     self.points.clone(),
-                    self.color,
+                    Some(self.color),
+                    None,
                     self.thickness,
                 )))
             }
@@ -136,7 +142,7 @@ impl ShapeBuilder for PolygonBuilder {
             BuilderState::Init(p) => {
                 path_commands.push(PathCommand::MoveTo(p));
             }
-            BuilderState::Handle { point, handle } => {
+            BuilderState::Handle { to: point, pt1: handle } => {
                 path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
                     pt1: handle,
                     pt2: point,
@@ -157,15 +163,28 @@ impl ShapeBuilder for PolygonBuilder {
         commands.push(DrawCommand::Path {
             commands: path_commands,
             thickness: self.thickness,
-            color: self.color,
+            color: Some(self.color),
+            fill: None,
         });
 
         commands.extend(self.points.iter().map(|p| {
-            DrawCommand::ScreenCircle {
-                center: t.to_screen_coordinates(p.to()),
-                radius: snap,
-                color: Color::gray(),
-                thickness: 1.0,
+            match self.tip {
+                BuilderState::FreePoint(pf) if pf.distance(p.to()) <= snap => {
+                    DrawCommand::ScreenCircle {
+                        center: t.to_screen_coordinates(p.to()),
+                        radius: snap,
+                        color: None,
+                        fill: Some(Color::green().half_transparent()),
+                        thickness: 1.0,
+                    }
+                }
+                _ => DrawCommand::ScreenCircle {
+                    center: t.to_screen_coordinates(p.to()),
+                    radius: snap,
+                    color: None,
+                    fill: Some(Color::gray().half_transparent()),
+                    thickness: 1.0,
+                }
             }
         }));
 
@@ -229,7 +248,8 @@ mod tests {
         }
 
         assert_eq!(poly.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Default::default(),
+            color: Some(Default::default()),
+            fill: None,
             commands: vec![
                 PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
                 PathCommand::LineTo(Vec2DWorld::new(30.0, 0.0)),
@@ -245,7 +265,8 @@ mod tests {
         let poly = PolygonBuilder::start(Default::default(), Vec2DWorld::new(0.0, 0.0), 3.0);
 
         assert_eq!(poly.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Default::default(),
+            color: Some(Default::default()),
+            fill: None,
             commands: vec![
                 PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
             ],
@@ -323,5 +344,115 @@ mod tests {
         if let ShapeFinished::Yes(_) = poly.handle_button_released(p2, t, SNAP) {
             panic!();
         }
+    }
+
+    /// for some extra visual aid if the cursor is within one of the
+    #[test]
+    fn guide_circles_color_when_cursor_is_close() {
+        let t: Transform = Default::default();
+        let mut poly = PolygonBuilder::start(Color::green(), Vec2DWorld::new(0.0, 0.0), 2.0);
+
+        poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t, SNAP);
+
+        let commands = poly.draw_commands(t, SNAP);
+
+        assert_eq!(&commands[1], &DrawCommand::ScreenCircle {
+            center: Vec2DScreen::new(0.0, 0.0),
+            radius: SNAP,
+            color: None,
+            fill: Some(Color::green().half_transparent()),
+            thickness: 1.0,
+        });
+    }
+
+    /// test that a shape with smooth border can be made. It will look like a
+    /// potatoe
+    #[test]
+    fn the_all_mighty_bezier_polygon() {
+        let t: Transform = Default::default();
+
+        // the points
+        let a = Vec2DScreen::new(0.0, -80.0);
+        let b = Vec2DScreen::new(30.0, -80.0);
+        let c = Vec2DScreen::new(80.0, 0.0);
+        let d = Vec2DScreen::new(80.0, 20.0);
+        let e = Vec2DScreen::new(0.0, 60.0);
+        let f = Vec2DScreen::new(-20.0, 60.0);
+        let g = Vec2DScreen::new(-80.0, 0.0);
+        let h = Vec2DScreen::new(-80.0, -20.0);
+
+        let mut poly = PolygonBuilder::start(Color::green(), t.to_world_coordinates(a), 2.0);
+
+        poly.handle_mouse_moved(b, t, SNAP);
+        poly.handle_button_released(b, t, SNAP);
+
+        poly.handle_mouse_moved(c, t, SNAP);
+        poly.handle_button_pressed(c, t, SNAP);
+        poly.handle_mouse_moved(d, t, SNAP);
+        poly.handle_button_released(d, t, SNAP);
+
+        poly.handle_mouse_moved(e, t, SNAP);
+        poly.handle_button_pressed(e, t, SNAP);
+        poly.handle_mouse_moved(f, t, SNAP);
+        poly.handle_button_released(f, t, SNAP);
+
+        poly.handle_mouse_moved(g, t, SNAP);
+        poly.handle_button_pressed(g, t, SNAP);
+        poly.handle_mouse_moved(h, t, SNAP);
+        poly.handle_button_released(h, t, SNAP);
+
+        poly.handle_mouse_moved(a, t, SNAP);
+        poly.handle_button_pressed(a, t, SNAP);
+        if let ShapeFinished::Yes(s) = poly.handle_button_released(a, t, SNAP) {
+            assert_eq!(s.draw_commands(), DrawCommand::Path {
+                commands: vec![
+                    PathCommand::MoveTo(t.to_world_coordinates(a)),
+                    PathCommand::CurveTo(CubicBezierCurve {
+                        pt1: t.to_world_coordinates(b),
+                        pt2: Vec2DWorld::new(80.0, -20.0),
+                        to: t.to_world_coordinates(c),
+                    }),
+                    PathCommand::CurveTo(CubicBezierCurve {
+                        pt1: t.to_world_coordinates(d),
+                        pt2: Vec2DWorld::new(20.0, 60.0),
+                        to: t.to_world_coordinates(e),
+                    }),
+                    PathCommand::CurveTo(CubicBezierCurve {
+                        pt1: t.to_world_coordinates(f),
+                        pt2: Vec2DWorld::new(-80.0, 20.0),
+                        to: t.to_world_coordinates(g),
+                    }),
+                    PathCommand::CurveTo(CubicBezierCurve {
+                        pt1: t.to_world_coordinates(h),
+                        pt2: Vec2DWorld::new(-30.0, -80.0),
+                        to: t.to_world_coordinates(a),
+                    }),
+                ],
+                color: Some(Color::green()),
+                fill: None,
+                thickness: 2.0,
+            });
+        } else {
+            panic!();
+        }
+    }
+
+    /// at the moment of writing dragging the first point just creates half a
+    /// line, but it should create a handle that makes a smooth start although
+    /// no line is rendered until mouse is released
+    #[test]
+    fn dragging_first_point_just_creates_a_handle() {
+        todo!()
+    }
+
+    /// When creating a polygon with a stylus it is possible that there are a
+    /// few 'move' events between a button press and a button release. That
+    /// would make creating sharp polygons impossible. What should happen
+    /// instead is that if a release event is too close to its matching press
+    /// event it should fix the shape to a sharp angle.
+    #[test]
+    fn sharp_polygons_are_still_possible_by_hand() {
+        todo!()
     }
 }

@@ -187,6 +187,13 @@ impl Color {
         }
     }
 
+    pub fn half_transparent(self) -> Color {
+        Color {
+            a: 127,
+            ..self
+        }
+    }
+
     pub fn with_float_alpha(self, alpha: f64) -> Color {
         Color {
             a: (alpha * 255.0) as u8,

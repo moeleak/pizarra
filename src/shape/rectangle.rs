@@ -56,7 +56,7 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
         self.handle_mouse_moved(pos, t, snap);
 
         ShapeFinished::Yes(Box::new(Path::from_parts(
-            draw_commands(self.all_four_corners()), self.color, self.stroke,
+            draw_commands(self.all_four_corners()), Some(self.color), None, self.stroke,
         )))
     }
 
@@ -66,7 +66,8 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
         vec![DrawCommand::Path {
             commands: draw_commands(corners),
             thickness: self.stroke,
-            color: self.color,
+            color: Some(self.color),
+            fill: None,
         }]
     }
 }
@@ -89,7 +90,8 @@ mod tests {
 
         // while being drawn
         assert_eq!(rect.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Default::default(),
+            color: Some(Default::default()),
+            fill: None,
             thickness: 1.0,
             commands: vec![
                 PathCommand::MoveTo(Vec2DWorld::new(4.0, 5.0)),
@@ -104,7 +106,8 @@ mod tests {
         match rect.handle_button_released(b, t, SNAP) {
             ShapeFinished::Yes(s) => {
                 assert_eq!(s.draw_commands(), DrawCommand::Path {
-                    color: Default::default(),
+                    color: Some(Default::default()),
+                    fill: None,
                     thickness: 1.0,
                     commands: vec![
                         PathCommand::MoveTo(Vec2DWorld::new(4.0, 5.0)),

@@ -22,23 +22,24 @@ impl DrawCommand {
     fn serialize(self, writer: &mut EventWriter<&mut Vec<u8>>) {
         match self {
             DrawCommand::Path {
-                color, commands, thickness,
+                color, commands, thickness, fill,
             } => {
                 let d: String = commands.iter().map(|p| p.to_string()).collect();
 
                 writer.write(XmlEvent::start_element("path")
                     .attr("style", &format!(
-                        "fill:none;stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
+                        "fill:{fill};stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
+                        fill = fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
                         stroke = thickness,
-                        color = color.css(),
-                        alpha = color.float_alpha(),
+                        color = color.map(|c| c.css()).unwrap_or_else(|| "none".into()),
+                        alpha = color.map(|c| c.float_alpha()).unwrap_or(1.0),
                     ))
                     .attr("d", &d)).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
             }
 
             DrawCommand::Circle {
-                color, thickness, center, radius,
+                color, fill, thickness, center, radius,
             } => {
                 writer.write(XmlEvent::start_element("ellipse")
                     .attr("cx", &center.x.to_string())
@@ -46,38 +47,38 @@ impl DrawCommand {
                     .attr("rx", &radius.to_string())
                     .attr("ry", &radius.to_string())
                     .attr("style", &format!(
-                        "fill:none;stroke-width:{stroke};stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10",
+                        "fill:{fill};stroke-width:{stroke};stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10",
                         stroke = thickness,
-                        color = color.css(),
-                        alpha = color.float_alpha(),
+                        color = color.map(|c| c.css()).unwrap_or_else(|| "none".into()),
+                        fill = fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
+                        alpha = color.map(|c| c.float_alpha()).unwrap_or(1.0),
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
             }
 
-            DrawCommand::Ellipse {
-                thickness, color, center, semimajor, semiminor, angle,
-            } => {
+            DrawCommand::Ellipse(e) => {
                 writer.write(XmlEvent::start_element("ellipse")
-                    .attr("cx", &center.x.to_string())
-                    .attr("cy", &center.y.to_string())
-                    .attr("rx", &semimajor.to_string())
-                    .attr("ry", &semiminor.to_string())
+                    .attr("cx", &e.center.x.to_string())
+                    .attr("cy", &e.center.y.to_string())
+                    .attr("rx", &e.semimajor.to_string())
+                    .attr("ry", &e.semiminor.to_string())
                     .attr("transform", &format!(
                             "rotate({angle} {x} {y})",
-                            angle = angle.degrees(),
-                            x = center.x,
-                            y = center.y,
+                            angle = e.angle.degrees(),
+                            x = e.center.x,
+                            y = e.center.y,
                     ))
                     .attr("style", &format!("\
-                            fill:none;\
+                            fill:{fill};\
                             stroke-width:{stroke};\
                             stroke:{color};\
                             stroke-opacity:{alpha};\
                             stroke-miterlimit:10;",
-                        stroke = thickness,
-                        color = color.css(),
-                        alpha = color.float_alpha(),
+                        stroke = e.thickness,
+                        color = e.color.map(|c| c.css()).unwrap_or_else(|| "none".into()),
+                        fill = e.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
+                        alpha = e.color.map(|c| c.float_alpha()).unwrap_or(1.0),
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
@@ -163,7 +164,9 @@ mod tests {
     use crate::app::{Pizarra, MouseButton, SelectedTool};
     use crate::shape::ShapeTool;
     use crate::shape::path::Path;
+    use crate::shape::ellipse::Ellipse;
     use crate::path_command::PathCommand;
+    use crate::geom::Angle;
 
     #[test]
     fn test_serialize() {
@@ -217,7 +220,7 @@ mod tests {
         storage.add(Box::new(Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DWorld::new(10.0, 10.0)),
             PathCommand::LineTo(Vec2DWorld::new(10.0, 10.0)),
-        ], Color::green().with_alpha(127), 3.0)));
+        ], Some(Color::green().with_alpha(127)), None, 3.0)));
 
         assert_eq!(storage.to_svg(Default::default()), include_str!("../res/serialize_alpha.svg"));
     }
@@ -227,5 +230,26 @@ mod tests {
         let storage = Storage::new();
 
         assert_eq!(storage.to_svg(Default::default()), include_str!("../res/serialize_empty.svg"));
+    }
+
+    #[test]
+    fn fill_and_stroke_color_are_properly_serialized() {
+        let mut storage = Storage::new();
+
+        storage.add(Box::new(Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+            PathCommand::LineTo(Vec2DWorld::new(10.0, 10.0)),
+        ], None, None, 3.0)));
+        storage.add(Box::new(Ellipse::from_parts(
+            Vec2DWorld::new(0.0, 0.0),
+            10.0,
+            15.0,
+            Angle::from_radians(0.0),
+            None,
+            None,
+            2.0,
+        )));
+
+        assert_eq!(storage.to_svg(Default::default()), include_str!("../res/serialize_stroke_fill_none.svg"));
     }
 }
