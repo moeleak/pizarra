@@ -486,4 +486,11 @@ mod tests {
     fn sharp_polygons_are_still_possible_by_hand() {
         todo!()
     }
+
+    /// when dragging the handle for a point that is not the first in the
+    /// polygon it looks like half a line. It shouldn't
+    #[test]
+    fn rendered_handle_for_medium_point_is_full_line() {
+        todo!()
+    }
 }
