@@ -57,10 +57,24 @@ impl PolygonBuilder {
         }
     }
 
-    fn touches_prev_point(&self, point: Vec2DWorld, t: Transform, radius: f64) -> Option<(Vec2DWorld, Vec2DWorld)> {
+    /// Tells if the given point is near a previous point of the polygon.
+    ///
+    /// The mesure for near is being closer than `radius` in screen units. The
+    /// return value can be one of the following things:
+    ///
+    /// 1. Some(Some((point, handle)))
+    ///    This means that the last section of the polygon must be a curve to
+    ///    the returned point using the given handle
+    /// 2. Some(None)
+    ///    The nearest point of the polygon to the given point is the last one.
+    ///    It is not necessary to add more sections
+    /// 3. None
+    ///    It is not close enough to any of the polygon's points
+    fn touches_prev_point(&self, point: Vec2DWorld, t: Transform, radius: f64) -> Option<Option<(Vec2DWorld, Vec2DWorld)>> {
         let point = t.to_screen_coordinates(point);
 
-        self.points.iter().zip(self.points.iter().skip(1).cycle()).find(|&(&command, _)| {
+        // Check all but the last point for a coincidence
+        let ans = self.points.iter().zip(self.points.iter().skip(1)).find(|&(&command, _)| {
             t.to_screen_coordinates(command.to()).distance(point) <= radius
         }).map(|(&a, &b)| {
             if let PathCommand::MoveTo(p) = a {
@@ -72,7 +86,19 @@ impl PolygonBuilder {
             } else {
                 (a.to(), a.to())
             }
-        })
+        });
+
+        if let Some(ans) = ans {
+            return Some(Some(ans));
+        }
+
+        self.points.last().map(|last| {
+            if t.to_screen_coordinates(last.to()).distance(point) <= radius {
+                Some(None)
+            } else {
+                None
+            }
+        }).flatten()
     }
 }
 
@@ -107,16 +133,27 @@ impl ShapeBuilder for PolygonBuilder {
 
         match self.tip {
             BuilderState::FreePoint { pt1, .. } => {
-                if let Some((point, pt2)) = self.touches_prev_point(pos, t, snap) {
-                    self.points.push(PathCommand::CurveTo(CubicBezierCurve {
-                        pt1, pt2, to: point,
-                    }));
-                    self.tip = BuilderState::End;
-                } else {
-                    self.points.push(PathCommand::CurveTo(CubicBezierCurve {
-                        pt1, pt2: pos, to: pos,
-                    }));
-                    self.tip = BuilderState::PointStart(pos);
+                match self.touches_prev_point(pos, t, snap) {
+                    // match with first point or middle. Join it smoothly if
+                    // first point is a handle
+                    Some(Some((point, pt2))) => {
+                        self.points.push(PathCommand::CurveTo(CubicBezierCurve {
+                            pt1, pt2, to: point,
+                        }));
+                        self.tip = BuilderState::End;
+                    }
+                    // match with end point. Do not add a new segment to the
+                    // path
+                    Some(None) => {
+                        self.tip = BuilderState::End;
+                    }
+                    // No match, just transition to a free point
+                    None => {
+                        self.points.push(PathCommand::CurveTo(CubicBezierCurve {
+                            pt1, pt2: pos, to: pos,
+                        }));
+                        self.tip = BuilderState::PointStart(pos);
+                    }
                 }
             }
             _ => {}
@@ -270,8 +307,11 @@ mod tests {
             fill: None,
             commands: vec![
                 PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
-                PathCommand::LineTo(Vec2DWorld::new(30.0, 0.0)),
-                PathCommand::LineTo(Vec2DWorld::new(30.0, 0.0)),
+                PathCommand::CurveTo(CubicBezierCurve {
+                    pt1: Vec2DWorld::new(0.0, 0.0),
+                    pt2: Vec2DWorld::new(30.0, 0.0),
+                    to: Vec2DWorld::new(30.0, 0.0),
+                }),
             ],
             thickness: 4.0,
         });
