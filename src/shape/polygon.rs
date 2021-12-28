@@ -21,7 +21,6 @@ enum BuilderState {
     /// easier to update the handles and later add a PathCommand to the points
     FirstHandle {
         pt1: Vec2DWorld,
-        pt2: Vec2DWorld,
         to: Vec2DWorld,
     },
 
@@ -91,7 +90,7 @@ impl ShapeBuilder for PolygonBuilder {
 
         match self.tip {
             BuilderState::Init(_) => {
-                self.tip = BuilderState::FirstHandle { pt1: pos, pt2: pos, to: pos };
+                self.tip = BuilderState::FirstHandle { pt1: pos, to: pos };
             }
             BuilderState::PointStart(p) | BuilderState::Handle { to: p, .. } => {
                 self.tip = BuilderState::Handle { to: p, pt1: pos };
@@ -108,7 +107,7 @@ impl ShapeBuilder for PolygonBuilder {
                 self.tip = BuilderState::FreePoint { pt1, pt2: pos, to: pos };
             }
             BuilderState::FirstHandle { .. } => {
-                self.tip = BuilderState::FirstHandle { pt1: pos, pt2: pos, to: pos };
+                self.tip = BuilderState::FirstHandle { pt1: pos, to: pos };
             }
             BuilderState::End => {}
         }
@@ -176,9 +175,9 @@ impl ShapeBuilder for PolygonBuilder {
 
         match self.tip {
             BuilderState::Init(_) | BuilderState::End => {}
-            BuilderState::FirstHandle { pt1, pt2, to } => {
+            BuilderState::FirstHandle { pt1, to } => {
                 path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
-                    pt1, pt2, to,
+                    pt1, pt2: to, to,
                 }));
             }
             BuilderState::Handle { pt1, to } => {
