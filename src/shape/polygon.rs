@@ -4,6 +4,7 @@ use crate::path_command::{PathCommand, CubicBezierCurve};
 use crate::shape::{ShapeBuilder, ShapeFinished, path::Path};
 use crate::draw_commands::DrawCommand;
 use crate::transform::Transform;
+use crate::geom::mirror;
 
 /// Enum that handles the states of building a bezier-polygon
 #[derive(Debug, Copy, Clone)]
@@ -15,6 +16,15 @@ enum BuilderState {
     /// immediatly after
     PointStart(Vec2DWorld),
 
+    /// If after putting the first point of the polygon the user drags the
+    /// cursor the state of the tip will transition to a FirstHandle to make it
+    /// easier to update the handles and later add a PathCommand to the points
+    FirstHandle {
+        pt1: Vec2DWorld,
+        pt2: Vec2DWorld,
+        to: Vec2DWorld,
+    },
+
     /// Transition to this from PointStart if the next event is mouse move
     Handle {
         to: Vec2DWorld,
@@ -22,7 +32,11 @@ enum BuilderState {
     },
 
     /// Transition to this after a release event
-    FreePoint(Vec2DWorld),
+    FreePoint {
+        pt1: Vec2DWorld,
+        pt2: Vec2DWorld,
+        to: Vec2DWorld,
+    },
 
     /// End is detected on the pressed event but this event doesn't return a
     /// finished shape, so this state is transitioned to on pressed and then
@@ -52,9 +66,21 @@ impl PolygonBuilder {
         }
     }
 
-    fn touches_prev_point(&self, point: Vec2DScreen, t: Transform, radius: f64) -> Option<Vec2DWorld> {
-        self.points.iter().map(|p| p.to()).find(|&p| {
-            t.to_screen_coordinates(p).distance(point) <= radius
+    fn touches_prev_point(&self, point: Vec2DWorld, t: Transform, radius: f64) -> Option<(Vec2DWorld, Vec2DWorld)> {
+        let point = t.to_screen_coordinates(point);
+
+        self.points.iter().zip(self.points.iter().skip(1).cycle()).find(|&(&command, _)| {
+            t.to_screen_coordinates(command.to()).distance(point) <= radius
+        }).map(|(&a, &b)| {
+            if let PathCommand::MoveTo(p) = a {
+                if let PathCommand::CurveTo(c) = b {
+                    (p, mirror(c.pt1, p))
+                } else {
+                    (p, p)
+                }
+            } else {
+                (a.to(), a.to())
+            }
         })
     }
 }
@@ -64,32 +90,45 @@ impl ShapeBuilder for PolygonBuilder {
         let pos = t.to_world_coordinates(pos);
 
         match self.tip {
-            BuilderState::Init(p) => {
-                self.points.push(PathCommand::MoveTo(p));
-
-                self.tip = BuilderState::Handle { to: pos, pt1: pos };
+            BuilderState::Init(_) => {
+                self.tip = BuilderState::FirstHandle { pt1: pos, pt2: pos, to: pos };
             }
-            BuilderState::PointStart(p) => {
+            BuilderState::PointStart(p) | BuilderState::Handle { to: p, .. } => {
                 self.tip = BuilderState::Handle { to: p, pt1: pos };
+                if let Some(last) = self.points.last_mut() {
+                    if let PathCommand::CurveTo(c) = last {
+                        *last = PathCommand::CurveTo(CubicBezierCurve {
+                            pt2: mirror(pos, p),
+                            ..*c
+                        });
+                    }
+                }
             }
-            BuilderState::FreePoint(_) => {
-                self.tip = BuilderState::FreePoint(pos);
+            BuilderState::FreePoint { pt1, .. } => {
+                self.tip = BuilderState::FreePoint { pt1, pt2: pos, to: pos };
             }
-            BuilderState::Handle { .. } => {
-                self.tip = BuilderState::Handle { to: pos, pt1: pos };
+            BuilderState::FirstHandle { .. } => {
+                self.tip = BuilderState::FirstHandle { pt1: pos, pt2: pos, to: pos };
             }
             BuilderState::End => {}
         }
     }
 
     fn handle_button_pressed(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) {
+        let pos = t.to_world_coordinates(pos);
+
         match self.tip {
-            BuilderState::FreePoint(p) => {
-                if let Some(point) = self.touches_prev_point(pos, t, snap) {
-                    self.points.push(PathCommand::LineTo(point));
+            BuilderState::FreePoint { pt1, .. } => {
+                if let Some((point, pt2)) = self.touches_prev_point(pos, t, snap) {
+                    self.points.push(PathCommand::CurveTo(CubicBezierCurve {
+                        pt1, pt2, to: point,
+                    }));
                     self.tip = BuilderState::End;
                 } else {
-                    self.tip = BuilderState::PointStart(p);
+                    self.points.push(PathCommand::CurveTo(CubicBezierCurve {
+                        pt1, pt2: pos, to: pos,
+                    }));
+                    self.tip = BuilderState::PointStart(pos);
                 }
             }
             _ => {}
@@ -101,29 +140,26 @@ impl ShapeBuilder for PolygonBuilder {
 
         match self.tip {
             BuilderState::Init(p) => {
-                self.points.push(PathCommand::MoveTo(p));
-                self.tip = BuilderState::FreePoint(pos);
+                self.tip = BuilderState::FreePoint { pt1: p, pt2: pos, to: pos };
 
                 ShapeFinished::No
             }
             BuilderState::PointStart(p) => {
-                self.points.push(PathCommand::LineTo(p));
-                self.tip = BuilderState::FreePoint(pos);
+                self.tip = BuilderState::FreePoint { pt1: p, pt2: pos, to: pos };
 
                 ShapeFinished::No
             }
-            BuilderState::Handle { to, pt1 } => {
-                self.points.push(PathCommand::CurveTo(CubicBezierCurve {
-                    pt1,
-                    pt2: to,
-                    to,
-                }));
-
-                self.tip = BuilderState::FreePoint(pos);
+            BuilderState::FirstHandle { pt1, .. } => {
+                self.tip = BuilderState::FreePoint { pt1, pt2: pos, to: pos };
 
                 ShapeFinished::No
             }
-            BuilderState::FreePoint(_) => ShapeFinished::No,
+            BuilderState::Handle { pt1, .. } => {
+                self.tip = BuilderState::FreePoint { pt1, pt2: pos, to: pos };
+
+                ShapeFinished::No
+            }
+            BuilderState::FreePoint { .. } => ShapeFinished::No,
             BuilderState::End => {
                 ShapeFinished::Yes(Box::new(Path::from_parts(
                     self.points.clone(),
@@ -139,23 +175,27 @@ impl ShapeBuilder for PolygonBuilder {
         let mut path_commands = self.points.clone();
 
         match self.tip {
-            BuilderState::Init(p) => {
-                path_commands.push(PathCommand::MoveTo(p));
-            }
-            BuilderState::Handle { to: point, pt1: handle } => {
+            BuilderState::Init(_) | BuilderState::End => {}
+            BuilderState::FirstHandle { pt1, pt2, to } => {
                 path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
-                    pt1: handle,
-                    pt2: point,
-                    to: point,
+                    pt1, pt2, to,
                 }));
             }
-            BuilderState::FreePoint(p) => {
-                path_commands.push(PathCommand::LineTo(p));
+            BuilderState::Handle { pt1, to } => {
+                path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
+                    pt1,
+                    pt2: to,
+                    to,
+                }));
+            }
+            BuilderState::FreePoint { pt1, pt2, to } => {
+                path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
+                    pt1, pt2, to,
+                }));
             }
             BuilderState::PointStart(p) => {
                 path_commands.push(PathCommand::LineTo(p));
             }
-            BuilderState::End => {}
         }
 
         let mut commands = Vec::with_capacity(self.points.len() * 2);
@@ -169,7 +209,7 @@ impl ShapeBuilder for PolygonBuilder {
 
         commands.extend(self.points.iter().map(|p| {
             match self.tip {
-                BuilderState::FreePoint(pf) if pf.distance(p.to()) <= snap => {
+                BuilderState::FreePoint { to, .. } if to.distance(p.to()) <= snap => {
                     DrawCommand::ScreenCircle {
                         center: t.to_screen_coordinates(p.to()),
                         radius: snap,
@@ -220,9 +260,9 @@ mod tests {
             panic!()
         }
 
-        poly.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2DScreen::new(20.0, 20.0), t, SNAP);
         poly.handle_button_pressed(Vec2DScreen::new(20.0, 20.0), t, SNAP);
-        if let ShapeFinished::No = poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP) {
+        if let ShapeFinished::No = poly.handle_button_released(Vec2DScreen::new(20.0, 20.0), t, SNAP) {
             panic!()
         }
     }
@@ -436,14 +476,6 @@ mod tests {
         } else {
             panic!();
         }
-    }
-
-    /// at the moment of writing dragging the first point just creates half a
-    /// line, but it should create a handle that makes a smooth start although
-    /// no line is rendered until mouse is released
-    #[test]
-    fn dragging_first_point_just_creates_a_handle() {
-        todo!()
     }
 
     /// When creating a polygon with a stylus it is possible that there are a
