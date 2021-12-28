@@ -16,14 +16,6 @@ enum BuilderState {
     /// immediatly after
     PointStart(Vec2DWorld),
 
-    /// If after putting the first point of the polygon the user drags the
-    /// cursor the state of the tip will transition to a FirstHandle to make it
-    /// easier to update the handles and later add a PathCommand to the points
-    FirstHandle {
-        pt1: Vec2DWorld,
-        to: Vec2DWorld,
-    },
-
     /// Transition to this from PointStart if the next event is mouse move
     Handle {
         to: Vec2DWorld,
@@ -90,7 +82,7 @@ impl ShapeBuilder for PolygonBuilder {
 
         match self.tip {
             BuilderState::Init(_) => {
-                self.tip = BuilderState::FirstHandle { pt1: pos, to: pos };
+                self.tip = BuilderState::Handle { pt1: pos, to: pos };
             }
             BuilderState::PointStart(p) | BuilderState::Handle { to: p, .. } => {
                 self.tip = BuilderState::Handle { to: p, pt1: pos };
@@ -105,9 +97,6 @@ impl ShapeBuilder for PolygonBuilder {
             }
             BuilderState::FreePoint { pt1, .. } => {
                 self.tip = BuilderState::FreePoint { pt1, pt2: pos, to: pos };
-            }
-            BuilderState::FirstHandle { .. } => {
-                self.tip = BuilderState::FirstHandle { pt1: pos, to: pos };
             }
             BuilderState::End => {}
         }
@@ -148,11 +137,6 @@ impl ShapeBuilder for PolygonBuilder {
 
                 ShapeFinished::No
             }
-            BuilderState::FirstHandle { pt1, .. } => {
-                self.tip = BuilderState::FreePoint { pt1, pt2: pos, to: pos };
-
-                ShapeFinished::No
-            }
             BuilderState::Handle { pt1, .. } => {
                 self.tip = BuilderState::FreePoint { pt1, pt2: pos, to: pos };
 
@@ -175,11 +159,6 @@ impl ShapeBuilder for PolygonBuilder {
 
         match self.tip {
             BuilderState::Init(_) | BuilderState::End => {}
-            BuilderState::FirstHandle { pt1, to } => {
-                path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
-                    pt1, pt2: to, to,
-                }));
-            }
             BuilderState::Handle { pt1, to } => {
                 path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
                     pt1,
