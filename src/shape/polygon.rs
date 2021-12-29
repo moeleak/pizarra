@@ -194,13 +194,16 @@ impl ShapeBuilder for PolygonBuilder {
     fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
         let mut path_commands = self.points.clone();
 
+        // add a command to the path_commands depending on the last part of the
+        // polygon. This is what the user is manipulating and changes on every
+        // new input.
         match self.tip {
             BuilderState::Init(_) | BuilderState::End => {}
-            BuilderState::Handle { pt1, to } => {
+            BuilderState::Handle { pt1, .. } => {
                 path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
                     pt1,
-                    pt2: to,
-                    to,
+                    pt2: pt1,
+                    to: pt1,
                 }));
             }
             BuilderState::FreePoint { pt1, pt2, to } => {
@@ -213,35 +216,78 @@ impl ShapeBuilder for PolygonBuilder {
             }
         }
 
+        // this vector holds the commands that will be returned. Not only the
+        // polygon itself but the helper circles and lines
         let mut commands = Vec::with_capacity(self.points.len() * 2);
 
+        // add the polygon
         commands.push(DrawCommand::Path {
-            commands: path_commands,
+            commands: path_commands.clone(),
             thickness: self.thickness,
             color: Some(self.color),
             fill: None,
         });
 
-        commands.extend(self.points.iter().map(|p| {
-            match self.tip {
-                BuilderState::FreePoint { to, .. } if to.distance(p.to()) <= snap => {
-                    DrawCommand::ScreenCircle {
-                        center: t.to_screen_coordinates(p.to()),
-                        radius: snap,
-                        color: None,
-                        fill: Some(Color::green().half_transparent()),
+        // for every point of the polygon add a helper circle and bezier handler
+        // lines
+        commands.extend(path_commands.iter().zip(path_commands.iter().skip(1)).enumerate().map(|(i, (p, next))| {
+            let mut commands = Vec::with_capacity(3);
+
+            // if the first command (except for the MoveTo) is a CurveTo then
+            // draw a handle in the oposite direction to suggest the user that
+            // the closing of a bezier polygon is soft
+            if i == 0 {
+                if let PathCommand::CurveTo(c) = next {
+                    commands.push(DrawCommand::Path {
+                        commands: vec![
+                            PathCommand::MoveTo(p.to()),
+                            PathCommand::LineTo(mirror(c.pt1, p.to())),
+                        ],
+                        color: Some(Color::gray()),
+                        fill: None,
                         thickness: 1.0,
-                    }
-                }
-                _ => DrawCommand::ScreenCircle {
-                    center: t.to_screen_coordinates(p.to()),
-                    radius: snap,
-                    color: None,
-                    fill: Some(Color::gray().half_transparent()),
-                    thickness: 1.0,
+                    });
                 }
             }
-        }));
+
+            // the bezier handles
+            if let PathCommand::CurveTo(c) = next {
+                commands.push(DrawCommand::Path {
+                    commands: vec![
+                        PathCommand::MoveTo(c.to),
+                        PathCommand::LineTo(c.pt2),
+                    ],
+                    color: Some(Color::gray()),
+                    fill: None,
+                    thickness: 1.0,
+                });
+                commands.push(DrawCommand::Path {
+                    commands: vec![
+                        PathCommand::MoveTo(p.to()),
+                        PathCommand::LineTo(c.pt1),
+                    ],
+                    color: Some(Color::gray()),
+                    fill: None,
+                    thickness: 1.0,
+                });
+            }
+
+            // the circles
+            commands.push(DrawCommand::ScreenCircle {
+                center: t.to_screen_coordinates(p.to()),
+                radius: snap,
+                color: None,
+                fill: Some(match self.tip {
+                    BuilderState::FreePoint { to, .. } if to.distance(p.to()) <= snap => {
+                        Color::green().half_transparent()
+                    }
+                    _ => Color::gray().half_transparent()
+                }),
+                thickness: 1.0,
+            });
+
+            commands
+        }).flatten());
 
         commands
     }
@@ -506,10 +552,46 @@ mod tests {
         todo!()
     }
 
-    /// when dragging the handle for a point that is not the first in the
-    /// polygon it looks like half a line. It shouldn't
+    /// when dragging the handle for a point it should paint the handle lines
+    /// instead of an incomplete path
     #[test]
-    fn rendered_handle_for_medium_point_is_full_line() {
-        todo!()
+    fn handles_are_rendered_instead_of_incomplete_paths() {
+        let t: Transform = Default::default();
+
+        // the points
+        let a = Vec2DScreen::new(0.0, -80.0);
+        let b = Vec2DScreen::new(30.0, -80.0);
+        let c = Vec2DScreen::new(80.0, 0.0);
+        let d = Vec2DScreen::new(80.0, 20.0);
+
+        let mut poly = PolygonBuilder::start(Color::green(), t.to_world_coordinates(a), 2.0);
+
+        poly.handle_mouse_moved(b, t, SNAP);
+        poly.handle_button_released(b, t, SNAP);
+
+        poly.handle_mouse_moved(c, t, SNAP);
+        poly.handle_button_pressed(c, t, SNAP);
+        poly.handle_mouse_moved(d, t, SNAP);
+
+        assert_eq!(poly.draw_commands(t, SNAP), vec![
+            // the paths
+            DrawCommand::Path {
+                commands: vec![
+                    PathCommand::MoveTo(t.to_world_coordinates(a)),
+                    PathCommand::CurveTo(CubicBezierCurve {
+                        pt1: t.to_world_coordinates(b),
+                        pt2: Vec2DWorld::new(80.0, -20.0),
+                        to: t.to_world_coordinates(c),
+                    }),
+                ],
+                color: Some(Color::green()),
+                fill: None,
+                thickness: 2.0,
+            },
+
+            // the helpers
+            DrawCommand::ScreenCircle { center: Vec2DScreen { x: 0.0, y: -80.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
+            DrawCommand::ScreenCircle { center: Vec2DScreen { x: 80.0, y: 0.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
+        ]);
     }
 }
