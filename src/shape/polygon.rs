@@ -207,9 +207,15 @@ impl ShapeBuilder for PolygonBuilder {
                 }));
             }
             BuilderState::FreePoint { pt1, pt2, to } => {
-                path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
-                    pt1, pt2, to,
-                }));
+                if let Some(Some((p, h))) = self.touches_prev_point(to, t, snap) {
+                    path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
+                        pt1, pt2: h, to: p,
+                    }));
+                } else {
+                    path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
+                        pt1, pt2, to,
+                    }));
+                }
             }
             BuilderState::PointStart(p) => {
                 path_commands.push(PathCommand::LineTo(p));
@@ -613,5 +619,13 @@ mod tests {
             ], thickness: 1.0 },
             DrawCommand::ScreenCircle { center: Vec2DScreen { x: 80.0, y: 0.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
         ]);
+    }
+
+    /// To make more intuitive the result of closing a soft shape it would be a
+    /// good idea to present the shape as it will look like when closed just by
+    /// passing the cursor over the first point of a polygon
+    #[test]
+    fn preview_shape_when_closing_shape_softly() {
+        todo!()
     }
 }
