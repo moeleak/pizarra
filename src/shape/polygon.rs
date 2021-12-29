@@ -461,7 +461,7 @@ mod tests {
 
         let commands = poly.draw_commands(t, SNAP);
 
-        assert_eq!(&commands[1], &DrawCommand::ScreenCircle {
+        assert_eq!(commands.last().unwrap(), &DrawCommand::ScreenCircle {
             center: Vec2DScreen::new(0.0, 0.0),
             radius: SNAP,
             color: None,
@@ -583,6 +583,11 @@ mod tests {
                         pt2: Vec2DWorld::new(80.0, -20.0),
                         to: t.to_world_coordinates(c),
                     }),
+                    PathCommand::CurveTo(CubicBezierCurve {
+                        pt1: t.to_world_coordinates(d),
+                        pt2: t.to_world_coordinates(d),
+                        to: t.to_world_coordinates(d),
+                    }),
                 ],
                 color: Some(Color::green()),
                 fill: None,
@@ -590,7 +595,22 @@ mod tests {
             },
 
             // the helpers
+            DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
+                PathCommand::MoveTo(Vec2DWorld { x: 0.0, y: -80.0 }), PathCommand::LineTo(Vec2DWorld { x: -30.0, y: -80.0 })
+            ], thickness: 1.0 },
+            DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
+                PathCommand::MoveTo(Vec2DWorld { x: 80.0, y: 0.0 }), PathCommand::LineTo(Vec2DWorld { x: 80.0, y: -20.0 })
+            ], thickness: 1.0 },
+            DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
+                PathCommand::MoveTo(Vec2DWorld { x: 0.0, y: -80.0 }), PathCommand::LineTo(Vec2DWorld { x: 30.0, y: -80.0 })
+            ], thickness: 1.0 },
             DrawCommand::ScreenCircle { center: Vec2DScreen { x: 0.0, y: -80.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
+            DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
+                PathCommand::MoveTo(Vec2DWorld { x: 80.0, y: 20.0 }), PathCommand::LineTo(Vec2DWorld { x: 80.0, y: 20.0 })
+            ], thickness: 1.0 },
+            DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
+                PathCommand::MoveTo(Vec2DWorld { x: 80.0, y: 0.0 }), PathCommand::LineTo(Vec2DWorld { x: 80.0, y: 20.0 })
+            ], thickness: 1.0 },
             DrawCommand::ScreenCircle { center: Vec2DScreen { x: 80.0, y: 0.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
         ]);
     }
