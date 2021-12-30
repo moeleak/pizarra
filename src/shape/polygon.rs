@@ -261,10 +261,11 @@ impl ShapeBuilder for PolygonBuilder {
             // the closing of a bezier polygon is soft
             if i == 0 {
                 if let CurveTo(c) = next {
-                    commands.push(DrawCommand::Path {
+                    commands.push(DrawCommand::ScreenPath {
                         commands: vec![
-                            MoveTo(p.to()),
-                            LineTo(mirror(c.pt1, p.to())),
+                            MoveTo(t.to_screen_coordinates(p.to())),
+                            LineTo(mirror(
+                                t.to_screen_coordinates(c.pt1), t.to_screen_coordinates(p.to()))),
                         ],
                         color: Some(Color::gray()),
                         fill: None,
@@ -275,19 +276,19 @@ impl ShapeBuilder for PolygonBuilder {
 
             // the bezier handles
             if let CurveTo(c) = next {
-                commands.push(DrawCommand::Path {
+                commands.push(DrawCommand::ScreenPath {
                     commands: vec![
-                        MoveTo(c.to),
-                        LineTo(c.pt2),
+                        MoveTo(t.to_screen_coordinates(c.to)),
+                        LineTo(t.to_screen_coordinates(c.pt2)),
                     ],
                     color: Some(Color::gray()),
                     fill: None,
                     thickness: 1.0,
                 });
-                commands.push(DrawCommand::Path {
+                commands.push(DrawCommand::ScreenPath {
                     commands: vec![
-                        MoveTo(p.to()),
-                        LineTo(c.pt1),
+                        MoveTo(t.to_screen_coordinates(p.to())),
+                        LineTo(t.to_screen_coordinates(c.pt1)),
                     ],
                     color: Some(Color::gray()),
                     fill: None,
@@ -301,7 +302,7 @@ impl ShapeBuilder for PolygonBuilder {
                 radius: snap,
                 color: None,
                 fill: Some(match self.tip {
-                    BuilderState::FreePoint { to, .. } if to.distance(p.to()) <= snap => {
+                    BuilderState::FreePoint { to, .. } if t.to_screen_coordinates(to).distance(t.to_screen_coordinates(p.to())) <= snap => {
                         Color::green().half_transparent()
                     }
                     _ => Color::gray().half_transparent()
@@ -609,40 +610,40 @@ mod tests {
                     CurveTo(CubicBezierCurve { pt1: Vec2DWorld { x: 0.0, y: -50.0 }, pt2: Vec2DWorld { x: 50.0, y: 0.0 }, to: Vec2DWorld { x: 50.0, y: 0.0 } }),
                     CurveTo(CubicBezierCurve { pt1: Vec2DWorld { x: 50.0, y: 0.0 }, pt2: Vec2DWorld { x: 0.0, y: 0.0 }, to: Vec2DWorld { x: 0.0, y: 0.0 } })
                 ], thickness: 2.0 },
-            DrawCommand::Path {
+            DrawCommand::ScreenPath {
                 color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
                 fill: None, commands: vec![
-                    MoveTo(Vec2DWorld { x: 0.0, y: 0.0 }), LineTo(Vec2DWorld { x: 0.0, y: 0.0 })], thickness: 1.0 },
-            DrawCommand::Path {
+                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 })], thickness: 1.0 },
+            DrawCommand::ScreenPath {
                 color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
                 fill: None, commands: vec![
-                    MoveTo(Vec2DWorld { x: 0.0, y: -50.0 }), LineTo(Vec2DWorld { x: 0.0, y: -50.0 })], thickness: 1.0 },
-            DrawCommand::Path {
+                    MoveTo(Vec2DScreen { x: 0.0, y: -50.0 }), LineTo(Vec2DScreen { x: 0.0, y: -50.0 })], thickness: 1.0 },
+            DrawCommand::ScreenPath {
                 color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
                 fill: None, commands: vec![
-                    MoveTo(Vec2DWorld { x: 0.0, y: 0.0 }), LineTo(Vec2DWorld { x: 0.0, y: 0.0 })], thickness: 1.0 },
+                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 })], thickness: 1.0 },
             DrawCommand::ScreenCircle {
                 center: Vec2DScreen { x: 0.0, y: 0.0 }, radius: 10.0, color: None,
                 fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
-            DrawCommand::Path {
+            DrawCommand::ScreenPath {
                 color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
                 fill: None, commands: vec![
-                    MoveTo(Vec2DWorld { x: 50.0, y: 0.0 }), LineTo(Vec2DWorld { x: 50.0, y: 0.0 })], thickness: 1.0 },
-            DrawCommand::Path {
+                    MoveTo(Vec2DScreen { x: 50.0, y: 0.0 }), LineTo(Vec2DScreen { x: 50.0, y: 0.0 })], thickness: 1.0 },
+            DrawCommand::ScreenPath {
                 color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
                 fill: None, commands: vec![
-                    MoveTo(Vec2DWorld { x: 0.0, y: -50.0 }), LineTo(Vec2DWorld { x: 0.0, y: -50.0 })], thickness: 1.0 },
+                    MoveTo(Vec2DScreen { x: 0.0, y: -50.0 }), LineTo(Vec2DScreen { x: 0.0, y: -50.0 })], thickness: 1.0 },
             DrawCommand::ScreenCircle {
                 center: Vec2DScreen { x: 0.0, y: -50.0 }, radius: 10.0, color: None,
                 fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
-            DrawCommand::Path {
+            DrawCommand::ScreenPath {
                 color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
                 fill: None, commands: vec![
-                    MoveTo(Vec2DWorld { x: 0.0, y: 0.0 }), LineTo(Vec2DWorld { x: 0.0, y: 0.0 })], thickness: 1.0 },
-            DrawCommand::Path {
+                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 })], thickness: 1.0 },
+            DrawCommand::ScreenPath {
                 color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
                 fill: None, commands: vec![
-                    MoveTo(Vec2DWorld { x: 50.0, y: 0.0 }), LineTo(Vec2DWorld { x: 50.0, y: 0.0 })], thickness: 1.0 },
+                    MoveTo(Vec2DScreen { x: 50.0, y: 0.0 }), LineTo(Vec2DScreen { x: 50.0, y: 0.0 })], thickness: 1.0 },
             DrawCommand::ScreenCircle {
                 center: Vec2DScreen { x: 50.0, y: 0.0 }, radius: 10.0, color: None,
                 fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 }
@@ -692,21 +693,21 @@ mod tests {
             },
 
             // the helpers
-            DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
-                MoveTo(Vec2DWorld { x: 0.0, y: -80.0 }), LineTo(Vec2DWorld { x: -30.0, y: -80.0 })
+            DrawCommand::ScreenPath { color: Some(Color::gray()), fill: None, commands: vec![
+                MoveTo(Vec2DScreen { x: 0.0, y: -80.0 }), LineTo(Vec2DScreen { x: -30.0, y: -80.0 })
             ], thickness: 1.0 },
-            DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
-                MoveTo(Vec2DWorld { x: 80.0, y: 0.0 }), LineTo(Vec2DWorld { x: 80.0, y: -20.0 })
+            DrawCommand::ScreenPath { color: Some(Color::gray()), fill: None, commands: vec![
+                MoveTo(Vec2DScreen { x: 80.0, y: 0.0 }), LineTo(Vec2DScreen { x: 80.0, y: -20.0 })
             ], thickness: 1.0 },
-            DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
-                MoveTo(Vec2DWorld { x: 0.0, y: -80.0 }), LineTo(Vec2DWorld { x: 30.0, y: -80.0 })
+            DrawCommand::ScreenPath { color: Some(Color::gray()), fill: None, commands: vec![
+                MoveTo(Vec2DScreen { x: 0.0, y: -80.0 }), LineTo(Vec2DScreen { x: 30.0, y: -80.0 })
             ], thickness: 1.0 },
             DrawCommand::ScreenCircle { center: Vec2DScreen { x: 0.0, y: -80.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
-            DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
-                MoveTo(Vec2DWorld { x: 80.0, y: 20.0 }), LineTo(Vec2DWorld { x: 80.0, y: 20.0 })
+            DrawCommand::ScreenPath { color: Some(Color::gray()), fill: None, commands: vec![
+                MoveTo(Vec2DScreen { x: 80.0, y: 20.0 }), LineTo(Vec2DScreen { x: 80.0, y: 20.0 })
             ], thickness: 1.0 },
-            DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
-                MoveTo(Vec2DWorld { x: 80.0, y: 0.0 }), LineTo(Vec2DWorld { x: 80.0, y: 20.0 })
+            DrawCommand::ScreenPath { color: Some(Color::gray()), fill: None, commands: vec![
+                MoveTo(Vec2DScreen { x: 80.0, y: 0.0 }), LineTo(Vec2DScreen { x: 80.0, y: 20.0 })
             ], thickness: 1.0 },
             DrawCommand::ScreenCircle { center: Vec2DScreen { x: 80.0, y: 0.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
         ]);

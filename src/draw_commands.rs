@@ -45,7 +45,7 @@ pub enum DrawCommand {
     ScreenPath {
         color: Option<Color>,
         fill: Option<Color>,
-        commands: Vec<PathCommand<Vec2DWorld>>,
+        commands: Vec<PathCommand<Vec2DScreen>>,
         thickness: f64,
     },
 
