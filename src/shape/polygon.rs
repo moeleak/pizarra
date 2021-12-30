@@ -131,32 +131,29 @@ impl ShapeBuilder for PolygonBuilder {
     fn handle_button_pressed(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) {
         let pos = t.to_world_coordinates(pos);
 
-        match self.tip {
-            BuilderState::FreePoint { pt1, .. } => {
-                match self.touches_prev_point(pos, t, snap) {
-                    // match with first point or middle. Join it smoothly if
-                    // first point is a handle
-                    Some(Some((point, pt2))) => {
-                        self.points.push(CurveTo(CubicBezierCurve {
-                            pt1, pt2, to: point,
-                        }));
-                        self.tip = BuilderState::End;
-                    }
-                    // match with end point. Do not add a new segment to the
-                    // path
-                    Some(None) => {
-                        self.tip = BuilderState::End;
-                    }
-                    // No match, just transition to a free point
-                    None => {
-                        self.points.push(CurveTo(CubicBezierCurve {
-                            pt1, pt2: pos, to: pos,
-                        }));
-                        self.tip = BuilderState::PointStart(pos);
-                    }
+        if let BuilderState::FreePoint { pt1, .. } = self.tip {
+            match self.touches_prev_point(pos, t, snap) {
+                // match with first point or middle. Join it smoothly if
+                // first point is a handle
+                Some(Some((point, pt2))) => {
+                    self.points.push(CurveTo(CubicBezierCurve {
+                        pt1, pt2, to: point,
+                    }));
+                    self.tip = BuilderState::End;
+                }
+                // match with end point. Do not add a new segment to the
+                // path
+                Some(None) => {
+                    self.tip = BuilderState::End;
+                }
+                // No match, just transition to a free point
+                None => {
+                    self.points.push(CurveTo(CubicBezierCurve {
+                        pt1, pt2: pos, to: pos,
+                    }));
+                    self.tip = BuilderState::PointStart(pos);
                 }
             }
-            _ => {}
         }
     }
 
