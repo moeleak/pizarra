@@ -620,12 +620,4 @@ mod tests {
             DrawCommand::ScreenCircle { center: Vec2DScreen { x: 80.0, y: 0.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
         ]);
     }
-
-    /// To make more intuitive the result of closing a soft shape it would be a
-    /// good idea to present the shape as it will look like when closed just by
-    /// passing the cursor over the first point of a polygon
-    #[test]
-    fn preview_shape_when_closing_shape_softly() {
-        todo!()
-    }
 }
