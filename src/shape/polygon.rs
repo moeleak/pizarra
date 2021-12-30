@@ -160,7 +160,7 @@ impl ShapeBuilder for PolygonBuilder {
         }
     }
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) -> ShapeFinished {
+    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
         let pos = t.to_world_coordinates(pos);
 
         match self.tip {
@@ -175,7 +175,27 @@ impl ShapeBuilder for PolygonBuilder {
                 ShapeFinished::No
             }
             BuilderState::Handle { pt1, .. } => {
-                self.tip = BuilderState::FreePoint { pt1, pt2: pos, to: pos };
+                self.tip = if let Some(last) = self.points.last_mut() {
+                    if t.to_screen_coordinates(last.to()).distance(t.to_screen_coordinates(pt1)) < snap {
+                        // the handle didn't move more than _snap, probably a
+                        // result of the sensitivity of the pen. The line will
+                        // be fixed to look perfectly straight.
+
+                        if let CurveTo(c) = last {
+                            c.pt2 = c.to;
+                        }
+
+                        BuilderState::FreePoint {
+                            pt1: last.to(),
+                            pt2: pos,
+                            to: pos,
+                        }
+                    } else {
+                        BuilderState::FreePoint { pt1, pt2: pos, to: pos }
+                    }
+                } else {
+                    BuilderState::FreePoint { pt1, pt2: pos, to: pos }
+                };
 
                 ShapeFinished::No
             }
@@ -301,6 +321,8 @@ impl ShapeBuilder for PolygonBuilder {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     const SNAP: f64 = 10.0;
@@ -555,7 +577,79 @@ mod tests {
     /// event it should fix the shape to a sharp angle.
     #[test]
     fn sharp_polygons_are_still_possible_by_hand() {
-        todo!()
+        let t: Transform = Default::default();
+        let mut poly = PolygonBuilder::start(Color::green(), Vec2DWorld::new(0.0, 0.0), 2.0);
+
+        // move slightly after starting the polygon
+        poly.handle_mouse_moved(Vec2DScreen::new(1.0, 1.0), t, SNAP);
+        poly.handle_button_released(Vec2DScreen::new(1.0, 1.0), t, SNAP);
+
+        // second point, also drag a little bit
+        poly.handle_mouse_moved(Vec2DScreen::new(0.0, -50.0), t, SNAP);
+        poly.handle_button_pressed(Vec2DScreen::new(0.0, -50.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2DScreen::new(1.0, -51.0), t, SNAP);
+        poly.handle_button_released(Vec2DScreen::new(1.0, -51.0), t, SNAP);
+
+        // third point
+        poly.handle_mouse_moved(Vec2DScreen::new(50.0, 0.0), t, SNAP);
+        poly.handle_button_pressed(Vec2DScreen::new(50.0, 0.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2DScreen::new(51.0, 1.0), t, SNAP);
+        poly.handle_button_released(Vec2DScreen::new(51.0, 1.0), t, SNAP);
+
+        // closing
+        poly.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t, SNAP);
+        poly.handle_button_pressed(Vec2DScreen::new(0.0, 0.0), t, SNAP);
+        poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP);
+
+        let commands = poly.draw_commands(t, SNAP);
+
+        assert_eq!(commands, vec![
+            DrawCommand::Path {
+                color: Some(Color { r: 138, g: 226, b: 52, a: 255 }),
+                fill: None, commands: vec![
+                    MoveTo(Vec2DWorld { x: 0.0, y: 0.0 }),
+                    CurveTo(CubicBezierCurve { pt1: Vec2DWorld { x: 0.0, y: 0.0 }, pt2: Vec2DWorld { x: 0.0, y: -50.0 }, to: Vec2DWorld { x: 0.0, y: -50.0 } }),
+                    CurveTo(CubicBezierCurve { pt1: Vec2DWorld { x: 0.0, y: -50.0 }, pt2: Vec2DWorld { x: 50.0, y: 0.0 }, to: Vec2DWorld { x: 50.0, y: 0.0 } }),
+                    CurveTo(CubicBezierCurve { pt1: Vec2DWorld { x: 50.0, y: 0.0 }, pt2: Vec2DWorld { x: 0.0, y: 0.0 }, to: Vec2DWorld { x: 0.0, y: 0.0 } })
+                ], thickness: 2.0 },
+            DrawCommand::Path {
+                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
+                fill: None, commands: vec![
+                    MoveTo(Vec2DWorld { x: 0.0, y: 0.0 }), LineTo(Vec2DWorld { x: 0.0, y: 0.0 })], thickness: 1.0 },
+            DrawCommand::Path {
+                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
+                fill: None, commands: vec![
+                    MoveTo(Vec2DWorld { x: 0.0, y: -50.0 }), LineTo(Vec2DWorld { x: 0.0, y: -50.0 })], thickness: 1.0 },
+            DrawCommand::Path {
+                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
+                fill: None, commands: vec![
+                    MoveTo(Vec2DWorld { x: 0.0, y: 0.0 }), LineTo(Vec2DWorld { x: 0.0, y: 0.0 })], thickness: 1.0 },
+            DrawCommand::ScreenCircle {
+                center: Vec2DScreen { x: 0.0, y: 0.0 }, radius: 10.0, color: None,
+                fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
+            DrawCommand::Path {
+                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
+                fill: None, commands: vec![
+                    MoveTo(Vec2DWorld { x: 50.0, y: 0.0 }), LineTo(Vec2DWorld { x: 50.0, y: 0.0 })], thickness: 1.0 },
+            DrawCommand::Path {
+                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
+                fill: None, commands: vec![
+                    MoveTo(Vec2DWorld { x: 0.0, y: -50.0 }), LineTo(Vec2DWorld { x: 0.0, y: -50.0 })], thickness: 1.0 },
+            DrawCommand::ScreenCircle {
+                center: Vec2DScreen { x: 0.0, y: -50.0 }, radius: 10.0, color: None,
+                fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
+            DrawCommand::Path {
+                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
+                fill: None, commands: vec![
+                    MoveTo(Vec2DWorld { x: 0.0, y: 0.0 }), LineTo(Vec2DWorld { x: 0.0, y: 0.0 })], thickness: 1.0 },
+            DrawCommand::Path {
+                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
+                fill: None, commands: vec![
+                    MoveTo(Vec2DWorld { x: 50.0, y: 0.0 }), LineTo(Vec2DWorld { x: 50.0, y: 0.0 })], thickness: 1.0 },
+            DrawCommand::ScreenCircle {
+                center: Vec2DScreen { x: 50.0, y: 0.0 }, radius: 10.0, color: None,
+                fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 }
+        ]);
     }
 
     /// when dragging the handle for a point it should paint the handle lines
