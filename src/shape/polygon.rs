@@ -1,6 +1,6 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
-use crate::path_command::{PathCommand, CubicBezierCurve};
+use crate::path_command::{PathCommand::{self, *}, CubicBezierCurve};
 use crate::shape::{ShapeBuilder, ShapeFinished, path::Path};
 use crate::draw_commands::DrawCommand;
 use crate::transform::Transform;
@@ -47,7 +47,7 @@ impl PolygonBuilder {
     pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> PolygonBuilder {
         let mut init_vec = Vec::with_capacity(8);
 
-        init_vec.push(PathCommand::MoveTo(initial));
+        init_vec.push(MoveTo(initial));
 
         PolygonBuilder {
             points: init_vec,
@@ -77,8 +77,8 @@ impl PolygonBuilder {
         let ans = self.points.iter().zip(self.points.iter().skip(1)).find(|&(&command, _)| {
             t.to_screen_coordinates(command.to()).distance(point) <= radius
         }).map(|(&a, &b)| {
-            if let PathCommand::MoveTo(p) = a {
-                if let PathCommand::CurveTo(c) = b {
+            if let MoveTo(p) = a {
+                if let CurveTo(c) = b {
                     (p, mirror(c.pt1, p))
                 } else {
                     (p, p)
@@ -113,8 +113,8 @@ impl ShapeBuilder for PolygonBuilder {
             BuilderState::PointStart(p) | BuilderState::Handle { to: p, .. } => {
                 self.tip = BuilderState::Handle { to: p, pt1: pos };
                 if let Some(last) = self.points.last_mut() {
-                    if let PathCommand::CurveTo(c) = last {
-                        *last = PathCommand::CurveTo(CubicBezierCurve {
+                    if let CurveTo(c) = last {
+                        *last = CurveTo(CubicBezierCurve {
                             pt2: mirror(pos, p),
                             ..*c
                         });
@@ -137,7 +137,7 @@ impl ShapeBuilder for PolygonBuilder {
                     // match with first point or middle. Join it smoothly if
                     // first point is a handle
                     Some(Some((point, pt2))) => {
-                        self.points.push(PathCommand::CurveTo(CubicBezierCurve {
+                        self.points.push(CurveTo(CubicBezierCurve {
                             pt1, pt2, to: point,
                         }));
                         self.tip = BuilderState::End;
@@ -149,7 +149,7 @@ impl ShapeBuilder for PolygonBuilder {
                     }
                     // No match, just transition to a free point
                     None => {
-                        self.points.push(PathCommand::CurveTo(CubicBezierCurve {
+                        self.points.push(CurveTo(CubicBezierCurve {
                             pt1, pt2: pos, to: pos,
                         }));
                         self.tip = BuilderState::PointStart(pos);
@@ -200,7 +200,7 @@ impl ShapeBuilder for PolygonBuilder {
         match self.tip {
             BuilderState::Init(_) | BuilderState::End => {}
             BuilderState::Handle { pt1, .. } => {
-                path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
+                path_commands.push(CurveTo(CubicBezierCurve {
                     pt1,
                     pt2: pt1,
                     to: pt1,
@@ -208,17 +208,17 @@ impl ShapeBuilder for PolygonBuilder {
             }
             BuilderState::FreePoint { pt1, pt2, to } => {
                 if let Some(Some((p, h))) = self.touches_prev_point(to, t, snap) {
-                    path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
+                    path_commands.push(CurveTo(CubicBezierCurve {
                         pt1, pt2: h, to: p,
                     }));
                 } else {
-                    path_commands.push(PathCommand::CurveTo(CubicBezierCurve {
+                    path_commands.push(CurveTo(CubicBezierCurve {
                         pt1, pt2, to,
                     }));
                 }
             }
             BuilderState::PointStart(p) => {
-                path_commands.push(PathCommand::LineTo(p));
+                path_commands.push(LineTo(p));
             }
         }
 
@@ -243,11 +243,11 @@ impl ShapeBuilder for PolygonBuilder {
             // draw a handle in the oposite direction to suggest the user that
             // the closing of a bezier polygon is soft
             if i == 0 {
-                if let PathCommand::CurveTo(c) = next {
+                if let CurveTo(c) = next {
                     commands.push(DrawCommand::Path {
                         commands: vec![
-                            PathCommand::MoveTo(p.to()),
-                            PathCommand::LineTo(mirror(c.pt1, p.to())),
+                            MoveTo(p.to()),
+                            LineTo(mirror(c.pt1, p.to())),
                         ],
                         color: Some(Color::gray()),
                         fill: None,
@@ -257,11 +257,11 @@ impl ShapeBuilder for PolygonBuilder {
             }
 
             // the bezier handles
-            if let PathCommand::CurveTo(c) = next {
+            if let CurveTo(c) = next {
                 commands.push(DrawCommand::Path {
                     commands: vec![
-                        PathCommand::MoveTo(c.to),
-                        PathCommand::LineTo(c.pt2),
+                        MoveTo(c.to),
+                        LineTo(c.pt2),
                     ],
                     color: Some(Color::gray()),
                     fill: None,
@@ -269,8 +269,8 @@ impl ShapeBuilder for PolygonBuilder {
                 });
                 commands.push(DrawCommand::Path {
                     commands: vec![
-                        PathCommand::MoveTo(p.to()),
-                        PathCommand::LineTo(c.pt1),
+                        MoveTo(p.to()),
+                        LineTo(c.pt1),
                     ],
                     color: Some(Color::gray()),
                     fill: None,
@@ -358,8 +358,8 @@ mod tests {
             color: Some(Default::default()),
             fill: None,
             commands: vec![
-                PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
-                PathCommand::CurveTo(CubicBezierCurve {
+                MoveTo(Vec2DWorld::new(0.0, 0.0)),
+                CurveTo(CubicBezierCurve {
                     pt1: Vec2DWorld::new(0.0, 0.0),
                     pt2: Vec2DWorld::new(30.0, 0.0),
                     to: Vec2DWorld::new(30.0, 0.0),
@@ -378,7 +378,7 @@ mod tests {
             color: Some(Default::default()),
             fill: None,
             commands: vec![
-                PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+                MoveTo(Vec2DWorld::new(0.0, 0.0)),
             ],
             thickness: 3.0,
         });
@@ -517,23 +517,23 @@ mod tests {
         if let ShapeFinished::Yes(s) = poly.handle_button_released(a, t, SNAP) {
             assert_eq!(s.draw_commands(), DrawCommand::Path {
                 commands: vec![
-                    PathCommand::MoveTo(t.to_world_coordinates(a)),
-                    PathCommand::CurveTo(CubicBezierCurve {
+                    MoveTo(t.to_world_coordinates(a)),
+                    CurveTo(CubicBezierCurve {
                         pt1: t.to_world_coordinates(b),
                         pt2: Vec2DWorld::new(80.0, -20.0),
                         to: t.to_world_coordinates(c),
                     }),
-                    PathCommand::CurveTo(CubicBezierCurve {
+                    CurveTo(CubicBezierCurve {
                         pt1: t.to_world_coordinates(d),
                         pt2: Vec2DWorld::new(20.0, 60.0),
                         to: t.to_world_coordinates(e),
                     }),
-                    PathCommand::CurveTo(CubicBezierCurve {
+                    CurveTo(CubicBezierCurve {
                         pt1: t.to_world_coordinates(f),
                         pt2: Vec2DWorld::new(-80.0, 20.0),
                         to: t.to_world_coordinates(g),
                     }),
-                    PathCommand::CurveTo(CubicBezierCurve {
+                    CurveTo(CubicBezierCurve {
                         pt1: t.to_world_coordinates(h),
                         pt2: Vec2DWorld::new(-30.0, -80.0),
                         to: t.to_world_coordinates(a),
@@ -583,13 +583,13 @@ mod tests {
             // the paths
             DrawCommand::Path {
                 commands: vec![
-                    PathCommand::MoveTo(t.to_world_coordinates(a)),
-                    PathCommand::CurveTo(CubicBezierCurve {
+                    MoveTo(t.to_world_coordinates(a)),
+                    CurveTo(CubicBezierCurve {
                         pt1: t.to_world_coordinates(b),
                         pt2: Vec2DWorld::new(80.0, -20.0),
                         to: t.to_world_coordinates(c),
                     }),
-                    PathCommand::CurveTo(CubicBezierCurve {
+                    CurveTo(CubicBezierCurve {
                         pt1: t.to_world_coordinates(d),
                         pt2: t.to_world_coordinates(d),
                         to: t.to_world_coordinates(d),
@@ -602,20 +602,20 @@ mod tests {
 
             // the helpers
             DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
-                PathCommand::MoveTo(Vec2DWorld { x: 0.0, y: -80.0 }), PathCommand::LineTo(Vec2DWorld { x: -30.0, y: -80.0 })
+                MoveTo(Vec2DWorld { x: 0.0, y: -80.0 }), LineTo(Vec2DWorld { x: -30.0, y: -80.0 })
             ], thickness: 1.0 },
             DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
-                PathCommand::MoveTo(Vec2DWorld { x: 80.0, y: 0.0 }), PathCommand::LineTo(Vec2DWorld { x: 80.0, y: -20.0 })
+                MoveTo(Vec2DWorld { x: 80.0, y: 0.0 }), LineTo(Vec2DWorld { x: 80.0, y: -20.0 })
             ], thickness: 1.0 },
             DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
-                PathCommand::MoveTo(Vec2DWorld { x: 0.0, y: -80.0 }), PathCommand::LineTo(Vec2DWorld { x: 30.0, y: -80.0 })
+                MoveTo(Vec2DWorld { x: 0.0, y: -80.0 }), LineTo(Vec2DWorld { x: 30.0, y: -80.0 })
             ], thickness: 1.0 },
             DrawCommand::ScreenCircle { center: Vec2DScreen { x: 0.0, y: -80.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
             DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
-                PathCommand::MoveTo(Vec2DWorld { x: 80.0, y: 20.0 }), PathCommand::LineTo(Vec2DWorld { x: 80.0, y: 20.0 })
+                MoveTo(Vec2DWorld { x: 80.0, y: 20.0 }), LineTo(Vec2DWorld { x: 80.0, y: 20.0 })
             ], thickness: 1.0 },
             DrawCommand::Path { color: Some(Color::gray()), fill: None, commands: vec![
-                PathCommand::MoveTo(Vec2DWorld { x: 80.0, y: 0.0 }), PathCommand::LineTo(Vec2DWorld { x: 80.0, y: 20.0 })
+                MoveTo(Vec2DWorld { x: 80.0, y: 0.0 }), LineTo(Vec2DWorld { x: 80.0, y: 20.0 })
             ], thickness: 1.0 },
             DrawCommand::ScreenCircle { center: Vec2DScreen { x: 80.0, y: 0.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
         ]);
