@@ -37,3 +37,11 @@ Publica una nueva versión en [crates.io](https://crates.io)
 1. Ok, no es tan infinito. El espacio de dibujo guarda coordenadas en números
 flotantes, entonces está sujeto a sus límites. El zoom está sujeto a los límites
 de precisión de coma flotante.
+
+## Publicación en crates.io
+
+Esto es para mi, no para ti
+
+* Sube el tag de la versión (`vbump`)
+* `git push && git push --tags`
+* `cargo publish`
