@@ -1,12 +1,11 @@
 use std::f64::consts::PI;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
-use crate::draw_commands::{DrawCommand, self};
+use crate::draw_commands::{DrawCommand, self, circle_helper, path_helper};
 use crate::color::Color;
 use crate::transform::Transform;
 use crate::geom::{
     Angle, ellipse_from_foci_and_point, foci_and_sum_from_center_and_radi,
 };
-use crate::path_command::PathCommand;
 
 use super::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
 
@@ -86,31 +85,37 @@ impl ShapeBuilder for ThreePointEllipseBuilder {
         }
     }
 
-    fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
+    fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
         match self.state {
-            State::One(f1) => vec![DrawCommand::Path {
-                color: Some(self.color),
-                fill: None,
-                thickness: self.thickness,
-                commands: vec![PathCommand::MoveTo(f1)],
-            }],
-            State::Foci([f1, f2]) => vec![DrawCommand::Path {
-                color: Some(self.color),
-                fill: None,
-                thickness: self.thickness,
-                commands: vec![PathCommand::MoveTo(f1), PathCommand::LineTo(f2)],
-            }],
+            State::One(f1) => vec![
+                circle_helper(t.to_screen_coordinates(f1), snap),
+            ],
+            State::Foci([f1, f2]) => vec![
+                circle_helper(t.to_screen_coordinates(f1), snap),
+                circle_helper(t.to_screen_coordinates(f2), snap),
+            ],
             State::FociAndPoint {
                 foci, point,
             } => {
                 let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, point);
 
-                vec![DrawCommand::Ellipse(draw_commands::Ellipse {
-                    thickness: self.thickness,
-                    color: Some(self.color),
-                    fill: None,
-                    center, semimajor, semiminor, angle,
-                })]
+                vec![
+                    DrawCommand::Ellipse(draw_commands::Ellipse {
+                        thickness: self.thickness,
+                        color: Some(self.color),
+                        fill: None,
+                        center, semimajor, semiminor, angle,
+                    }),
+
+                    path_helper(vec![
+                        t.to_screen_coordinates(foci[0]),
+                        t.to_screen_coordinates(point),
+                        t.to_screen_coordinates(foci[1]),
+                    ]),
+
+                    circle_helper(t.to_screen_coordinates(foci[0]), snap),
+                    circle_helper(t.to_screen_coordinates(foci[1]), snap),
+                ]
             }
         }
     }
@@ -203,6 +208,8 @@ impl ShapeStored for Ellipse {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use crate::geom::ellipse_from_foci_and_sum;
 
     use super::*;
@@ -250,43 +257,58 @@ mod tests {
         builder.handle_mouse_moved(a1, t, SNAP);
 
         // assert that the first point moves
-        assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Some(Default::default()),
-            fill: None,
-            thickness: 1.0,
-            commands: vec![
-                PathCommand::MoveTo(t.to_world_coordinates(a1)),
-            ],
-        });
+        assert_eq!(builder.draw_commands(t, SNAP), vec![
+            DrawCommand::ScreenCircle {
+                fill: Some(Color::gray().half_transparent()),
+                color: None,
+                thickness: 0.0,
+                center: a1,
+                radius: SNAP,
+            },
+        ]);
 
         // release the pen at a point A, this will be the first focus
         builder.handle_mouse_moved(a, t, SNAP);
         builder.handle_button_released(a, t, SNAP);
 
         // a line is drawn connecting A and A
-        assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Some(Default::default()),
-            fill: None,
-            thickness: 1.0,
-            commands: vec![
-                PathCommand::MoveTo(t.to_world_coordinates(a)),
-                PathCommand::LineTo(t.to_world_coordinates(a)),
-            ],
-        });
+        assert_eq!(builder.draw_commands(t, SNAP), vec![
+            DrawCommand::ScreenCircle {
+                color: None,
+                fill: Some(Color::gray().half_transparent()),
+                thickness: 0.0,
+                center: a,
+                radius: SNAP,
+            },
+            DrawCommand::ScreenCircle {
+                color: None,
+                fill: Some(Color::gray().half_transparent()),
+                thickness: 0.0,
+                center: a,
+                radius: SNAP,
+            },
+        ]);
 
         // move the pen to a point B
         builder.handle_mouse_moved(b, t, SNAP);
 
         // a line is drawn connecting A and B
-        assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Some(Default::default()),
-            fill: None,
-            thickness: 1.0,
-            commands: vec![
-                PathCommand::MoveTo(t.to_world_coordinates(a)),
-                PathCommand::LineTo(t.to_world_coordinates(b)),
-            ],
-        });
+        assert_eq!(builder.draw_commands(t, SNAP), vec![
+            DrawCommand::ScreenCircle {
+                color: None,
+                fill: Some(Color::gray().half_transparent()),
+                thickness: 0.0,
+                center: a,
+                radius: SNAP,
+            },
+            DrawCommand::ScreenCircle {
+                color: None,
+                fill: Some(Color::gray().half_transparent()),
+                thickness: 0.0,
+                center: b,
+                radius: SNAP,
+            },
+        ]);
 
         // release pen at point C
         builder.handle_mouse_moved(c, t, SNAP);

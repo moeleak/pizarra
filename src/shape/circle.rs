@@ -1,13 +1,13 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeStored, ShapeFinished, ShapeType};
-use crate::draw_commands::DrawCommand;
+use crate::draw_commands::{DrawCommand, path_helper, circle_helper};
 use crate::transform::Transform;
 
 #[derive(Debug)]
 pub struct CircleBuilder {
     center: Vec2DWorld,
-    radius: f64,
+    point: Vec2DWorld,
     thickness: f64,
     color: Color,
 }
@@ -18,14 +18,14 @@ impl CircleBuilder {
             center: initial,
             thickness,
             color,
-            radius: 0.0,
+            point: initial,
         }
     }
 }
 
 impl ShapeBuilder for CircleBuilder {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
-        self.radius = self.center.distance(t.to_world_coordinates(pos));
+        self.point = t.to_world_coordinates(pos);
     }
 
     fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) {}
@@ -36,21 +36,30 @@ impl ShapeBuilder for CircleBuilder {
         ShapeFinished::Yes(Box::new(
             Circle::from_parts(
                 self.center,
-                self.radius,
+                self.point.distance(self.center),
                 self.thickness,
                 self.color,
             )
         ))
     }
 
-    fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
-        vec![DrawCommand::Circle {
-            center: self.center,
-            radius: self.radius,
-            thickness: self.thickness,
-            color: Some(self.color),
-            fill: None,
-        }]
+    fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
+        vec![
+            DrawCommand::Circle {
+                center: self.center,
+                radius: self.center.distance(self.point),
+                thickness: self.thickness,
+                color: Some(self.color),
+                fill: None,
+            },
+
+            path_helper(vec![
+                t.to_screen_coordinates(self.center),
+                t.to_screen_coordinates(self.point),
+            ]),
+
+            circle_helper(t.to_screen_coordinates(self.center), snap),
+        ]
     }
 }
 

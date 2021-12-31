@@ -2,7 +2,7 @@ use crate::color::Color;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::path_command::{PathCommand::{self, *}, CubicBezierCurve};
 use crate::shape::{ShapeBuilder, ShapeFinished, path::Path};
-use crate::draw_commands::DrawCommand;
+use crate::draw_commands::{DrawCommand, path_helper};
 use crate::transform::Transform;
 use crate::geom::mirror;
 
@@ -261,39 +261,23 @@ impl ShapeBuilder for PolygonBuilder {
             // the closing of a bezier polygon is soft
             if i == 0 {
                 if let CurveTo(c) = next {
-                    commands.push(DrawCommand::ScreenPath {
-                        commands: vec![
-                            MoveTo(t.to_screen_coordinates(p.to())),
-                            LineTo(mirror(
-                                t.to_screen_coordinates(c.pt1), t.to_screen_coordinates(p.to()))),
-                        ],
-                        color: Some(Color::gray()),
-                        fill: None,
-                        thickness: 1.0,
-                    });
+                    commands.push(path_helper(vec![
+                        t.to_screen_coordinates(p.to()),
+                        t.to_screen_coordinates(mirror(c.pt1, p.to())),
+                    ]));
                 }
             }
 
             // the bezier handles
             if let CurveTo(c) = next {
-                commands.push(DrawCommand::ScreenPath {
-                    commands: vec![
-                        MoveTo(t.to_screen_coordinates(c.to)),
-                        LineTo(t.to_screen_coordinates(c.pt2)),
-                    ],
-                    color: Some(Color::gray()),
-                    fill: None,
-                    thickness: 1.0,
-                });
-                commands.push(DrawCommand::ScreenPath {
-                    commands: vec![
-                        MoveTo(t.to_screen_coordinates(p.to())),
-                        LineTo(t.to_screen_coordinates(c.pt1)),
-                    ],
-                    color: Some(Color::gray()),
-                    fill: None,
-                    thickness: 1.0,
-                });
+                commands.push(path_helper(vec![
+                    t.to_screen_coordinates(c.to),
+                    t.to_screen_coordinates(c.pt2),
+                ]));
+                commands.push(path_helper(vec![
+                    t.to_screen_coordinates(p.to()),
+                    t.to_screen_coordinates(c.pt1),
+                ]));
             }
 
             // the circles

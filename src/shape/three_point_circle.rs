@@ -1,10 +1,9 @@
 use crate::color::Color;
 use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::draw_commands::DrawCommand;
+use crate::draw_commands::{DrawCommand, circle_helper};
 use crate::transform::Transform;
 use crate::geom::circle_through_three_points;
-use crate::path_command::PathCommand;
 
 use super::circle::Circle;
 
@@ -78,30 +77,33 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
         }
     }
 
-    fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
+    fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
         match self.state {
-            State::One(f1) => vec![DrawCommand::Path {
-                color: Some(self.color),
-                fill: None,
-                thickness: self.thickness,
-                commands: vec![PathCommand::MoveTo(f1)],
-            }],
-            State::Two(p1, p2) => vec![DrawCommand::Path {
-                color: Some(self.color),
-                fill: None,
-                thickness: self.thickness,
-                commands: vec![PathCommand::MoveTo(p1), PathCommand::LineTo(p2)],
-            }],
+            State::One(p1) => vec![
+                circle_helper(t.to_screen_coordinates(p1), snap),
+            ],
+            State::Two(p1, p2) => vec![
+                circle_helper(t.to_screen_coordinates(p1), snap),
+                circle_helper(t.to_screen_coordinates(p2), snap),
+            ],
             State::Three(p1, p2, p3) => {
                 let (center, radius) = circle_through_three_points(p1, p2, p3);
 
-                vec![DrawCommand::Circle {
-                    center,
-                    radius,
-                    thickness: self.thickness,
-                    color: Some(self.color),
-                    fill: None,
-                }]
+                vec![
+                    DrawCommand::Circle {
+                        center,
+                        radius,
+                        thickness: self.thickness,
+                        color: Some(self.color),
+                        fill: None,
+                    },
+
+                    circle_helper(t.to_screen_coordinates(p1), snap),
+                    circle_helper(t.to_screen_coordinates(p2), snap),
+                    circle_helper(t.to_screen_coordinates(p3), snap),
+
+                    circle_helper(t.to_screen_coordinates(center), snap),
+                ]
             }
         }
     }

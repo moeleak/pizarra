@@ -1,6 +1,6 @@
 use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::color::Color;
-use crate::path_command::PathCommand;
+use crate::path_command::PathCommand::{self, *};
 use crate::geom::Angle;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -79,5 +79,32 @@ impl DrawCommand {
             DrawCommand::ScreenPath { fill, .. } => *fill,
             DrawCommand::ScreenCircle { fill, .. } => *fill,
         }
+    }
+}
+
+/// Returns a circle that can be used as visual helper for a tool that is being
+/// built
+pub fn circle_helper(center: Vec2DScreen, radius: f64) -> DrawCommand {
+    DrawCommand::ScreenCircle {
+        color: None,
+        fill: Some(Color::gray().half_transparent()),
+        center,
+        radius,
+        thickness: 0.0,
+    }
+}
+
+pub fn path_helper(points: Vec<Vec2DScreen>) -> DrawCommand {
+    DrawCommand::ScreenPath {
+        commands: points.into_iter().enumerate().map(|(i, p)| {
+            if i == 0 {
+                MoveTo(p)
+            } else {
+                LineTo(p)
+            }
+        }).collect(),
+        color: Some(Color::gray()),
+        fill: None,
+        thickness: 1.0,
     }
 }
