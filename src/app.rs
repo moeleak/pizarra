@@ -329,7 +329,7 @@ impl Pizarra {
             current_shape: None,
 
             selected_tool: SelectedTool::Shape(ShapeTool::Path),
-            bgcolor: Color::black(),
+            bgcolor: config.background_color,
             stroke: config.thickness,
             selected_color: config.stroke_color,
             erase_radius: config.erase_radius,
