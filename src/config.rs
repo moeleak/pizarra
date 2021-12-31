@@ -51,7 +51,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Config {
         Config {
-            thickness: 3.0,
+            thickness: 2.0,
             export_padding: 20.0,
             erase_radius: 10.0,
             point_snap_radius: 10.0,
