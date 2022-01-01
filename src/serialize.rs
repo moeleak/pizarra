@@ -38,25 +38,6 @@ impl DrawCommand {
                 writer.write(XmlEvent::end_element()).unwrap();
             }
 
-            DrawCommand::Circle {
-                color, fill, thickness, center, radius,
-            } => {
-                writer.write(XmlEvent::start_element("ellipse")
-                    .attr("cx", &center.x.to_string())
-                    .attr("cy", &center.y.to_string())
-                    .attr("rx", &radius.to_string())
-                    .attr("ry", &radius.to_string())
-                    .attr("style", &format!(
-                        "fill:{fill};stroke-width:{stroke};stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10",
-                        stroke = thickness,
-                        color = color.map(|c| c.css()).unwrap_or_else(|| "none".into()),
-                        fill = fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
-                        alpha = color.map(|c| c.float_alpha()).unwrap_or(1.0),
-                    ))
-                ).unwrap();
-                writer.write(XmlEvent::end_element()).unwrap();
-            }
-
             DrawCommand::Ellipse(e) => {
                 writer.write(XmlEvent::start_element("ellipse")
                     .attr("cx", &e.center.x.to_string())

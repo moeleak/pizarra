@@ -226,20 +226,18 @@ impl <'a> Iterator for ShapeIterator<'a> {
 mod tests {
     use super::*;
 
-    use crate::shape::{
-        ShapeId,
-        circle::Circle, path::Path,
-    };
+    use crate::shape::{ShapeId, path::Path, ellipse::Ellipse};
     use crate::path_command::PathCommand;
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;
     use crate::point::Vec2DWorld;
+    use crate::geom::Angle;
 
     #[test]
     fn add_shapes_at_zoom() {
         let mut storage = Storage::new();
         let shapes: Vec<Box<dyn ShapeStored>> = vec![
-            Box::new(Circle::from_parts(Vec2DWorld::new(0.0, 0.0), 1.0, 1.0, Color::green())),
+            Box::new(Ellipse::from_parts(Vec2DWorld::new(0.0, 0.0), 1.0, 1.0, Angle::from_radians(0.0), Some(Color::green()), None, 1.0)),
             Box::new(Path::from_parts(vec![
                 PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
                 PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),

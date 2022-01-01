@@ -28,15 +28,6 @@ pub enum DrawCommand {
         thickness: f64,
     },
 
-    /// A circle without filling
-    Circle {
-        center: Vec2DWorld,
-        radius: f64,
-        color: Option<Color>,
-        fill: Option<Color>,
-        thickness: f64,
-    },
-
     /// An ellipse without filling
     Ellipse(Ellipse),
 
@@ -64,7 +55,6 @@ impl DrawCommand {
     pub fn color(&self) -> Option<Color> {
         match self {
             DrawCommand::Path { color, .. } => *color,
-            DrawCommand::Circle { color, .. } => *color,
             DrawCommand::Ellipse(e) => e.color,
             DrawCommand::ScreenPath { color, .. } => *color,
             DrawCommand::ScreenCircle { color, .. } => *color,
@@ -74,7 +64,6 @@ impl DrawCommand {
     pub fn fill(&self) -> Option<Color> {
         match self {
             DrawCommand::Path { fill, .. } => *fill,
-            DrawCommand::Circle { fill, .. } => *fill,
             DrawCommand::Ellipse(e) => e.fill,
             DrawCommand::ScreenPath { fill, .. } => *fill,
             DrawCommand::ScreenCircle { fill, .. } => *fill,

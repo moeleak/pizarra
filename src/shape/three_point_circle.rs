@@ -1,11 +1,10 @@
 use crate::color::Color;
 use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::draw_commands::{DrawCommand, circle_helper};
+use crate::shape::ellipse::Ellipse;
+use crate::draw_commands::{self, DrawCommand, circle_helper};
 use crate::transform::Transform;
-use crate::geom::circle_through_three_points;
-
-use super::circle::Circle;
+use crate::geom::{Angle, circle_through_three_points};
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -66,11 +65,14 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                 let (center, radius) = circle_through_three_points(p1, p2, p3);
 
                 ShapeFinished::Yes(Box::new(
-                    Circle::from_parts(
+                    Ellipse::from_parts(
                         center,
                         radius,
+                        radius,
+                        Angle::from_radians(0.0),
+                        Some(self.color),
+                        None,
                         self.thickness,
-                        self.color,
                     )
                 ))
             }
@@ -90,13 +92,15 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                 let (center, radius) = circle_through_three_points(p1, p2, p3);
 
                 vec![
-                    DrawCommand::Circle {
+                    DrawCommand::Ellipse(draw_commands::Ellipse {
                         center,
-                        radius,
+                        semimajor: radius,
+                        semiminor: radius,
+                        angle: Angle::from_radians(0.0),
                         thickness: self.thickness,
                         color: Some(self.color),
                         fill: None,
-                    },
+                    }),
 
                     circle_helper(t.to_screen_coordinates(p1), snap),
                     circle_helper(t.to_screen_coordinates(p2), snap),
