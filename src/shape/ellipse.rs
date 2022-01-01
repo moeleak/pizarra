@@ -370,4 +370,9 @@ mod tests {
             Vec2DWorld { x: 4.3416846031770095, y: 8.614907506715497 },
         ]);
     }
+
+    #[test]
+    fn line_thickness_affects_bbox() {
+        todo!()
+    }
 }

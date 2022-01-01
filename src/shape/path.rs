@@ -286,4 +286,9 @@ mod tests {
             assert_eq!(path.intersects_circle(center, 15.0), result);
         }
     }
+
+    #[test]
+    fn line_thickness_affects_bbox() {
+        todo!()
+    }
 }
