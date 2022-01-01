@@ -226,7 +226,7 @@ impl <'a> Iterator for ShapeIterator<'a> {
 mod tests {
     use super::*;
 
-    use crate::shape::{ShapeId, path::Path, ellipse::Ellipse};
+    use crate::shape::{ShapeId, stored::{path::Path, ellipse::Ellipse}};
     use crate::path_command::PathCommand;
     use crate::color::Color;
     use crate::draw_commands::DrawCommand;

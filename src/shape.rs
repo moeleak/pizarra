@@ -4,21 +4,17 @@ use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::transform::Transform;
 use crate::draw_commands::DrawCommand;
 
-pub mod path;
-pub mod rectangle;
-pub mod polygon;
-pub mod circle;
-pub mod ellipse;
-pub mod three_point_circle;
+pub mod builder;
+pub mod stored;
 
 use super::color::Color;
 
-use self::path::PathBuilder;
-use self::ellipse::ThreePointEllipseBuilder;
-use self::polygon::PolygonBuilder;
-use self::circle::CircleBuilder;
-use self::rectangle::AxisAlignedRectangleBuilder;
-use self::three_point_circle::CircleThroughThreePointsBuilder;
+use self::builder::free_hand_line::FreeHandLine;
+use self::builder::foci_and_point_ellipse::FociAndPointEllipse;
+use self::builder::polygon::PolygonBuilder;
+use self::builder::center_and_radius_circle::CenterAndRadiusCircle;
+use self::builder::rectangle::AxisAlignedRectangleBuilder;
+use self::builder::three_point_circle::CircleThroughThreePointsBuilder;
 
 /// Shapes handle input from the user, and they're responsible of notifying when
 /// they're finished, for example in the case of a polygon
@@ -48,12 +44,12 @@ pub enum ShapeTool {
 impl ShapeTool {
     pub fn start(&self, color: Color, initial: Vec2DWorld, stroke: f64) -> Box<dyn ShapeBuilder> {
         match *self {
-            ShapeTool::Path => Box::new(PathBuilder::start(color, initial, stroke)),
+            ShapeTool::Path => Box::new(FreeHandLine::start(color, initial, stroke)),
             ShapeTool::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(color, initial, stroke)),
             ShapeTool::Polygon => Box::new(PolygonBuilder::start(color, initial, stroke)),
-            ShapeTool::CircleByCenterAndPoint => Box::new(CircleBuilder::start(color, initial, stroke)),
+            ShapeTool::CircleByCenterAndPoint => Box::new(CenterAndRadiusCircle::start(color, initial, stroke)),
             ShapeTool::CircleThroughThreePoints => Box::new(CircleThroughThreePointsBuilder::start(color, initial, stroke)),
-            ShapeTool::ThreePointEllipse => Box::new(ThreePointEllipseBuilder::start(color, initial, stroke)),
+            ShapeTool::ThreePointEllipse => Box::new(FociAndPointEllipse::start(color, initial, stroke)),
         }
     }
 }

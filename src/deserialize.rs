@@ -9,7 +9,7 @@ use regex::Regex;
 use lazy_static::lazy_static;
 
 use crate::storage::Storage;
-use crate::shape::{ShapeStored, path::Path, ellipse::Ellipse};
+use crate::shape::{ShapeStored, stored::{path::Path, ellipse::Ellipse}};
 use crate::color::Color;
 use crate::point::{Point, Vec2DWorld};
 use crate::geom::Angle;

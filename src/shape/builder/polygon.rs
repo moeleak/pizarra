@@ -1,7 +1,7 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::path_command::{PathCommand::{self, *}, CubicBezierCurve};
-use crate::shape::{ShapeBuilder, ShapeFinished, path::Path};
+use crate::shape::{ShapeBuilder, ShapeFinished, stored::path::Path};
 use crate::draw_commands::{DrawCommand, path_helper};
 use crate::transform::Transform;
 use crate::geom::mirror;

@@ -1,22 +1,22 @@
 use crate::color::Color;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::shape::ellipse::Ellipse;
+use crate::shape::stored::ellipse::Ellipse;
 use crate::draw_commands::{self, DrawCommand, path_helper, circle_helper};
 use crate::transform::Transform;
 use crate::geom::Angle;
 
 #[derive(Debug)]
-pub struct CircleBuilder {
+pub struct CenterAndRadiusCircle {
     center: Vec2DWorld,
     point: Vec2DWorld,
     thickness: f64,
     color: Color,
 }
 
-impl CircleBuilder {
-    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> CircleBuilder {
-        CircleBuilder {
+impl CenterAndRadiusCircle {
+    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> CenterAndRadiusCircle {
+        CenterAndRadiusCircle {
             center: initial,
             thickness,
             color,
@@ -25,7 +25,7 @@ impl CircleBuilder {
     }
 }
 
-impl ShapeBuilder for CircleBuilder {
+impl ShapeBuilder for CenterAndRadiusCircle {
     fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
         self.point = t.to_world_coordinates(pos);
     }

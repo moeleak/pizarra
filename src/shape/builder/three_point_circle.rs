@@ -1,7 +1,7 @@
 use crate::color::Color;
 use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::shape::ellipse::Ellipse;
+use crate::shape::stored::ellipse::Ellipse;
 use crate::draw_commands::{self, DrawCommand, circle_helper};
 use crate::transform::Transform;
 use crate::geom::{Angle, circle_through_three_points};

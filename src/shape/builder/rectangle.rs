@@ -4,8 +4,7 @@ use crate::color::Color;
 use crate::transform::Transform;
 use crate::path_command::PathCommand;
 use crate::geom::middle_point;
-
-use super::{ShapeBuilder, ShapeFinished, path::Path};
+use crate::shape::{ShapeBuilder, ShapeFinished, stored::path::Path};
 
 #[derive(Debug)]
 pub struct AxisAlignedRectangleBuilder {

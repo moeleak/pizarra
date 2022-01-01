@@ -144,8 +144,7 @@ mod tests {
     use crate::point::Vec2DScreen;
     use crate::app::{Pizarra, MouseButton, SelectedTool};
     use crate::shape::ShapeTool;
-    use crate::shape::path::Path;
-    use crate::shape::ellipse::Ellipse;
+    use crate::shape::stored::{path::Path, ellipse::Ellipse};
     use crate::path_command::PathCommand;
     use crate::geom::Angle;
 
