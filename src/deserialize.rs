@@ -14,6 +14,7 @@ use crate::color::Color;
 use crate::point::{Point, Vec2DWorld};
 use crate::geom::Angle;
 use crate::config::Config;
+use crate::style::{Style, Stroke};
 
 mod path;
 
@@ -143,9 +144,13 @@ impl Path {
 
         Ok(Path::from_parts(
             builder.into_path(),
-            color.map(|c| c.with_float_alpha(alpha)),
-            fill.map(|c| c.with_float_alpha(fill_alpha)),
-            thickness,
+            Style {
+                stroke: color.map(|c| Stroke {
+                    color: c.with_float_alpha(alpha),
+                    size: thickness,
+                }),
+                fill: fill.map(|c| c.with_float_alpha(fill_alpha)),
+            },
         ))
     }
 }
@@ -191,9 +196,13 @@ impl Deserialize for Ellipse {
             rx,
             ry,
             angle,
-            color.map(|c| c.with_float_alpha(alpha)),
-            fill.map(|c| c.with_float_alpha(fill_alpha)),
-            thickness,
+            Style {
+                stroke: color.map(|c| Stroke {
+                    color: c.with_float_alpha(alpha),
+                    size: thickness,
+                }),
+                fill: fill.map(|c| c.with_float_alpha(fill_alpha)),
+            },
         )))
     }
 }
@@ -274,9 +283,9 @@ mod tests {
         let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(53.90625%,88.28125%,20.3125%);stroke-opacity:1;stroke-miterlimit:10;", "M 147.570312 40.121094 L 146.9375 40.121094 L 145.296875 40.460938 L 142.519531 41.710938 L 139.613281 43.304688 L 138.097656 44.894531 L 137.339844 46.714844 L 138.097656 47.621094 L 139.992188 47.851562 L 142.898438 47.621094 L 146.179688 47.167969 L 150.097656 47.964844 L 151.738281 49.667969 L 152.496094 51.714844 L 152.875 53.191406 ", Default::default()).unwrap();
 
         if let DrawCommand::Path {
-            color, commands, thickness, ..
+            commands, style, ..
         } = line.draw_commands() {
-            assert_eq!(color, Some(Color::from_float_rgb(0.5390625, 0.8828125, 0.203125)));
+            assert_eq!(style.stroke.unwrap().color, Color::from_float_rgb(0.5390625, 0.8828125, 0.203125));
             assert_eq!(commands, vec![
                 PathCommand::MoveTo(Vec2DWorld::new(147.570312, 40.121094)),
                 PathCommand::LineTo(Vec2DWorld::new(146.9375, 40.121094)),
@@ -294,7 +303,7 @@ mod tests {
                 PathCommand::LineTo(Vec2DWorld::new(152.496094, 51.714844)),
                 PathCommand::LineTo(Vec2DWorld::new(152.875, 53.191406)),
             ]);
-            assert_eq!(thickness, 3.0);
+            assert_eq!(style.stroke.unwrap().size, 3.0);
         } else {
             panic!();
         }
@@ -311,7 +320,7 @@ mod tests {
     fn test_parse_alpha() {
         let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:#FF0000;stroke-opacity:0.8;stroke-miterlimit:10;", "M 10 10 L 20 20", Default::default()).unwrap();
 
-        assert_eq!(line.color().unwrap(), Color::red().with_float_alpha(0.8));
+        assert_eq!(line.style().stroke.unwrap().color, Color::red().with_float_alpha(0.8));
     }
 
     #[test]
@@ -333,8 +342,8 @@ mod tests {
                 assert_eq!(e.semimajor, 5.6);
                 assert_eq!(e.semiminor, 3.5);
                 assert_eq!(e.angle.degrees(), 34.5);
-                assert_eq!(e.color, Some(Color::from_int_rgb(0xca, 0xba, 0xda).with_float_alpha(0.8)));
-                assert_eq!(e.thickness, 3.5);
+                assert_eq!(e.style.stroke.unwrap().color, Color::from_int_rgb(0xca, 0xba, 0xda).with_float_alpha(0.8));
+                assert_eq!(e.style.stroke.unwrap().size, 3.5);
             },
             _ => panic!()
         }

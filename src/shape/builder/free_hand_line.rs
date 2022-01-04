@@ -1,11 +1,11 @@
 use crate::transform::Transform;
 use crate::path_command::{PathCommand, CubicBezierCurve};
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
-use crate::color::Color;
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::geom::{thirds, bisector};
 use crate::shape::stored::path::Path;
 use crate::draw_commands::DrawCommand;
+use crate::style::Style;
 
 /// Given the last two commands of a path and a new point given as input compute
 /// what the last two commands of the path should be.
@@ -86,26 +86,24 @@ fn add_point<T: 'static + Point>(commands: &mut Vec<PathCommand<T>>, pos: T) {
 #[derive(Debug, PartialEq)]
 pub struct FreeHandLine {
     commands: Vec<PathCommand<Vec2DWorld>>,
-    thickness: f64,
-    color: Color,
+    style: Style,
 }
 
 impl FreeHandLine {
-    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> FreeHandLine {
+    pub fn start(initial: Vec2DWorld, style: Style) -> FreeHandLine {
         let mut commands = Vec::with_capacity(1000);
 
         commands.push(PathCommand::MoveTo(initial));
 
         FreeHandLine {
             commands,
-            thickness,
-            color,
+            style,
         }
     }
 
-    pub fn with_params(color: Color, commands: Vec<PathCommand<Vec2DWorld>>, thickness: f64) -> FreeHandLine {
+    pub fn with_params(commands: Vec<PathCommand<Vec2DWorld>>, style: Style) -> FreeHandLine {
         FreeHandLine {
-            commands, color, thickness,
+            commands, style,
         }
     }
 }
@@ -129,16 +127,14 @@ impl ShapeBuilder for FreeHandLine {
 
     fn handle_button_released(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) -> ShapeFinished {
         ShapeFinished::Yes(Box::new(Path::from_parts(
-            self.commands.clone(), Some(self.color), None, self.thickness,
+            self.commands.clone(), self.style,
         )))
     }
 
     fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
         vec![DrawCommand::Path {
             commands: self.commands.clone(),
-            thickness: self.thickness,
-            color: Some(self.color),
-            fill: None,
+            style: self.style,
         }]
     }
 }

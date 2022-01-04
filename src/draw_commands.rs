@@ -2,6 +2,7 @@ use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::color::Color;
 use crate::path_command::PathCommand::{self, *};
 use crate::geom::Angle;
+use crate::style::Style;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Ellipse {
@@ -9,9 +10,7 @@ pub struct Ellipse {
     pub semimajor: f64,
     pub semiminor: f64,
     pub angle: Angle,
-    pub thickness: f64,
-    pub color: Option<Color>,
-    pub fill: Option<Color>,
+    pub style: Style,
 }
 
 /// This enum is returned by the shapes (both stored and the one being drawn).
@@ -22,10 +21,8 @@ pub struct Ellipse {
 pub enum DrawCommand {
     /// A string of points and curves without filling
     Path {
-        color: Option<Color>,
-        fill: Option<Color>,
         commands: Vec<PathCommand<Vec2DWorld>>,
-        thickness: f64,
+        style: Style,
     },
 
     /// An ellipse without filling
@@ -34,10 +31,8 @@ pub enum DrawCommand {
     /// A path in screen coordinates without filling. Used to render handles and
     /// other visual aids
     ScreenPath {
-        color: Option<Color>,
-        fill: Option<Color>,
         commands: Vec<PathCommand<Vec2DScreen>>,
-        thickness: f64,
+        style: Style,
     },
 
     /// A circle in screen coordinates without filling. Used to render handles
@@ -45,28 +40,26 @@ pub enum DrawCommand {
     ScreenCircle {
         center: Vec2DScreen,
         radius: f64,
-        color: Option<Color>,
-        fill: Option<Color>,
-        thickness: f64,
+        style: Style,
     },
 }
 
 impl DrawCommand {
     pub fn color(&self) -> Option<Color> {
         match self {
-            DrawCommand::Path { color, .. } => *color,
-            DrawCommand::Ellipse(e) => e.color,
-            DrawCommand::ScreenPath { color, .. } => *color,
-            DrawCommand::ScreenCircle { color, .. } => *color,
+            DrawCommand::Path { style, .. } => style.stroke.map(|s| s.color),
+            DrawCommand::Ellipse(e) => e.style.stroke.map(|s| s.color),
+            DrawCommand::ScreenPath { style, .. } => style.stroke.map(|s| s.color),
+            DrawCommand::ScreenCircle { style, .. } => style.stroke.map(|s| s.color),
         }
     }
 
     pub fn fill(&self) -> Option<Color> {
         match self {
-            DrawCommand::Path { fill, .. } => *fill,
-            DrawCommand::Ellipse(e) => e.fill,
-            DrawCommand::ScreenPath { fill, .. } => *fill,
-            DrawCommand::ScreenCircle { fill, .. } => *fill,
+            DrawCommand::Path { style, .. } => style.fill,
+            DrawCommand::Ellipse(e) => e.style.fill,
+            DrawCommand::ScreenPath { style, .. } => style.fill,
+            DrawCommand::ScreenCircle { style, .. } => style.fill,
         }
     }
 }
@@ -75,11 +68,9 @@ impl DrawCommand {
 /// built
 pub fn circle_helper(center: Vec2DScreen, radius: f64) -> DrawCommand {
     DrawCommand::ScreenCircle {
-        color: None,
-        fill: Some(Color::gray().half_transparent()),
         center,
         radius,
-        thickness: 0.0,
+        style: Style::circle_helper(),
     }
 }
 
@@ -92,8 +83,6 @@ pub fn path_helper(points: Vec<Vec2DScreen>) -> DrawCommand {
                 LineTo(p)
             }
         }).collect(),
-        color: Some(Color::gray()),
-        fill: None,
-        thickness: 1.0,
+        style: Style::path_helper(),
     }
 }

@@ -1,10 +1,10 @@
 use crate::point::{Vec2DWorld, Vec2DScreen};
-use crate::color::Color;
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::transform::Transform;
 use crate::geom::ellipse_from_foci_and_point;
 use crate::shape::stored::ellipse::Ellipse;
 use crate::draw_commands::{DrawCommand, self, circle_helper, path_helper};
+use crate::style::Style;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -19,16 +19,14 @@ enum State {
 #[derive(Debug)]
 pub struct FociAndPointEllipse {
     state: State,
-    thickness: f64,
-    color: Color,
+    style: Style,
 }
 
 impl FociAndPointEllipse {
-    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> FociAndPointEllipse {
+    pub fn start(initial: Vec2DWorld, style: Style) -> FociAndPointEllipse {
         FociAndPointEllipse {
             state: State::One(initial),
-            thickness,
-            color,
+            style,
         }
     }
 }
@@ -76,7 +74,7 @@ impl ShapeBuilder for FociAndPointEllipse {
                 let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, t.to_world_coordinates(pos));
 
                 ShapeFinished::Yes(Box::new(Ellipse::from_parts(
-                    center, semimajor, semiminor, angle, Some(self.color), None, self.thickness,
+                    center, semimajor, semiminor, angle, self.style,
                 )))
             }
         }
@@ -98,9 +96,7 @@ impl ShapeBuilder for FociAndPointEllipse {
 
                 vec![
                     DrawCommand::Ellipse(draw_commands::Ellipse {
-                        thickness: self.thickness,
-                        color: Some(self.color),
-                        fill: None,
+                        style: self.style,
                         center, semimajor, semiminor, angle,
                     }),
 
@@ -122,6 +118,8 @@ impl ShapeBuilder for FociAndPointEllipse {
 mod tests {
     use crate::point::Point;
     use crate::geom::Angle;
+    use crate::style::Stroke;
+    use crate::color::Color;
 
     use super::*;
 
@@ -140,7 +138,7 @@ mod tests {
         let t: Transform = Default::default();
 
         // start the ellipse somewhere by pressing the pen
-        let mut builder = FociAndPointEllipse::start(Default::default(), t.to_world_coordinates(a0), 1.0);
+        let mut builder = FociAndPointEllipse::start(t.to_world_coordinates(a0), Default::default());
 
         // move the pen without releasing
         builder.handle_mouse_moved(a1, t, SNAP);
@@ -148,9 +146,10 @@ mod tests {
         // assert that the first point moves
         assert_eq!(builder.draw_commands(t, SNAP), vec![
             DrawCommand::ScreenCircle {
-                fill: Some(Color::gray().half_transparent()),
-                color: None,
-                thickness: 0.0,
+                style: Style {
+                    stroke: None,
+                    fill: Some(Color::gray().half_transparent()),
+                },
                 center: a1,
                 radius: SNAP,
             },
@@ -163,16 +162,18 @@ mod tests {
         // a line is drawn connecting A and A
         assert_eq!(builder.draw_commands(t, SNAP), vec![
             DrawCommand::ScreenCircle {
-                color: None,
-                fill: Some(Color::gray().half_transparent()),
-                thickness: 0.0,
+                style: Style {
+                    stroke: None,
+                    fill: Some(Color::gray().half_transparent()),
+                },
                 center: a,
                 radius: SNAP,
             },
             DrawCommand::ScreenCircle {
-                color: None,
-                fill: Some(Color::gray().half_transparent()),
-                thickness: 0.0,
+                style: Style {
+                    stroke: None,
+                    fill: Some(Color::gray().half_transparent()),
+                },
                 center: a,
                 radius: SNAP,
             },
@@ -184,16 +185,18 @@ mod tests {
         // a line is drawn connecting A and B
         assert_eq!(builder.draw_commands(t, SNAP), vec![
             DrawCommand::ScreenCircle {
-                color: None,
-                fill: Some(Color::gray().half_transparent()),
-                thickness: 0.0,
+                style: Style {
+                    stroke: None,
+                    fill: Some(Color::gray().half_transparent()),
+                },
                 center: a,
                 radius: SNAP,
             },
             DrawCommand::ScreenCircle {
-                color: None,
-                fill: Some(Color::gray().half_transparent()),
-                thickness: 0.0,
+                style: Style {
+                    stroke: None,
+                    fill: Some(Color::gray().half_transparent()),
+                },
                 center: b,
                 radius: SNAP,
             },
@@ -208,9 +211,13 @@ mod tests {
 
         // and check that a first ellipse is built
         assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Ellipse(draw_commands::Ellipse {
-            color: Some(Default::default()),
-            fill: None,
-            thickness: 1.0,
+            style: Style {
+                stroke: Some(Stroke {
+                    color: Default::default(),
+                    size: 1.0,
+                }),
+                fill: None,
+            },
             center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
             semimajor: 5.838320272867801,
             semiminor: 4.575529950080007,
@@ -223,9 +230,13 @@ mod tests {
         match builder.handle_button_released(e, t, SNAP) {
             ShapeFinished::Yes(shape) => {
                 assert_eq!(shape.draw_commands(), DrawCommand::Ellipse(draw_commands::Ellipse {
-                    color: Some(Default::default()),
-                    fill: None,
-                    thickness: 1.0,
+                    style: Style {
+                        stroke: Some(Stroke {
+                            color: Default::default(),
+                            size: 1.0,
+                        }),
+                        fill: None,
+                    },
                     center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
                     semimajor: 7.793799303722533,
                     semiminor: 6.898753387548061,

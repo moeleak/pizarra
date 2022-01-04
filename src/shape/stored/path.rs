@@ -1,22 +1,20 @@
 use crate::draw_commands::DrawCommand;
-use crate::color::Color;
 use crate::point::Vec2DWorld;
 use crate::geom::bbox_from_points;
 use crate::path_command::PathCommand;
 use crate::shape::{ShapeStored, ShapeType};
+use crate::style::Style;
 
 #[derive(Debug)]
 pub struct Path {
     commands: Vec<PathCommand<Vec2DWorld>>,
-    color: Option<Color>,
-    fill: Option<Color>,
-    thickness: f64,
+    style: Style,
 }
 
 impl Path {
-    pub fn from_parts(commands: Vec<PathCommand<Vec2DWorld>>, color: Option<Color>, fill: Option<Color>, thickness: f64) -> Path {
+    pub fn from_parts(commands: Vec<PathCommand<Vec2DWorld>>, style: Style) -> Path {
         Path {
-            commands, color, fill, thickness,
+            commands, style,
         }
     }
 }
@@ -25,9 +23,7 @@ impl ShapeStored for Path {
     fn draw_commands(&self) -> DrawCommand {
         DrawCommand::Path {
             commands: self.commands.clone(),
-            thickness: self.thickness,
-            color: self.color,
-            fill: None,
+            style: self.style,
         }
     }
 
@@ -56,12 +52,8 @@ impl ShapeStored for Path {
         false
     }
 
-    fn color(&self) -> Option<Color> {
-        self.color
-    }
-
-    fn fill(&self) -> Option<Color> {
-        self.fill
+    fn style(&self) -> Style {
+        self.style
     }
 }
 
@@ -69,7 +61,6 @@ impl ShapeStored for Path {
 mod tests {
     use super::*;
 
-    use crate::color::Color;
     use crate::point::{Point, Vec2DWorld};
     use crate::path_command::CubicBezierCurve;
 
@@ -78,7 +69,7 @@ mod tests {
         let line = Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DWorld::new(1.0, 0.0)),
             PathCommand::LineTo(Vec2DWorld::new(0.0, 1.0)),
-        ], Some(Color::green()), None, 4.0);
+        ], Default::default());
 
         assert_eq!(line.bbox(), [Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(1.0, 1.0)]);
     }
@@ -90,7 +81,7 @@ mod tests {
             PathCommand::LineTo(Vec2DWorld::new(-5.0, 0.0)),
             PathCommand::LineTo(Vec2DWorld::new(-2.0, 7.0)),
             PathCommand::LineTo(Vec2DWorld::new(2.0, -8.0)),
-        ], Some(Color::green()), None, 1.0);
+        ], Default::default());
 
         assert_eq!(line.bbox(), [Vec2DWorld::new(-12.0, -8.0), Vec2DWorld::new(2.0, 7.0)]);
     }
@@ -99,7 +90,7 @@ mod tests {
     fn can_delete_single_point_paths() {
         let poly = Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
-        ], Some(Color::green()), None, 1.0);
+        ], Default::default());
 
         assert!(poly.intersects_circle(Vec2DWorld::new(0.0, 0.0), 10.0));
     }
@@ -113,7 +104,7 @@ mod tests {
                 pt2: Vec2DWorld::new(171.0, 70.0),
                 to: Vec2DWorld::new(196.0, 113.0),
             }),
-        ], Some(Color::green()), None, 1.0);
+        ], Default::default());
 
         let cases = [
              (Vec2DWorld::new(37.0, 129.0), true),
@@ -134,7 +125,7 @@ mod tests {
         let path = Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DWorld::new(33.0, 135.0)),
             PathCommand::LineTo(Vec2DWorld::new(196.0, 113.0)),
-        ], Default::default(), None, 1.0);
+        ], Default::default());
 
         let cases = [
              (Vec2DWorld::new(37.0, 129.0), true),

@@ -1,11 +1,11 @@
 use std::f64::consts::PI;
 use crate::point::{Point, Vec2DWorld};
 use crate::draw_commands::{DrawCommand, self};
-use crate::color::Color;
 use crate::geom::{
     Angle, foci_and_sum_from_center_and_radi,
 };
 use crate::shape::{ShapeStored, ShapeType};
+use crate::style::Style;
 
 #[derive(Debug)]
 pub struct Ellipse {
@@ -13,15 +13,13 @@ pub struct Ellipse {
     semimajor: f64,
     semiminor: f64,
     angle: Angle,
-    color: Option<Color>,
-    fill: Option<Color>,
-    thickness: f64,
+    style: Style,
 }
 
 impl Ellipse {
-    pub fn from_parts(center: Vec2DWorld, semimajor: f64, semiminor: f64, angle: Angle, color: Option<Color>, fill: Option<Color>, thickness: f64) -> Ellipse {
+    pub fn from_parts(center: Vec2DWorld, semimajor: f64, semiminor: f64, angle: Angle, style: Style) -> Ellipse {
         Ellipse {
-            center, semimajor, semiminor, angle, color, fill, thickness
+            center, semimajor, semiminor, angle, style,
         }
     }
 }
@@ -33,9 +31,7 @@ impl ShapeStored for Ellipse {
             semimajor: self.semimajor,
             semiminor: self.semiminor,
             angle: self.angle,
-            color: self.color,
-            fill: self.fill,
-            thickness: self.thickness,
+            style: self.style,
         })
     }
 
@@ -83,12 +79,8 @@ impl ShapeStored for Ellipse {
         sum_of_distances >= sum - 2.0*radius
     }
 
-    fn color(&self) -> Option<Color> {
-        self.color
-    }
-
-    fn fill(&self) -> Option<Color> {
-        self.fill
+    fn style(&self) -> Style {
+        self.style
     }
 }
 
@@ -97,6 +89,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::geom::ellipse_from_foci_and_sum;
+    use crate::style::{Style, Stroke};
 
     use super::*;
 
@@ -108,7 +101,7 @@ mod tests {
 
         let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_sum([f1, f2], sum);
 
-        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Some(Default::default()), None, 1.0);
+        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Default::default());
 
         let cases = [
             ((-18.23673, -15.70531), true),
@@ -129,7 +122,7 @@ mod tests {
         let semiminor = 6.898753387548061;
 
         // axis aligned
-        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, Angle::from_radians(0.0), Some(Default::default()), None, 1.0);
+        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, Angle::from_radians(0.0), Default::default());
 
         assert_eq!(ellipse.bbox(), [
             center - Vec2DWorld::new(semimajor, semiminor),
@@ -138,7 +131,7 @@ mod tests {
 
         // rotated
         let angle = Angle::from_radians(-0.7769764190469384);
-        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Some(Default::default()), None, 1.0);
+        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Default::default());
 
         assert_eq!(ellipse.bbox(), [
             Vec2DWorld { x: -10.39314460317701, y: -6.089827506715496 },
@@ -148,6 +141,34 @@ mod tests {
 
     #[test]
     fn line_thickness_affects_bbox() {
-        todo!()
+        let center = Vec2DWorld::new(0.0, 0.0);
+        let semimajor = 73.0;
+        let semiminor = 36.0;
+        let angle = Angle::from_degrees(0.0);
+        let style = Style {
+            fill: None,
+            stroke: Some(Stroke {
+                size: 8.0,
+                color: Default::default(),
+            }),
+        };
+
+        let ellipse = Ellipse::from_parts(
+            center,
+            semimajor,
+            semiminor,
+            angle,
+            style,
+        );
+
+        let topleft = Vec2DWorld::new(-77.0, -40.0);
+        let bottomright = Vec2DWorld::new(77.0, 40.0);
+
+        assert_eq!(ellipse.bbox(), [
+            topleft,
+            bottomright,
+        ]);
+
+        todo!("but only if it has stroke");
     }
 }

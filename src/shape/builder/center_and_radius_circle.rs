@@ -1,26 +1,24 @@
-use crate::color::Color;
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::shape::stored::ellipse::Ellipse;
 use crate::draw_commands::{self, DrawCommand, path_helper, circle_helper};
 use crate::transform::Transform;
 use crate::geom::Angle;
+use crate::style::Style;
 
 #[derive(Debug)]
 pub struct CenterAndRadiusCircle {
     center: Vec2DWorld,
     point: Vec2DWorld,
-    thickness: f64,
-    color: Color,
+    style: Style,
 }
 
 impl CenterAndRadiusCircle {
-    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> CenterAndRadiusCircle {
+    pub fn start(initial: Vec2DWorld, style: Style) -> CenterAndRadiusCircle {
         CenterAndRadiusCircle {
             center: initial,
-            thickness,
-            color,
             point: initial,
+            style,
         }
     }
 }
@@ -43,9 +41,7 @@ impl ShapeBuilder for CenterAndRadiusCircle {
                 radius,
                 radius,
                 Angle::from_radians(0.0),
-                Some(self.color),
-                None,
-                self.thickness,
+                self.style,
             )
         ))
     }
@@ -58,9 +54,7 @@ impl ShapeBuilder for CenterAndRadiusCircle {
                 semimajor: radius,
                 semiminor: radius,
                 angle: Angle::from_radians(0.0),
-                thickness: self.thickness,
-                color: Some(self.color),
-                fill: None,
+                style: self.style,
             }),
 
             path_helper(vec![

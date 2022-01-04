@@ -5,6 +5,7 @@ use crate::shape::{ShapeBuilder, ShapeFinished, stored::path::Path};
 use crate::draw_commands::{DrawCommand, path_helper};
 use crate::transform::Transform;
 use crate::geom::mirror;
+use crate::style::Style;
 
 /// Enum that handles the states of building a bezier-polygon
 #[derive(Debug, Copy, Clone)]
@@ -39,12 +40,11 @@ enum BuilderState {
 pub struct PolygonBuilder {
     points: Vec<PathCommand<Vec2DWorld>>,
     tip: BuilderState,
-    thickness: f64,
-    color: Color,
+    style: Style,
 }
 
 impl PolygonBuilder {
-    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> PolygonBuilder {
+    pub fn start(initial: Vec2DWorld, style: Style) -> PolygonBuilder {
         let mut init_vec = Vec::with_capacity(8);
 
         init_vec.push(MoveTo(initial));
@@ -52,8 +52,7 @@ impl PolygonBuilder {
         PolygonBuilder {
             points: init_vec,
             tip: BuilderState::Init(initial),
-            thickness,
-            color,
+            style,
         }
     }
 
@@ -200,9 +199,7 @@ impl ShapeBuilder for PolygonBuilder {
             BuilderState::End => {
                 ShapeFinished::Yes(Box::new(Path::from_parts(
                     self.points.clone(),
-                    Some(self.color),
-                    None,
-                    self.thickness,
+                    self.style,
                 )))
             }
         }
@@ -246,9 +243,7 @@ impl ShapeBuilder for PolygonBuilder {
         // add the polygon
         commands.push(DrawCommand::Path {
             commands: path_commands.clone(),
-            thickness: self.thickness,
-            color: Some(self.color),
-            fill: None,
+            style: self.style,
         });
 
         // for every point of the polygon add a helper circle and bezier handler
@@ -284,14 +279,15 @@ impl ShapeBuilder for PolygonBuilder {
             commands.push(DrawCommand::ScreenCircle {
                 center: t.to_screen_coordinates(p.to()),
                 radius: snap,
-                color: None,
-                fill: Some(match self.tip {
-                    BuilderState::FreePoint { to, .. } if t.to_screen_coordinates(to).distance(t.to_screen_coordinates(p.to())) <= snap => {
-                        Color::green().half_transparent()
-                    }
-                    _ => Color::gray().half_transparent()
-                }),
-                thickness: 1.0,
+                style: Style {
+                    stroke: None,
+                    fill: Some(match self.tip {
+                        BuilderState::FreePoint { to, .. } if t.to_screen_coordinates(to).distance(t.to_screen_coordinates(p.to())) <= snap => {
+                            Color::green().half_transparent()
+                        }
+                        _ => Color::gray().half_transparent()
+                    }),
+                },
             });
 
             commands
@@ -305,6 +301,8 @@ impl ShapeBuilder for PolygonBuilder {
 mod tests {
     use pretty_assertions::assert_eq;
 
+    use crate::style::Stroke;
+
     use super::*;
 
     const SNAP: f64 = 10.0;
@@ -314,7 +312,7 @@ mod tests {
     /// previous ones
     #[test]
     fn it_behaves() {
-        let mut poly = PolygonBuilder::start(Default::default(), Vec2DWorld::new(0.0, 0.0), 4.0);
+        let mut poly = PolygonBuilder::start(Vec2DWorld::new(0.0, 0.0), Default::default());
         let t = Default::default();
 
         poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP);
@@ -343,7 +341,7 @@ mod tests {
     /// the user was aiming to even if the event is registered somewhere else.
     #[test]
     fn no_clunky_path_ends() {
-        let mut poly = PolygonBuilder::start(Default::default(), Vec2DWorld::new(0.0, 0.0), 4.0);
+        let mut poly = PolygonBuilder::start(Vec2DWorld::new(0.0, 0.0), Default::default());
         let t = Default::default();
 
         poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP);
@@ -359,8 +357,6 @@ mod tests {
         }
 
         assert_eq!(poly.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Some(Default::default()),
-            fill: None,
             commands: vec![
                 MoveTo(Vec2DWorld::new(0.0, 0.0)),
                 CurveTo(CubicBezierCurve {
@@ -369,29 +365,33 @@ mod tests {
                     to: Vec2DWorld::new(30.0, 0.0),
                 }),
             ],
-            thickness: 4.0,
+            style: Style {
+                stroke: Some(Stroke {
+                    color: Default::default(),
+                    size: 4.0,
+                }),
+                fill: None,
+            },
         });
     }
 
     #[test]
     fn can_render_first_point_when_building() {
         let t = Default::default();
-        let poly = PolygonBuilder::start(Default::default(), Vec2DWorld::new(0.0, 0.0), 3.0);
+        let poly = PolygonBuilder::start(Vec2DWorld::new(0.0, 0.0), Default::default());
 
         assert_eq!(poly.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Some(Default::default()),
-            fill: None,
             commands: vec![
                 MoveTo(Vec2DWorld::new(0.0, 0.0)),
             ],
-            thickness: 3.0,
+            style: Default::default(),
         });
     }
 
     fn make_this_poly(t: Transform) -> PolygonBuilder {
         let center = Vec2DWorld::new(0.0, 0.0);
         let pf = Vec2DWorld::new(0.0, -100.0);
-        let mut poly = PolygonBuilder::start(Default::default(), center, 4.0);
+        let mut poly = PolygonBuilder::start(center, Default::default());
 
         poly.handle_button_released(t.to_screen_coordinates(center), t, SNAP);
         poly.handle_mouse_moved(t.to_screen_coordinates(pf), t, SNAP);
@@ -464,7 +464,7 @@ mod tests {
     #[test]
     fn guide_circles_color_when_cursor_is_close() {
         let t: Transform = Default::default();
-        let mut poly = PolygonBuilder::start(Color::green(), Vec2DWorld::new(0.0, 0.0), 2.0);
+        let mut poly = PolygonBuilder::start(Vec2DWorld::new(0.0, 0.0), Default::default());
 
         poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP);
         poly.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t, SNAP);
@@ -474,9 +474,10 @@ mod tests {
         assert_eq!(commands.last().unwrap(), &DrawCommand::ScreenCircle {
             center: Vec2DScreen::new(0.0, 0.0),
             radius: SNAP,
-            color: None,
-            fill: Some(Color::green().half_transparent()),
-            thickness: 1.0,
+            style: Style {
+                stroke: None,
+                fill: Some(Color::green().half_transparent()),
+            },
         });
     }
 
@@ -496,7 +497,7 @@ mod tests {
         let g = Vec2DScreen::new(-80.0, 0.0);
         let h = Vec2DScreen::new(-80.0, -20.0);
 
-        let mut poly = PolygonBuilder::start(Color::green(), t.to_world_coordinates(a), 2.0);
+        let mut poly = PolygonBuilder::start(t.to_world_coordinates(a), Default::default());
 
         poly.handle_mouse_moved(b, t, SNAP);
         poly.handle_button_released(b, t, SNAP);
@@ -543,9 +544,7 @@ mod tests {
                         to: t.to_world_coordinates(a),
                     }),
                 ],
-                color: Some(Color::green()),
-                fill: None,
-                thickness: 2.0,
+                style: Default::default(),
             });
         } else {
             panic!();
@@ -560,7 +559,7 @@ mod tests {
     #[test]
     fn sharp_polygons_are_still_possible_by_hand() {
         let t: Transform = Default::default();
-        let mut poly = PolygonBuilder::start(Color::green(), Vec2DWorld::new(0.0, 0.0), 2.0);
+        let mut poly = PolygonBuilder::start(Vec2DWorld::new(0.0, 0.0), Default::default());
 
         // move slightly after starting the polygon
         poly.handle_mouse_moved(Vec2DScreen::new(1.0, 1.0), t, SNAP);
@@ -587,50 +586,54 @@ mod tests {
 
         assert_eq!(commands, vec![
             DrawCommand::Path {
-                color: Some(Color { r: 138, g: 226, b: 52, a: 255 }),
-                fill: None, commands: vec![
+                style: Default::default(),
+                commands: vec![
                     MoveTo(Vec2DWorld { x: 0.0, y: 0.0 }),
                     CurveTo(CubicBezierCurve { pt1: Vec2DWorld { x: 0.0, y: 0.0 }, pt2: Vec2DWorld { x: 0.0, y: -50.0 }, to: Vec2DWorld { x: 0.0, y: -50.0 } }),
                     CurveTo(CubicBezierCurve { pt1: Vec2DWorld { x: 0.0, y: -50.0 }, pt2: Vec2DWorld { x: 50.0, y: 0.0 }, to: Vec2DWorld { x: 50.0, y: 0.0 } }),
                     CurveTo(CubicBezierCurve { pt1: Vec2DWorld { x: 50.0, y: 0.0 }, pt2: Vec2DWorld { x: 0.0, y: 0.0 }, to: Vec2DWorld { x: 0.0, y: 0.0 } })
-                ], thickness: 2.0 },
+                ]},
             DrawCommand::ScreenPath {
-                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
-                fill: None, commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 })], thickness: 1.0 },
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 })
+                ], style: Style::path_helper(), },
             DrawCommand::ScreenPath {
-                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
-                fill: None, commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: -50.0 }), LineTo(Vec2DScreen { x: 0.0, y: -50.0 })], thickness: 1.0 },
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 0.0, y: -50.0 }), LineTo(Vec2DScreen { x: 0.0, y: -50.0 }),
+                ], style: Style::path_helper(), },
             DrawCommand::ScreenPath {
-                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
-                fill: None, commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 })], thickness: 1.0 },
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 }),
+                ], style: Style::path_helper(), },
             DrawCommand::ScreenCircle {
-                center: Vec2DScreen { x: 0.0, y: 0.0 }, radius: 10.0, color: None,
-                fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
+                center: Vec2DScreen { x: 0.0, y: 0.0 }, radius: 10.0,
+                style: Style::circle_helper(),
+            },
             DrawCommand::ScreenPath {
-                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
-                fill: None, commands: vec![
-                    MoveTo(Vec2DScreen { x: 50.0, y: 0.0 }), LineTo(Vec2DScreen { x: 50.0, y: 0.0 })], thickness: 1.0 },
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 50.0, y: 0.0 }), LineTo(Vec2DScreen { x: 50.0, y: 0.0 }),
+                ], style: Style::path_helper(), },
             DrawCommand::ScreenPath {
-                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
-                fill: None, commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: -50.0 }), LineTo(Vec2DScreen { x: 0.0, y: -50.0 })], thickness: 1.0 },
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 0.0, y: -50.0 }), LineTo(Vec2DScreen { x: 0.0, y: -50.0 })], style: Style::path_helper(), },
             DrawCommand::ScreenCircle {
-                center: Vec2DScreen { x: 0.0, y: -50.0 }, radius: 10.0, color: None,
-                fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
+                center: Vec2DScreen { x: 0.0, y: -50.0 }, radius: 10.0,
+                style: Style::circle_helper(),
+            },
             DrawCommand::ScreenPath {
-                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
-                fill: None, commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 })], thickness: 1.0 },
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 }),
+                ], style: Style::path_helper(),
+            },
             DrawCommand::ScreenPath {
-                color: Some(Color { r: 148, g: 148, b: 148, a: 255 }),
-                fill: None, commands: vec![
-                    MoveTo(Vec2DScreen { x: 50.0, y: 0.0 }), LineTo(Vec2DScreen { x: 50.0, y: 0.0 })], thickness: 1.0 },
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 50.0, y: 0.0 }), LineTo(Vec2DScreen { x: 50.0, y: 0.0 })
+                ], style: Style::path_helper(),
+            },
             DrawCommand::ScreenCircle {
-                center: Vec2DScreen { x: 50.0, y: 0.0 }, radius: 10.0, color: None,
-                fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 }
+                center: Vec2DScreen { x: 50.0, y: 0.0 }, radius: 10.0,
+                style: Style::circle_helper(),
+            },
         ]);
     }
 
@@ -646,7 +649,7 @@ mod tests {
         let c = Vec2DScreen::new(80.0, 0.0);
         let d = Vec2DScreen::new(80.0, 20.0);
 
-        let mut poly = PolygonBuilder::start(Color::green(), t.to_world_coordinates(a), 2.0);
+        let mut poly = PolygonBuilder::start(t.to_world_coordinates(a), Default::default());
 
         poly.handle_mouse_moved(b, t, SNAP);
         poly.handle_button_released(b, t, SNAP);
@@ -671,29 +674,48 @@ mod tests {
                         to: t.to_world_coordinates(d),
                     }),
                 ],
-                color: Some(Color::green()),
-                fill: None,
-                thickness: 2.0,
+                style: Default::default(),
             },
 
             // the helpers
-            DrawCommand::ScreenPath { color: Some(Color::gray()), fill: None, commands: vec![
-                MoveTo(Vec2DScreen { x: 0.0, y: -80.0 }), LineTo(Vec2DScreen { x: -30.0, y: -80.0 })
-            ], thickness: 1.0 },
-            DrawCommand::ScreenPath { color: Some(Color::gray()), fill: None, commands: vec![
-                MoveTo(Vec2DScreen { x: 80.0, y: 0.0 }), LineTo(Vec2DScreen { x: 80.0, y: -20.0 })
-            ], thickness: 1.0 },
-            DrawCommand::ScreenPath { color: Some(Color::gray()), fill: None, commands: vec![
-                MoveTo(Vec2DScreen { x: 0.0, y: -80.0 }), LineTo(Vec2DScreen { x: 30.0, y: -80.0 })
-            ], thickness: 1.0 },
-            DrawCommand::ScreenCircle { center: Vec2DScreen { x: 0.0, y: -80.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
-            DrawCommand::ScreenPath { color: Some(Color::gray()), fill: None, commands: vec![
-                MoveTo(Vec2DScreen { x: 80.0, y: 20.0 }), LineTo(Vec2DScreen { x: 80.0, y: 20.0 })
-            ], thickness: 1.0 },
-            DrawCommand::ScreenPath { color: Some(Color::gray()), fill: None, commands: vec![
-                MoveTo(Vec2DScreen { x: 80.0, y: 0.0 }), LineTo(Vec2DScreen { x: 80.0, y: 20.0 })
-            ], thickness: 1.0 },
-            DrawCommand::ScreenCircle { center: Vec2DScreen { x: 80.0, y: 0.0 }, radius: 10.0, color: None, fill: Some(Color { r: 148, g: 148, b: 148, a: 127 }), thickness: 1.0 },
+            DrawCommand::ScreenPath {
+                style: Style::path_helper(),
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 0.0, y: -80.0 }), LineTo(Vec2DScreen { x: -30.0, y: -80.0 }),
+                ],
+            },
+            DrawCommand::ScreenPath {
+                style: Style::path_helper(),
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 80.0, y: 0.0 }), LineTo(Vec2DScreen { x: 80.0, y: -20.0 })
+                ],
+            },
+            DrawCommand::ScreenPath {
+                style: Style::path_helper(),
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 0.0, y: -80.0 }), LineTo(Vec2DScreen { x: 30.0, y: -80.0 })
+                ],
+            },
+            DrawCommand::ScreenCircle {
+                center: Vec2DScreen { x: 0.0, y: -80.0 }, radius: 10.0,
+                style: Style::circle_helper(),
+            },
+            DrawCommand::ScreenPath {
+                style: Style::path_helper(),
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 80.0, y: 20.0 }), LineTo(Vec2DScreen { x: 80.0, y: 20.0 }),
+                ],
+            },
+            DrawCommand::ScreenPath {
+                style: Style::path_helper(),
+                commands: vec![
+                    MoveTo(Vec2DScreen { x: 80.0, y: 0.0 }), LineTo(Vec2DScreen { x: 80.0, y: 20.0 }),
+                ],
+            },
+            DrawCommand::ScreenCircle {
+                center: Vec2DScreen { x: 80.0, y: 0.0 }, radius: 10.0,
+                style: Style::circle_helper(),
+            },
         ]);
     }
 }

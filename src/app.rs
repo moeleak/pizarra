@@ -14,6 +14,7 @@ use crate::key::Key;
 use crate::config::Config;
 use crate::ui::Flags;
 use crate::serialize;
+use crate::style::{Style, Stroke};
 
 #[derive(Copy,Clone,Debug, PartialEq, Eq)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -153,7 +154,13 @@ impl Pizarra {
                 if let Some(shape) = self.current_shape.as_mut() {
                     shape.handle_button_pressed(point, self.transform, self.config.point_snap_radius);
                 } else {
-                    let new_shape = shape.start(self.selected_color, transformed_point, self.transform.to_world_units(self.stroke));
+                    let new_shape = shape.start(transformed_point, Style {
+                        stroke: Some(Stroke {
+                            size: self.transform.to_world_units(self.stroke),
+                            color: self.selected_color,
+                        }),
+                        fill: None,
+                    });
 
                     self.current_shape = Some(new_shape);
                 }
@@ -745,11 +752,14 @@ impl Pizarra {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
         draw_commands::DrawCommand, app::SelectedTool,
         path_command::{PathCommand, CubicBezierCurve},
     };
+    use crate::style::{Style, Stroke};
+
+    use super::*;
+
     use PathCommand::*;
 
     #[test]
@@ -767,8 +777,13 @@ mod tests {
         let commands = app.draw_commands_for_screen();
 
         assert_eq!(commands[0], DrawCommand::Path {
-            color: Some(Default::default()),
-            fill: None,
+            style: Style {
+                stroke: Some(Stroke {
+                    color: Default::default(),
+                    size: Config::default().thickness,
+                }),
+                fill: None,
+            },
             commands: vec![
                 MoveTo(Vec2DWorld { x: -40.0, y: -30.0 }),
                 CurveTo(CubicBezierCurve {
@@ -777,7 +792,6 @@ mod tests {
                     to: Vec2DWorld { x: -39.0, y: -30.0 }
                 }),
             ],
-            thickness: Config::default().thickness,
         });
     }
 
@@ -798,8 +812,13 @@ mod tests {
         let commands = app.draw_commands_for_screen();
 
         assert_eq!(commands[0], DrawCommand::Path {
-            color: Some(Default::default()),
-            fill: None,
+            style: Style {
+                stroke: Some(Stroke {
+                    color: Default::default(),
+                    size: Config::default().thickness / 2.0,
+                }),
+                fill: None,
+            },
             commands: vec![
                 MoveTo(Vec2DWorld { x: -20.0, y: -15.0 }),
                 CurveTo(CubicBezierCurve {
@@ -808,7 +827,6 @@ mod tests {
                     to: Vec2DWorld { x: -19.5, y: -15.0 }
                 }),
             ],
-            thickness: Config::default().thickness / 2.0,
         });
     }
 
@@ -1026,9 +1044,7 @@ mod tests {
         assert_eq!(commands.len(), 1);
 
         assert_eq!(commands[0], DrawCommand::Path {
-            color: Some(Default::default()),
-            fill: None,
-            thickness: Config::default().thickness,
+            style: Default::default(),
             commands: vec![
                 MoveTo(Vec2DWorld { x: -30.0, y: -20.0 }),
                 CurveTo(CubicBezierCurve {

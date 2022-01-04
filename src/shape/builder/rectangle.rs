@@ -1,24 +1,22 @@
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::draw_commands::{DrawCommand, circle_helper};
-use crate::color::Color;
 use crate::transform::Transform;
 use crate::path_command::PathCommand;
 use crate::geom::middle_point;
 use crate::shape::{ShapeBuilder, ShapeFinished, stored::path::Path};
+use crate::style::Style;
 
 #[derive(Debug)]
 pub struct AxisAlignedRectangleBuilder {
     corners: [Vec2DWorld; 4],
-    stroke: f64,
-    color: Color,
+    style: Style,
 }
 
 impl AxisAlignedRectangleBuilder {
-    pub fn start(color: Color, initial: Vec2DWorld, stroke: f64) -> AxisAlignedRectangleBuilder {
+    pub fn start(initial: Vec2DWorld, style: Style) -> AxisAlignedRectangleBuilder {
         AxisAlignedRectangleBuilder {
             corners: [initial; 4],
-            stroke,
-            color,
+            style,
         }
     }
 
@@ -56,7 +54,7 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
         self.handle_mouse_moved(pos, t, snap);
 
         ShapeFinished::Yes(Box::new(Path::from_parts(
-            draw_commands(self.all_four_corners()), Some(self.color), None, self.stroke,
+            draw_commands(self.all_four_corners()), self.style,
         )))
     }
 
@@ -67,9 +65,7 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
         vec![
             DrawCommand::Path {
                 commands: draw_commands(corners),
-                thickness: self.stroke,
-                color: Some(self.color),
-                fill: None,
+                style: self.style,
             },
 
             circle_helper(t.to_screen_coordinates(center), snap),
@@ -79,6 +75,8 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
 
 #[cfg(test)]
 mod tests {
+    use crate::style::Stroke;
+
     use super::*;
 
     const SNAP: f64 = 10.0;
@@ -89,15 +87,19 @@ mod tests {
         let b: Vec2DScreen = (10.0, 10.0).into();
         let t: Transform = Default::default();
 
-        let mut rect = AxisAlignedRectangleBuilder::start(Default::default(), t.to_world_coordinates(a), 1.0);
+        let mut rect = AxisAlignedRectangleBuilder::start(t.to_world_coordinates(a), Default::default());
 
         rect.handle_mouse_moved(b, t, SNAP);
 
         // while being drawn
         assert_eq!(rect.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            color: Some(Default::default()),
-            fill: None,
-            thickness: 1.0,
+            style: Style {
+                stroke: Some(Stroke {
+                    color: Default::default(),
+                    size: 1.0,
+                }),
+                fill: None,
+            },
             commands: vec![
                 PathCommand::MoveTo(Vec2DWorld::new(4.0, 5.0)),
                 PathCommand::LineTo(Vec2DWorld::new(10.0, 5.0)),
@@ -111,9 +113,13 @@ mod tests {
         match rect.handle_button_released(b, t, SNAP) {
             ShapeFinished::Yes(s) => {
                 assert_eq!(s.draw_commands(), DrawCommand::Path {
-                    color: Some(Default::default()),
-                    fill: None,
-                    thickness: 1.0,
+                    style: Style {
+                        stroke: Some(Stroke {
+                            color: Default::default(),
+                            size: 1.0,
+                        }),
+                        fill: None,
+                    },
                     commands: vec![
                         PathCommand::MoveTo(Vec2DWorld::new(4.0, 5.0)),
                         PathCommand::LineTo(Vec2DWorld::new(10.0, 5.0)),

@@ -3,11 +3,10 @@ use std::fmt;
 use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::transform::Transform;
 use crate::draw_commands::DrawCommand;
+use crate::style::Style;
 
 pub mod builder;
 pub mod stored;
-
-use super::color::Color;
 
 use self::builder::free_hand_line::FreeHandLine;
 use self::builder::foci_and_point_ellipse::FociAndPointEllipse;
@@ -42,14 +41,14 @@ pub enum ShapeTool {
 }
 
 impl ShapeTool {
-    pub fn start(&self, color: Color, initial: Vec2DWorld, stroke: f64) -> Box<dyn ShapeBuilder> {
+    pub fn start(&self, initial: Vec2DWorld, style: Style) -> Box<dyn ShapeBuilder> {
         match *self {
-            ShapeTool::Path => Box::new(FreeHandLine::start(color, initial, stroke)),
-            ShapeTool::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(color, initial, stroke)),
-            ShapeTool::Polygon => Box::new(PolygonBuilder::start(color, initial, stroke)),
-            ShapeTool::CircleByCenterAndPoint => Box::new(CenterAndRadiusCircle::start(color, initial, stroke)),
-            ShapeTool::CircleThroughThreePoints => Box::new(CircleThroughThreePointsBuilder::start(color, initial, stroke)),
-            ShapeTool::ThreePointEllipse => Box::new(FociAndPointEllipse::start(color, initial, stroke)),
+            ShapeTool::Path => Box::new(FreeHandLine::start(initial, style)),
+            ShapeTool::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(initial, style)),
+            ShapeTool::Polygon => Box::new(PolygonBuilder::start(initial, style)),
+            ShapeTool::CircleByCenterAndPoint => Box::new(CenterAndRadiusCircle::start(initial, style)),
+            ShapeTool::CircleThroughThreePoints => Box::new(CircleThroughThreePointsBuilder::start(initial, style)),
+            ShapeTool::ThreePointEllipse => Box::new(FociAndPointEllipse::start(initial, style)),
         }
     }
 }
@@ -82,11 +81,8 @@ pub trait ShapeStored: fmt::Debug {
     /// does this circle intersect this shape? Used by the eraser
     fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool;
 
-    /// returns the color of this shape
-    fn color(&self) -> Option<Color>;
-
-    /// returns the fill color of this shape
-    fn fill(&self) -> Option<Color>;
+    /// returns this shape's style
+    fn style(&self) -> Style;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -141,8 +137,8 @@ impl Shape {
         self.z_index
     }
 
-    pub fn color(&self) -> Option<Color> {
-        self.shape_impl.color()
+    pub fn style(&self) -> Style {
+        self.shape_impl.style()
     }
 
     pub fn bbox(&self) -> [Vec2DWorld; 2] {
@@ -156,6 +152,6 @@ impl Shape {
 
 impl fmt::Debug for Shape {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Shape({:?}, {}, {:?})", self.shape_impl.shape_type(), self.id, self.color())
+        write!(f, "Shape({:?}, {}, {:?})", self.shape_impl.shape_type(), self.id, self.style())
     }
 }

@@ -1,10 +1,10 @@
-use crate::color::Color;
 use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::shape::stored::ellipse::Ellipse;
 use crate::draw_commands::{self, DrawCommand, circle_helper};
 use crate::transform::Transform;
 use crate::geom::{Angle, circle_through_three_points};
+use crate::style::Style;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -16,16 +16,14 @@ enum State {
 #[derive(Debug)]
 pub struct CircleThroughThreePointsBuilder {
     state: State,
-    thickness: f64,
-    color: Color,
+    style: Style,
 }
 
 impl CircleThroughThreePointsBuilder {
-    pub fn start(color: Color, initial: Vec2DWorld, thickness: f64) -> CircleThroughThreePointsBuilder {
+    pub fn start(initial: Vec2DWorld, style: Style) -> CircleThroughThreePointsBuilder {
         CircleThroughThreePointsBuilder {
             state: State::One(initial),
-            thickness,
-            color,
+            style,
         }
     }
 }
@@ -70,9 +68,7 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                         radius,
                         radius,
                         Angle::from_radians(0.0),
-                        Some(self.color),
-                        None,
-                        self.thickness,
+                        self.style,
                     )
                 ))
             }
@@ -97,9 +93,7 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                         semimajor: radius,
                         semiminor: radius,
                         angle: Angle::from_radians(0.0),
-                        thickness: self.thickness,
-                        color: Some(self.color),
-                        fill: None,
+                        style: self.style,
                     }),
 
                     circle_helper(t.to_screen_coordinates(p1), snap),

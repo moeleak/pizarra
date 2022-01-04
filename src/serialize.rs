@@ -22,17 +22,17 @@ impl DrawCommand {
     fn serialize(self, writer: &mut EventWriter<&mut Vec<u8>>) {
         match self {
             DrawCommand::Path {
-                color, commands, thickness, fill,
+                commands, style,
             } => {
                 let d: String = commands.iter().map(|p| p.to_string()).collect();
 
                 writer.write(XmlEvent::start_element("path")
                     .attr("style", &format!(
                         "fill:{fill};stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
-                        fill = fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
-                        stroke = thickness,
-                        color = color.map(|c| c.css()).unwrap_or_else(|| "none".into()),
-                        alpha = color.map(|c| c.float_alpha()).unwrap_or(1.0),
+                        fill = style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
+                        stroke = style.stroke.map(|s| s.size).unwrap_or(0.0),
+                        color = style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
+                        alpha = style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
                     ))
                     .attr("d", &d)).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
@@ -56,10 +56,10 @@ impl DrawCommand {
                             stroke:{color};\
                             stroke-opacity:{alpha};\
                             stroke-miterlimit:10;",
-                        stroke = e.thickness,
-                        color = e.color.map(|c| c.css()).unwrap_or_else(|| "none".into()),
-                        fill = e.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
-                        alpha = e.color.map(|c| c.float_alpha()).unwrap_or(1.0),
+                        stroke = e.style.stroke.map(|s| s.size).unwrap_or(0.0),
+                        color = e.style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
+                        alpha = e.style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
+                        fill = e.style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();
@@ -147,6 +147,7 @@ mod tests {
     use crate::shape::stored::{path::Path, ellipse::Ellipse};
     use crate::path_command::PathCommand;
     use crate::geom::Angle;
+    use crate::style::{Style, Stroke};
 
     #[test]
     fn test_serialize() {
@@ -200,7 +201,13 @@ mod tests {
         storage.add(Box::new(Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DWorld::new(10.0, 10.0)),
             PathCommand::LineTo(Vec2DWorld::new(10.0, 10.0)),
-        ], Some(Color::green().with_alpha(127)), None, 3.0)));
+        ], Style {
+            stroke: Some(Stroke {
+                color: Color::green().with_alpha(127),
+                size: 3.0,
+            }),
+            fill: None,
+        })));
 
         assert_eq!(storage.to_svg(Default::default()), include_str!("../res/serialize_alpha.svg"));
     }
@@ -219,15 +226,19 @@ mod tests {
         storage.add(Box::new(Path::from_parts(vec![
             PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
             PathCommand::LineTo(Vec2DWorld::new(10.0, 10.0)),
-        ], None, None, 3.0)));
+        ], Style {
+            stroke: None,
+            fill: None,
+        })));
         storage.add(Box::new(Ellipse::from_parts(
             Vec2DWorld::new(0.0, 0.0),
             10.0,
             15.0,
             Angle::from_radians(0.0),
-            None,
-            None,
-            2.0,
+            Style {
+                fill: None,
+                stroke: None,
+            },
         )));
 
         assert_eq!(storage.to_svg(Default::default()), include_str!("../res/serialize_stroke_fill_none.svg"));
