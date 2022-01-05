@@ -208,4 +208,14 @@ mod tests {
         // returned bbox is in world units. Meaning that when it is queried it
         // will also be queried in world units
     }
+
+    #[test]
+    fn erase_on_touch_stroke() {
+        todo!()
+    }
+
+    #[test]
+    fn erase_on_touch_interior_if_fill() {
+        todo!()
+    }
 }

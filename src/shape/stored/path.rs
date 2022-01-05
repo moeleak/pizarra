@@ -180,4 +180,14 @@ mod tests {
             Vec2DWorld::new(60.0 + stroke, 60.0 + stroke),
         ]);
     }
+
+    #[test]
+    fn erase_on_touch_stroke() {
+        todo!()
+    }
+
+    #[test]
+    fn erase_on_touch_interior_if_fill() {
+        todo!()
+    }
 }
