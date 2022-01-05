@@ -301,8 +301,6 @@ impl ShapeBuilder for PolygonBuilder {
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use crate::style::Stroke;
-
     use super::*;
 
     const SNAP: f64 = 10.0;
@@ -365,13 +363,7 @@ mod tests {
                     to: Vec2DWorld::new(30.0, 0.0),
                 }),
             ],
-            style: Style {
-                stroke: Some(Stroke {
-                    color: Default::default(),
-                    size: 4.0,
-                }),
-                fill: None,
-            },
+            style: Default::default(),
         });
     }
 

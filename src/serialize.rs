@@ -138,7 +138,7 @@ impl Storage {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use pretty_assertions::assert_eq;
 
     use crate::color::Color;
     use crate::point::Vec2DScreen;
@@ -148,6 +148,8 @@ mod tests {
     use crate::path_command::PathCommand;
     use crate::geom::Angle;
     use crate::style::{Style, Stroke};
+
+    use super::*;
 
     #[test]
     fn test_serialize() {

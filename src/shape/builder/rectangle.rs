@@ -75,7 +75,7 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::style::Stroke;
+    use pretty_assertions::assert_eq;
 
     use super::*;
 
@@ -93,13 +93,7 @@ mod tests {
 
         // while being drawn
         assert_eq!(rect.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            style: Style {
-                stroke: Some(Stroke {
-                    color: Default::default(),
-                    size: 1.0,
-                }),
-                fill: None,
-            },
+            style: Default::default(),
             commands: vec![
                 PathCommand::MoveTo(Vec2DWorld::new(4.0, 5.0)),
                 PathCommand::LineTo(Vec2DWorld::new(10.0, 5.0)),
@@ -113,13 +107,7 @@ mod tests {
         match rect.handle_button_released(b, t, SNAP) {
             ShapeFinished::Yes(s) => {
                 assert_eq!(s.draw_commands(), DrawCommand::Path {
-                    style: Style {
-                        stroke: Some(Stroke {
-                            color: Default::default(),
-                            size: 1.0,
-                        }),
-                        fill: None,
-                    },
+                    style: Default::default(),
                     commands: vec![
                         PathCommand::MoveTo(Vec2DWorld::new(4.0, 5.0)),
                         PathCommand::LineTo(Vec2DWorld::new(10.0, 5.0)),

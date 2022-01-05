@@ -116,9 +116,10 @@ impl ShapeBuilder for FociAndPointEllipse {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use crate::point::Point;
     use crate::geom::Angle;
-    use crate::style::Stroke;
     use crate::color::Color;
 
     use super::*;
@@ -211,13 +212,7 @@ mod tests {
 
         // and check that a first ellipse is built
         assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Ellipse(draw_commands::Ellipse {
-            style: Style {
-                stroke: Some(Stroke {
-                    color: Default::default(),
-                    size: 1.0,
-                }),
-                fill: None,
-            },
+            style: Default::default(),
             center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
             semimajor: 5.838320272867801,
             semiminor: 4.575529950080007,
@@ -230,13 +225,7 @@ mod tests {
         match builder.handle_button_released(e, t, SNAP) {
             ShapeFinished::Yes(shape) => {
                 assert_eq!(shape.draw_commands(), DrawCommand::Ellipse(draw_commands::Ellipse {
-                    style: Style {
-                        stroke: Some(Stroke {
-                            color: Default::default(),
-                            size: 1.0,
-                        }),
-                        fill: None,
-                    },
+                    style: Default::default(),
                     center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
                     semimajor: 7.793799303722533,
                     semiminor: 6.898753387548061,

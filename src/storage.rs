@@ -224,7 +224,7 @@ impl <'a> Iterator for ShapeIterator<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use pretty_assertions::assert_eq;
 
     use crate::shape::{ShapeId, stored::{path::Path, ellipse::Ellipse}};
     use crate::path_command::PathCommand;
@@ -233,6 +233,8 @@ mod tests {
     use crate::point::Vec2DWorld;
     use crate::geom::Angle;
     use crate::style::{Style, Stroke};
+
+    use super::*;
 
     #[test]
     fn add_shapes_at_zoom() {
@@ -441,6 +443,6 @@ mod tests {
         assert_eq!(commands.len(), 2);
 
         assert_eq!(commands[0].color(), Some(Color::red()));
-        assert_eq!(commands[1].color(), Some(Color::green()));
+        assert_eq!(commands[1].color(), Some(Default::default()));
     }
 }
