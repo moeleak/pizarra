@@ -11,14 +11,14 @@ pub struct Vec2D {
 }
 
 /// A point in the storage as X Y coordinates.
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Vec2DWorld {
     pub x: f64,
     pub y: f64,
 }
 
 /// A point as read from the screen in X Y coordinates
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Vec2DScreen {
     pub x: f64,
     pub y: f64,

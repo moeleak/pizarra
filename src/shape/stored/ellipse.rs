@@ -54,9 +54,17 @@ impl ShapeStored for Ellipse {
         let y2 = fun_t_y(t + PI);
         let [min_y, max_y] = [y1.min(y2), y1.max(y2)];
 
+        let (topleft, bottomright) = if let Some(stroke) = self.style.stroke {
+            let size = stroke.size / 2.0;
+
+            (Vec2DWorld::new(-size, -size), Vec2DWorld::new(size, size))
+        } else {
+            Default::default()
+        };
+
         [
-            Vec2DWorld::new(min_x, min_y),
-            Vec2DWorld::new(max_x, max_y),
+            Vec2DWorld::new(min_x, min_y) + topleft,
+            Vec2DWorld::new(max_x, max_y) + bottomright,
         ]
     }
 
@@ -120,9 +128,16 @@ mod tests {
         let center = Vec2DWorld::new(-3.0257300000000003, 1.26254);
         let semimajor = 7.793799303722533;
         let semiminor = 6.898753387548061;
+        let style = Style {
+            fill: None,
+            stroke: Some(Stroke {
+                size: 0.0,
+                color: Default::default(),
+            }),
+        };
 
         // axis aligned
-        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, Angle::from_radians(0.0), Default::default());
+        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, Angle::from_radians(0.0), style);
 
         assert_eq!(ellipse.bbox(), [
             center - Vec2DWorld::new(semimajor, semiminor),
@@ -131,7 +146,7 @@ mod tests {
 
         // rotated
         let angle = Angle::from_radians(-0.7769764190469384);
-        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, Default::default());
+        let ellipse = Ellipse::from_parts(center, semimajor, semiminor, angle, style);
 
         assert_eq!(ellipse.bbox(), [
             Vec2DWorld { x: -10.39314460317701, y: -6.089827506715496 },
@@ -169,6 +184,28 @@ mod tests {
             bottomright,
         ]);
 
-        todo!("but only if it has stroke");
+        let style = Style {
+            fill: None,
+            stroke: None,
+        };
+        let ellipse = Ellipse::from_parts(
+            center,
+            semimajor,
+            semiminor,
+            angle,
+            style,
+        );
+
+        let topleft = Vec2DWorld::new(-73.0, -36.0);
+        let bottomright = Vec2DWorld::new(73.0, 36.0);
+
+        assert_eq!(ellipse.bbox(), [
+            topleft,
+            bottomright,
+        ]);
+
+        // there is no need to take into account the zoom level here since the
+        // returned bbox is in world units. Meaning that when it is queried it
+        // will also be queried in world units
     }
 }
