@@ -4,6 +4,7 @@ use crate::geom::bbox_from_points;
 use crate::path_command::PathCommand;
 use crate::shape::{ShapeStored, ShapeType};
 use crate::style::Style;
+use crate::point::Point;
 
 #[derive(Debug)]
 pub struct Path {
@@ -30,8 +31,19 @@ impl ShapeStored for Path {
     // The bounding box of the path needs to consider the beizer handles
     fn bbox(&self) -> [Vec2DWorld; 2] {
         let points = self.commands.iter().map(|c| c.points()).flatten();
+        let [topleft, bottomright] = bbox_from_points(points);
+        let (topleftpad, bottomrightpad) = if let Some(stroke) = self.style.stroke {
+            let size = stroke.size;
 
-        bbox_from_points(points)
+            (Vec2DWorld::new(-size, -size), Vec2DWorld::new(size, size))
+        } else {
+            Default::default()
+        };
+
+        [
+            topleft + topleftpad,
+            bottomright + bottomrightpad,
+        ]
     }
 
     fn shape_type(&self) -> ShapeType {
@@ -59,17 +71,22 @@ impl ShapeStored for Path {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use pretty_assertions::assert_eq;
 
     use crate::point::{Point, Vec2DWorld};
-    use crate::path_command::CubicBezierCurve;
+    use crate::path_command::{PathCommand::*, CubicBezierCurve};
+
+    use super::*;
 
     #[test]
     fn test_bbox() {
         let line = Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DWorld::new(1.0, 0.0)),
-            PathCommand::LineTo(Vec2DWorld::new(0.0, 1.0)),
-        ], Default::default());
+            MoveTo(Vec2DWorld::new(1.0, 0.0)),
+            LineTo(Vec2DWorld::new(0.0, 1.0)),
+        ], Style {
+            stroke: None,
+            fill: None,
+        });
 
         assert_eq!(line.bbox(), [Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(1.0, 1.0)]);
     }
@@ -77,11 +94,14 @@ mod tests {
     #[test]
     fn test_bbox_twisted_line() {
         let line = Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DWorld::new(-12.0, -1.0)),
-            PathCommand::LineTo(Vec2DWorld::new(-5.0, 0.0)),
-            PathCommand::LineTo(Vec2DWorld::new(-2.0, 7.0)),
-            PathCommand::LineTo(Vec2DWorld::new(2.0, -8.0)),
-        ], Default::default());
+            MoveTo(Vec2DWorld::new(-12.0, -1.0)),
+            LineTo(Vec2DWorld::new(-5.0, 0.0)),
+            LineTo(Vec2DWorld::new(-2.0, 7.0)),
+            LineTo(Vec2DWorld::new(2.0, -8.0)),
+        ], Style {
+            stroke: None,
+            fill: None,
+        });
 
         assert_eq!(line.bbox(), [Vec2DWorld::new(-12.0, -8.0), Vec2DWorld::new(2.0, 7.0)]);
     }
@@ -89,7 +109,7 @@ mod tests {
     #[test]
     fn can_delete_single_point_paths() {
         let poly = Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
+            MoveTo(Vec2DWorld::new(0.0, 0.0)),
         ], Default::default());
 
         assert!(poly.intersects_circle(Vec2DWorld::new(0.0, 0.0), 10.0));
@@ -98,8 +118,8 @@ mod tests {
     #[test]
     fn can_delete_beizer_curves() {
         let path = Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DWorld::new(33.0, 135.0)),
-            PathCommand::CurveTo(CubicBezierCurve {
+            MoveTo(Vec2DWorld::new(33.0, 135.0)),
+            CurveTo(CubicBezierCurve {
                 pt1: Vec2DWorld::new(50.0, 200.0),
                 pt2: Vec2DWorld::new(171.0, 70.0),
                 to: Vec2DWorld::new(196.0, 113.0),
@@ -123,8 +143,8 @@ mod tests {
     #[test]
     fn can_delete_straight_segments() {
         let path = Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DWorld::new(33.0, 135.0)),
-            PathCommand::LineTo(Vec2DWorld::new(196.0, 113.0)),
+            MoveTo(Vec2DWorld::new(33.0, 135.0)),
+            LineTo(Vec2DWorld::new(196.0, 113.0)),
         ], Default::default());
 
         let cases = [
@@ -143,6 +163,21 @@ mod tests {
 
     #[test]
     fn line_thickness_affects_bbox() {
-        todo!()
+        let path = Path::from_parts(vec![
+            MoveTo(Vec2DWorld::new(0.0, 0.0)),
+            LineTo(Vec2DWorld::new(30.0, 30.0)),
+            CurveTo(CubicBezierCurve {
+                pt1: Vec2DWorld::new(30.0, 60.0),
+                pt2: Vec2DWorld::new(60.0, 60.0),
+                to: Vec2DWorld::new(60.0, 30.0),
+            }),
+        ], Default::default());
+
+        let stroke = Style::default().stroke.unwrap().size;
+
+        assert_eq!(path.bbox(), [
+            Vec2DWorld::new(0.0 - stroke, 0.0 - stroke),
+            Vec2DWorld::new(60.0 + stroke, 60.0 + stroke),
+        ]);
     }
 }

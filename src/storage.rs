@@ -422,7 +422,7 @@ mod tests {
             PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),
         ], Default::default())));
 
-        assert_eq!(storage.get_bounds(), Some([Vec2DWorld::new(-5.0, -5.0), Vec2DWorld::new(5.0, 5.0)]));
+        assert_eq!(storage.get_bounds(), Some([Vec2DWorld::new(-7.0, -7.0), Vec2DWorld::new(7.0, 7.0)]));
     }
 
     #[test]
