@@ -95,6 +95,8 @@ pub struct Pizarra {
     board_state: BoardState,
     selected_tool: SelectedTool,
     current_shape: Option<Box<dyn ShapeBuilder>>,
+    last_mouse_pos: Vec2DScreen,
+    eraser_is_active: bool,
 
     /// Some paremeters used during drawing
     selected_color: Color,
@@ -173,6 +175,8 @@ impl Pizarra {
                     .map(|id| self.storage.remove(id))
                     .flatten();
 
+                self.eraser_is_active = true;
+
                 if let Some(shape) = deleted_shape {
                     self.erased.push(shape);
 
@@ -210,6 +214,8 @@ impl Pizarra {
                     .query_circle(transformed_point, self.transform.to_world_units(self.erase_radius))
                     .map(|id| self.storage.remove(id))
                     .flatten();
+
+                self.eraser_is_active = false;
 
                 if let Some(shape) = deleted_shape {
                     self.erased.push(shape);
@@ -336,6 +342,8 @@ impl Pizarra {
             current_shape: None,
 
             selected_tool: SelectedTool::Shape(ShapeTool::Path),
+            last_mouse_pos: dimensions / 2.0,
+            eraser_is_active: false,
             bgcolor: config.background_color,
             stroke: config.thickness,
             selected_color: config.stroke_color,
@@ -403,6 +411,34 @@ impl Pizarra {
         };
 
         self.storage.draw_commands(bbox)
+    }
+
+    pub fn draw_commands_for_tool(&self) -> Vec<DrawCommand> {
+        if let SelectedTool::Eraser = self.selected_tool {
+            vec![
+                DrawCommand::ScreenCircle {
+                    center: self.last_mouse_pos,
+                    radius: self.erase_radius,
+                    style: Style {
+                        stroke: Some(Stroke {
+                            size: 1.0,
+                            color: if self.eraser_is_active {
+                                Color::red()
+                            } else {
+                                Color::gray()
+                            },
+                        }),
+                        fill: if self.eraser_is_active {
+                            Some(Color::red().half_transparent())
+                        } else {
+                            None
+                        },
+                    },
+                }
+            ]
+        } else {
+            vec![]
+        }
     }
 
     /// returns only the draw commands needed to paint the current shape on the
@@ -565,6 +601,7 @@ impl Pizarra {
         };
 
         self.board_state = new_board_state;
+        self.last_mouse_pos = pos;
 
         should_redraw
     }
