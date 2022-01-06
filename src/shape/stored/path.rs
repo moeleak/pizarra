@@ -80,6 +80,7 @@ mod tests {
 
     use crate::point::{Point, Vec2DWorld};
     use crate::path_command::{PathCommand::*, CubicBezierCurve};
+    use crate::style::Stroke;
 
     use super::*;
 
@@ -188,10 +189,35 @@ mod tests {
 
     #[test]
     fn erase_on_touch_stroke() {
-        todo!()
+        let start = Vec2DWorld::new(27.410791, 119.70396);
+        let path = Path::from_parts(vec![
+            MoveTo(start),
+            CurveTo(CubicBezierCurve {
+                pt1: start + Vec2DWorld::new(0.06519,-10.40955),
+                pt2: start + Vec2DWorld::new(11.676337,-10.01372),
+                to: start + Vec2DWorld::new(11.966013,0.48172),
+            }),
+        ], Style {
+            stroke: Some(Stroke {
+                color: Default::default(),
+                size: 2.1166,
+            }),
+            fill: None,
+        });
+
+        // these must touch
+        assert!(path.intersects_circle(Vec2DWorld::new(29.841375, 116.64932), 1.3229166));
+        assert!(path.intersects_circle(Vec2DWorld::new(33.242252, 110.06812), 1.3229166));
+        assert!(path.intersects_circle(Vec2DWorld::new(37.421051, 120.87376), 1.3229166));
+
+        // these must touchn't
+        assert!(!path.intersects_circle(Vec2DWorld::new(39.535831, 112.48697), 1.3229166));
+        assert!(!path.intersects_circle(Vec2DWorld::new(34.404907, 115.59615), 1.3229166));
+        assert!(!path.intersects_circle(Vec2DWorld::new(27.536837, 110.98792), 1.3229166));
     }
 
     #[test]
+    #[ignore]
     fn erase_on_touch_interior_if_fill() {
         todo!()
     }
