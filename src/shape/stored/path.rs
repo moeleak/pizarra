@@ -52,6 +52,11 @@ impl ShapeStored for Path {
 
     fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool {
         let mut last_point = None;
+        let radius = if let Some(stroke) = self.style.stroke {
+            radius + stroke.size / 2.0
+        } else {
+            radius
+        };
 
         for c in self.commands.iter() {
             if c.intersects_circle(center, radius, last_point) {

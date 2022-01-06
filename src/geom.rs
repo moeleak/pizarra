@@ -4,6 +4,14 @@ use std::ops::Mul;
 
 use crate::point::{Point, Vec2DWorld};
 
+/// How many points will be used to approximate the bezier curve for the purpose
+/// of erasing a shape.
+///
+/// Too few will yield poor results (shapes not being deleted when the user
+/// expects them to or shapes being deleted event before being touched).
+/// Too many will impact performance.
+const BEZIER_PARTS: usize = 50;
+
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Angle(f64);
 
@@ -133,11 +141,13 @@ fn bezier_intersects_circle_inner<P: Point>(from: P, p1: P, p2: P, to: P, center
         return true;
     }
 
+    let piece = 1.0 / BEZIER_PARTS as f64;
+
     // here we compute 10 curve's points. This should be a good enough
     // aproximation
-    let points: Vec<_> = IntoIterator::into_iter([
-        0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
-    ]).map(|t| {
+    let points: Vec<_> = (0..BEZIER_PARTS).map(|p| {
+        p as f64 * piece
+    }).map(|t| {
         let b1 = combine(from, p1, t);
         let b2 = combine(p1, p2, t);
         let b3 = combine(p2, to, t);
