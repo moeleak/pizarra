@@ -265,7 +265,13 @@ mod tests {
             PathCommand::LineTo(Vec2DWorld::new(1.0, 0.0)),
             PathCommand::LineTo(Vec2DWorld::new(1.0, 1.0)),
             PathCommand::LineTo(Vec2DWorld::new(0.0, 1.0)),
-        ], Default::default());
+        ], Style {
+            stroke: Some(Stroke {
+                size: 0.0,
+                color: Default::default(),
+            }),
+            fill: None,
+        });
 
         storage.add(Box::new(line));
 

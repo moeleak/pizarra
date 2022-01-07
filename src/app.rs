@@ -896,7 +896,9 @@ mod tests {
         app.resize(Vec2DScreen::new(4.0, 4.0));
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Path));
+        app.set_stroke(0.0);
 
+        // draw the shape
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(2.0, 1.0));
         app.handle_mouse_move(Vec2DScreen::new(2.0, 1.5));
         app.handle_mouse_move(Vec2DScreen::new(2.0, 2.0));
@@ -910,6 +912,7 @@ mod tests {
         app.set_tool(SelectedTool::Eraser);
         app.set_erase_radius(0.5);
 
+        // attempt erase and fail
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(2.6, 0.0));
         app.handle_mouse_move(Vec2DScreen::new(2.6, 1.0));
         app.handle_mouse_move(Vec2DScreen::new(2.6, 3.0));
@@ -917,6 +920,7 @@ mod tests {
 
         assert_eq!(app.storage.shape_count(), 1);
 
+        // attempt erase and succeed
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(2.24, 0.0));
         app.handle_mouse_move(Vec2DScreen::new(2.4, 1.0));
         app.handle_mouse_move(Vec2DScreen::new(2.4, 3.0));
