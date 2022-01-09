@@ -211,7 +211,54 @@ mod tests {
 
     #[test]
     fn erase_on_touch_stroke() {
-        todo!()
+        let ellipse = Ellipse::from_parts(
+            Vec2DWorld::new(109.04235, 67.418289),
+            77.040901,
+            41.799728,
+            Angle::from_radians(0.0),
+            Style {
+                stroke: Some(Stroke {
+                    color: Default::default(),
+                    size: 8.0,
+                }),
+                fill: None,
+            },
+        );
+
+        assert!(ellipse.intersects_circle(Vec2DWorld::new(53.297844, 30.258219), 5.0));
+        assert!(ellipse.intersects_circle(Vec2DWorld::new(107.63097, 110.3745), 5.0));
+        assert!(ellipse.intersects_circle(Vec2DWorld::new(179.2052, 65.739304), 5.0));
+
+        assert!(!ellipse.intersects_circle(Vec2DWorld::new(43.053429, 66.872536), 5.0));
+        assert!(!ellipse.intersects_circle(Vec2DWorld::new(113.06088, 14.42239), 5.0));
+        assert!(!ellipse.intersects_circle(Vec2DWorld::new(196.29651, 67.056252), 5.0));
+        assert!(!ellipse.intersects_circle(Vec2DWorld::new(109.35854, 98.329758), 5.0));
+        assert!(!ellipse.intersects_circle(Vec2DWorld::new(108.36674, 121.74726), 5.0));
+    }
+
+    #[test]
+    fn erase_on_touch_stroke_rotated() {
+        let ellipse = Ellipse::from_parts(
+            Vec2DWorld::new(109.26, 66.20),
+            77.040901,
+            41.799728,
+            Angle::from_degrees(-22.534699),
+            Style {
+                stroke: Some(Stroke {
+                    color: Default::default(),
+                    size: 8.0,
+                }),
+                fill: None,
+            },
+        );
+
+        assert!(ellipse.intersects_circle(Vec2DWorld::new(61.263462, 37.067692), 5.0));
+        assert!(ellipse.intersects_circle(Vec2DWorld::new(79.996864, 114.73833), 5.0));
+        assert!(ellipse.intersects_circle(Vec2DWorld::new(171.72203, 37.919937), 5.0));
+
+        assert!(!ellipse.intersects_circle(Vec2DWorld::new(49.445847, 91.485023), 5.0));
+        assert!(!ellipse.intersects_circle(Vec2DWorld::new(111.19404, 35.147041), 5.0));
+        assert!(!ellipse.intersects_circle(Vec2DWorld::new(158.52556, 99.19162), 5.0));
     }
 
     #[test]

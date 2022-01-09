@@ -2,7 +2,7 @@
 //! All sorts of geometrical functions, constants and procedures
 use std::ops::Mul;
 
-use crate::point::{Point, Vec2DWorld};
+use crate::point::{Point, Vec2DWorld, Vec2D};
 
 /// How many points will be used to approximate the bezier curve for the purpose
 /// of erasing a shape.
@@ -283,6 +283,117 @@ pub fn mirror<P: Point>(point: P, through: P) -> P {
     let c = through - point;
 
     through + c
+}
+
+fn robust_length(a: f64, b: f64) -> f64 {
+    if a.abs() > b.abs() {
+        a.abs() * (1.0 + (b/a).powi(2)).sqrt()
+    } else {
+        b.abs() * (1.0 + (a/b).powi(2)).sqrt()
+    }
+}
+
+const MAX_ITERATIONS: usize = 1000;
+
+/// from https://www.geometrictools.com/Documentation/DistancePointEllipseEllipsoid.pdf
+/// David Eberly, Geometric Tools, Redmond WA 98052
+fn get_root(r0: f64, z0: f64, z1: f64, mut g: f64) -> f64 {
+    let n0 = r0 * z0;
+    let mut s0 = z1 - 1.0;
+    let mut s1 = if g < 0.0 { 0.0 } else { robust_length(n0, z1) - 1.0 };
+    let mut s = 0.0;
+
+    for _ in 0..MAX_ITERATIONS {
+        s = ( s0 + s1 ) / 2.0;
+
+        if s == s0 || s == s1 {
+            break;
+        }
+
+        let ratio0 = n0 / ( s + r0 );
+        let ratio1 = z1 / ( s + 1.0 );
+
+        g = ratio0.sqrt() + ratio1.sqrt() - 1.0;
+
+        if g > 0.0 {
+            s0 = s;
+        } else if g < 0.0 {
+            s1 = s;
+        } else {
+            break;
+        }
+    }
+
+    s
+}
+
+/// from https://www.geometrictools.com/Documentation/DistancePointEllipseEllipsoid.pdf
+/// David Eberly, Geometric Tools, Redmond WA 98052
+///
+/// computes the distance from an ellipse to the given point. The ellipse is
+/// centered in the origin. The point's coordinates must be in the 1st cuadrant
+/// i.e. y0, y1 >= 0. The ellipse's longer axis e0 is along the x axis. It is
+/// assumed that e0 >= e1.
+fn distance_point_ellipse(e0: f64, e1: f64, y0: f64, y1: f64) -> ((f64, f64), f64) {
+    if y1 > 0.0 {
+        if y0 > 0.0 {
+            let z0 = y0 / e0;
+            let z1 = y1 / e1;
+            let g = z0.powi(2) + z1.powi(2) - 1.0;
+
+            if g != 0.0 {
+                let r0 = ( e0 / e1 ).powi(2);
+                let sbar = get_root(r0, z0, z1, g);
+                let x0 = r0 * y0 / ( sbar + r0 );
+                let x1 = y1 / (sbar + 1.0) ;
+                (
+                    (x0, x1),
+                    ((x0 - y0).powi(2) + (x1 - y1).powi(2)).sqrt()
+                )
+            } else {
+                let x0 = y0;
+                let x1 = y1;
+                ((x0, x1), 0.0)
+            }
+        } else { // y0 == 0
+            let x0 = 0.0;
+            let x1 = e1;
+            ((x0, x1), (y1 - e1).abs())
+        }
+    } else { // y1 == 0
+        let numer0 = e0 * y0;
+        let denom0 = ( e0 ).powi(2) - ( e1 ).powi(2);
+
+        if numer0 < denom0 {
+            let xde0 = numer0 / denom0;
+            let x0 = e0 * xde0;
+            let x1 = e1 * (1.0 - xde0 * xde0).sqrt();
+            ((x0, x1), ((x0 - y0).powi(2) + x1.powi(2)).sqrt())
+        } else {
+            let x0 = e0;
+            let x1 = 0.0;
+            ((x0, x1), (y0 - e0).abs())
+        }
+    }
+}
+
+pub struct Ellipse<P> {
+    pub center: P,
+    pub semimajor: f64,
+    pub semiminor: f64,
+    pub angle: Angle,
+}
+
+/// Compute the distance from a point to an ellipse. Accepts the center, the
+/// two semiaxes (horizontal and vertical respectively) and the point.
+///
+/// It is assumed that e0 >= e1, this means that the point might need to be
+/// transformed in the following situations:
+///
+/// * if the ellipse is rotated
+/// * if the larger axis of the ellipse is not parallel to the x axis
+pub fn distance_from_point_to_ellipse<P: Point>(point: P, ellipse: Ellipse<P>) -> f64 {
+    todo!()
 }
 
 #[cfg(test)]
