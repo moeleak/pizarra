@@ -1,9 +1,9 @@
 use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::shape::stored::ellipse::Ellipse;
-use crate::draw_commands::{self, DrawCommand, circle_helper};
+use crate::draw_commands::{DrawCommand, circle_helper};
 use crate::transform::Transform;
-use crate::geom::{Angle, circle_through_three_points};
+use crate::geom::{self, Angle, circle_through_three_points};
 use crate::style::Style;
 
 #[derive(Debug, Copy, Clone)]
@@ -88,13 +88,15 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                 let (center, radius) = circle_through_three_points(p1, p2, p3);
 
                 vec![
-                    DrawCommand::Ellipse(draw_commands::Ellipse {
-                        center,
-                        semimajor: radius,
-                        semiminor: radius,
-                        angle: Angle::from_radians(0.0),
+                    DrawCommand::Ellipse {
+                        ellipse: geom::Ellipse {
+                            center,
+                            semimajor: radius,
+                            semiminor: radius,
+                            angle: Angle::from_radians(0.0),
+                        },
                         style: self.style,
-                    }),
+                    },
 
                     circle_helper(t.to_screen_coordinates(p1), snap),
                     circle_helper(t.to_screen_coordinates(p2), snap),

@@ -1,9 +1,9 @@
 use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::transform::Transform;
-use crate::geom::ellipse_from_foci_and_point;
+use crate::geom::{self, ellipse_from_foci_and_point};
 use crate::shape::stored::ellipse::Ellipse;
-use crate::draw_commands::{DrawCommand, self, circle_helper, path_helper};
+use crate::draw_commands::{DrawCommand, circle_helper, path_helper};
 use crate::style::Style;
 
 #[derive(Debug, Copy, Clone)]
@@ -95,10 +95,12 @@ impl ShapeBuilder for FociAndPointEllipse {
                 let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, point);
 
                 vec![
-                    DrawCommand::Ellipse(draw_commands::Ellipse {
+                    DrawCommand::Ellipse {
+                        ellipse: geom::Ellipse {
+                            center, semimajor, semiminor, angle,
+                        },
                         style: self.style,
-                        center, semimajor, semiminor, angle,
-                    }),
+                    },
 
                     path_helper(vec![
                         t.to_screen_coordinates(foci[0]),
@@ -211,26 +213,30 @@ mod tests {
         builder.handle_mouse_moved(d, t, SNAP);
 
         // and check that a first ellipse is built
-        assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Ellipse(draw_commands::Ellipse {
+        assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Ellipse {
             style: Default::default(),
-            center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
-            semimajor: 5.838320272867801,
-            semiminor: 4.575529950080007,
-            angle: Angle::from_radians(-0.7769764190469384),
-        }));
+            ellipse: geom::Ellipse {
+                center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
+                semimajor: 5.838320272867801,
+                semiminor: 4.575529950080007,
+                angle: Angle::from_radians(-0.7769764190469384),
+            },
+        });
 
         // finish the ellipse at a point E
         builder.handle_mouse_moved(e, t, SNAP);
 
         match builder.handle_button_released(e, t, SNAP) {
             ShapeFinished::Yes(shape) => {
-                assert_eq!(shape.draw_commands(), DrawCommand::Ellipse(draw_commands::Ellipse {
+                assert_eq!(shape.draw_commands(), DrawCommand::Ellipse {
                     style: Default::default(),
-                    center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
-                    semimajor: 7.793799303722533,
-                    semiminor: 6.898753387548061,
-                    angle: Angle::from_radians(-0.7769764190469384),
-                }));
+                    ellipse: geom::Ellipse {
+                        center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
+                        semimajor: 7.793799303722533,
+                        semiminor: 6.898753387548061,
+                        angle: Angle::from_radians(-0.7769764190469384),
+                    },
+                });
             },
             _ => panic!(),
         }

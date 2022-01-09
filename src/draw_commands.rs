@@ -1,17 +1,8 @@
 use crate::point::{Vec2DWorld, Vec2DScreen};
 use crate::color::Color;
 use crate::path_command::PathCommand::{self, *};
-use crate::geom::Angle;
+use crate::geom::Ellipse;
 use crate::style::Style;
-
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub struct Ellipse {
-    pub center: Vec2DWorld,
-    pub semimajor: f64,
-    pub semiminor: f64,
-    pub angle: Angle,
-    pub style: Style,
-}
 
 /// This enum is returned by the shapes (both stored and the one being drawn).
 /// It is the interface between the backend (libpizarra) and the frontend
@@ -26,7 +17,10 @@ pub enum DrawCommand {
     },
 
     /// An ellipse without filling
-    Ellipse(Ellipse),
+    Ellipse {
+        ellipse: Ellipse<Vec2DWorld>,
+        style: Style,
+    },
 
     /// A path in screen coordinates without filling. Used to render handles and
     /// other visual aids
@@ -48,7 +42,7 @@ impl DrawCommand {
     pub fn color(&self) -> Option<Color> {
         match self {
             DrawCommand::Path { style, .. } => style.stroke.map(|s| s.color),
-            DrawCommand::Ellipse(e) => e.style.stroke.map(|s| s.color),
+            DrawCommand::Ellipse { style, .. } => style.stroke.map(|s| s.color),
             DrawCommand::ScreenPath { style, .. } => style.stroke.map(|s| s.color),
             DrawCommand::ScreenCircle { style, .. } => style.stroke.map(|s| s.color),
         }
@@ -57,7 +51,7 @@ impl DrawCommand {
     pub fn fill(&self) -> Option<Color> {
         match self {
             DrawCommand::Path { style, .. } => style.fill,
-            DrawCommand::Ellipse(e) => e.style.fill,
+            DrawCommand::Ellipse { style, .. } => style.fill,
             DrawCommand::ScreenPath { style, .. } => style.fill,
             DrawCommand::ScreenCircle { style, .. } => style.fill,
         }

@@ -1,9 +1,9 @@
 use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::shape::stored::ellipse::Ellipse;
-use crate::draw_commands::{self, DrawCommand, path_helper, circle_helper};
+use crate::draw_commands::{DrawCommand, path_helper, circle_helper};
 use crate::transform::Transform;
-use crate::geom::Angle;
+use crate::geom::{self, Angle};
 use crate::style::Style;
 
 #[derive(Debug)]
@@ -49,13 +49,15 @@ impl ShapeBuilder for CenterAndRadiusCircle {
     fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
         let radius = self.center.distance(self.point);
         vec![
-            DrawCommand::Ellipse(draw_commands::Ellipse {
-                center: self.center,
-                semimajor: radius,
-                semiminor: radius,
-                angle: Angle::from_radians(0.0),
+            DrawCommand::Ellipse {
+                ellipse: geom::Ellipse {
+                    center: self.center,
+                    semimajor: radius,
+                    semiminor: radius,
+                    angle: Angle::from_radians(0.0),
+                },
                 style: self.style,
-            }),
+            },
 
             path_helper(vec![
                 t.to_screen_coordinates(self.center),

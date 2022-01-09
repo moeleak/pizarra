@@ -2,7 +2,7 @@
 //! All sorts of geometrical functions, constants and procedures
 use std::ops::Mul;
 
-use crate::point::{Point, Vec2DWorld, Vec2D};
+use crate::point::{Point, Vec2DWorld};
 
 /// How many points will be used to approximate the bezier curve for the purpose
 /// of erasing a shape.
@@ -377,6 +377,8 @@ fn distance_point_ellipse(e0: f64, e1: f64, y0: f64, y1: f64) -> ((f64, f64), f6
     }
 }
 
+/// An ellipse for geometrical purposes
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Ellipse<P> {
     pub center: P,
     pub semimajor: f64,

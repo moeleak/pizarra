@@ -1,55 +1,54 @@
 use std::f64::consts::PI;
 use crate::point::{Point, Vec2DWorld};
-use crate::draw_commands::{DrawCommand, self};
+use crate::draw_commands::DrawCommand;
 use crate::geom::{
-    Angle, foci_and_sum_from_center_and_radi,
+    self, Angle, foci_and_sum_from_center_and_radi,
 };
 use crate::shape::{ShapeStored, ShapeType};
 use crate::style::Style;
 
 #[derive(Debug)]
 pub struct Ellipse {
-    center: Vec2DWorld,
-    semimajor: f64,
-    semiminor: f64,
-    angle: Angle,
+    ellipse: geom::Ellipse<Vec2DWorld>,
     style: Style,
 }
 
 impl Ellipse {
     pub fn from_parts(center: Vec2DWorld, semimajor: f64, semiminor: f64, angle: Angle, style: Style) -> Ellipse {
         Ellipse {
-            center, semimajor, semiminor, angle, style,
+            ellipse: geom::Ellipse {
+                center, semimajor, semiminor, angle,
+            },
+            style,
         }
     }
 }
 
 impl ShapeStored for Ellipse {
     fn draw_commands(&self) -> DrawCommand {
-        DrawCommand::Ellipse(draw_commands::Ellipse {
-            center: self.center,
-            semimajor: self.semimajor,
-            semiminor: self.semiminor,
-            angle: self.angle,
+        DrawCommand::Ellipse {
+            ellipse: self.ellipse,
             style: self.style,
-        })
+        }
     }
 
     fn bbox(&self) -> [Vec2DWorld; 2] {
+        let geom::Ellipse { center, semimajor, semiminor, angle } = self.ellipse;
+
         let fun_t_x = |t: f64| {
-            self.center.x + self.semimajor * t.cos() * self.angle.radians().cos() - self.semiminor * t.sin() * self.angle.radians().sin()
+            center.x + semimajor * t.cos() * angle.radians().cos() - semiminor * t.sin() * angle.radians().sin()
         };
 
         let fun_t_y = |t: f64| {
-            self.center.y + self.semiminor * t.sin() * self.angle.radians().cos() + self.semimajor * t.cos() * self.angle.radians().sin()
+            center.y + semiminor * t.sin() * angle.radians().cos() + semimajor * t.cos() * angle.radians().sin()
         };
 
-        let t = (-(self.semiminor / self.semimajor) * self.angle.radians().tan()).atan();
+        let t = (-(semiminor / semimajor) * angle.radians().tan()).atan();
         let x1 = fun_t_x(t);
         let x2 = fun_t_x(t + PI);
         let [min_x, max_x] = [x1.min(x2), x1.max(x2)];
 
-        let t = ((self.semiminor / self.semimajor) * (1.0 / self.angle.radians().tan())).atan();
+        let t = ((semiminor / semimajor) * (1.0 / angle.radians().tan())).atan();
         let y1 = fun_t_y(t);
         let y2 = fun_t_y(t + PI);
         let [min_y, max_y] = [y1.min(y2), y1.max(y2)];
@@ -73,8 +72,10 @@ impl ShapeStored for Ellipse {
     }
 
     fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool {
+        let geom::Ellipse { center, semimajor, semiminor, angle } = self.ellipse;
+
         let ([f1, f2], sum) = foci_and_sum_from_center_and_radi(
-            self.center, self.semimajor, self.semiminor, self.angle
+            center, semimajor, semiminor, angle
         );
         // the sum of the distances from the center of the circle to both of the
         // centers of the ellipse

@@ -38,7 +38,7 @@ impl DrawCommand {
                 writer.write(XmlEvent::end_element()).unwrap();
             }
 
-            DrawCommand::Ellipse(e) => {
+            DrawCommand::Ellipse { ellipse: e, style } => {
                 writer.write(XmlEvent::start_element("ellipse")
                     .attr("cx", &e.center.x.to_string())
                     .attr("cy", &e.center.y.to_string())
@@ -56,10 +56,10 @@ impl DrawCommand {
                             stroke:{color};\
                             stroke-opacity:{alpha};\
                             stroke-miterlimit:10;",
-                        stroke = e.style.stroke.map(|s| s.size).unwrap_or(0.0),
-                        color = e.style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
-                        alpha = e.style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
-                        fill = e.style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
+                        stroke = style.stroke.map(|s| s.size).unwrap_or(0.0),
+                        color = style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
+                        alpha = style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
+                        fill = style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
                     ))
                 ).unwrap();
                 writer.write(XmlEvent::end_element()).unwrap();

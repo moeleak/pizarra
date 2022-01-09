@@ -337,13 +337,13 @@ mod tests {
         let deserialized = Ellipse::deserialize(attrs, Default::default()).unwrap();
 
         match deserialized.draw_commands() {
-            DrawCommand::Ellipse(e) => {
+            DrawCommand::Ellipse { ellipse: e, style } => {
                 assert_eq!(e.center, Vec2DWorld::new(20.4, -30.5));
                 assert_eq!(e.semimajor, 5.6);
                 assert_eq!(e.semiminor, 3.5);
                 assert_eq!(e.angle.degrees(), 34.5);
-                assert_eq!(e.style.stroke.unwrap().color, Color::from_int_rgb(0xca, 0xba, 0xda).with_float_alpha(0.8));
-                assert_eq!(e.style.stroke.unwrap().size, 3.5);
+                assert_eq!(style.stroke.unwrap().color, Color::from_int_rgb(0xca, 0xba, 0xda).with_float_alpha(0.8));
+                assert_eq!(style.stroke.unwrap().size, 3.5);
             },
             _ => panic!()
         }
