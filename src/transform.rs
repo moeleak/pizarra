@@ -86,7 +86,7 @@ impl Transform {
     ///
     /// Implemented as multiplying the current matrix to the left by a
     /// translation matrix
-    fn translate(&self, delta: Vec2D) -> Transform {
+    pub fn translate(&self, delta: Vec2D) -> Transform {
         multiply(&Transform::new_translate(delta), self)
     }
 
@@ -95,7 +95,7 @@ impl Transform {
     ///
     /// Implemented as multiplying the current matrix to the left by a rotation
     /// matrix.
-    fn rotate(&self, angle: Angle) -> Transform {
+    pub fn rotate(&self, angle: Angle) -> Transform {
         multiply(&Transform::new_rotate(angle), self)
     }
 
@@ -152,6 +152,10 @@ impl Transform {
             x0: inv_det * (self.xy * self.y0 - self.yy * self.x0),
             y0: inv_det * (self.yx * self.x0 - self.xx * self.y0),
         }
+    }
+
+    pub fn apply(&self, p: Vec2D) -> Vec2D {
+        self.transform_point(p.x, p.y).into()
     }
 
     pub fn to_screen_coordinates(&self, p: Vec2DWorld) -> Vec2DScreen {

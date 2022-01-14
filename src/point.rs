@@ -1,5 +1,5 @@
 use std::fmt;
-use std::ops::{Mul, Add, Sub, Div};
+use std::ops::{Mul, Add, Sub, Div, Neg};
 
 use crate::geom::Angle;
 
@@ -24,7 +24,7 @@ pub struct Vec2DScreen {
     pub y: f64,
 }
 
-pub trait Point: Sized + Copy + PartialEq +Add<Output=Self> + Sub<Output=Self> + Mul<f64, Output=Self> + Div<f64, Output=Self> {
+pub trait Point: Sized + Copy + PartialEq +Add<Output=Self> + Sub<Output=Self> + Mul<f64, Output=Self> + Div<f64, Output=Self> + Neg<Output=Self> {
     fn new(x: f64, y: f64) -> Self;
     fn x(&self) -> f64;
     fn y(&self) -> f64;
@@ -184,6 +184,17 @@ impl Div<f64> for Vec2D {
     }
 }
 
+impl Neg for Vec2D {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        Self {
+            x: -self.x,
+            y: -self.y,
+        }
+    }
+}
+
 impl Mul<f64> for Vec2DWorld {
     type Output = Vec2DWorld;
 
@@ -224,6 +235,17 @@ impl Div<f64> for Vec2DWorld {
         Vec2DWorld {
             x: self.x / rhs,
             y: self.y / rhs,
+        }
+    }
+}
+
+impl Neg for Vec2DWorld {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        Self {
+            x: -self.x,
+            y: -self.y,
         }
     }
 }
@@ -272,6 +294,17 @@ impl Div<f64> for Vec2DScreen {
     }
 }
 
+impl Neg for Vec2DScreen {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        Self {
+            x: -self.x,
+            y: -self.y,
+        }
+    }
+}
+
 impl From<[f64; 2]> for Vec2DWorld {
     fn from(other: [f64; 2]) -> Vec2DWorld {
         Vec2DWorld::new(other[0], other[1])
@@ -281,6 +314,12 @@ impl From<[f64; 2]> for Vec2DWorld {
 impl From<(f64, f64)> for Vec2DWorld {
     fn from(other: (f64, f64)) -> Vec2DWorld {
         Vec2DWorld::new(other.0, other.1)
+    }
+}
+
+impl From<(f64, f64)> for Vec2D {
+    fn from(other: (f64, f64)) -> Vec2D {
+        Vec2D::new(other.0, other.1)
     }
 }
 

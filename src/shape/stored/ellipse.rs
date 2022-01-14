@@ -2,7 +2,7 @@ use std::f64::consts::PI;
 use crate::point::{Point, Vec2DWorld};
 use crate::draw_commands::DrawCommand;
 use crate::geom::{
-    self, Angle, foci_and_sum_from_center_and_radi,
+    self, Angle, distance_from_point_to_ellipse,
 };
 use crate::shape::{ShapeStored, ShapeType};
 use crate::style::Style;
@@ -72,20 +72,11 @@ impl ShapeStored for Ellipse {
     }
 
     fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool {
-        let geom::Ellipse { center, semimajor, semiminor, angle } = self.ellipse;
-
-        let ([f1, f2], sum) = foci_and_sum_from_center_and_radi(
-            center, semimajor, semiminor, angle
-        );
-        // the sum of the distances from the center of the circle to both of the
-        // centers of the ellipse
-        let sum_of_distances = f1.distance(center) + f2.distance(center);
-
-        // if the sum of the distances from the center of the circle is within
-        // an acceptable margin then we consider that the ellipse and the circle
-        // are touching. Not true but close.
-        sum_of_distances <= sum + 2.0*radius &&
-        sum_of_distances >= sum - 2.0*radius
+        distance_from_point_to_ellipse(center, self.ellipse) <= radius + if let Some(s) = self.style.stroke {
+            s.size / 2.0
+        } else {
+            0.0
+        }
     }
 
     fn style(&self) -> Style {

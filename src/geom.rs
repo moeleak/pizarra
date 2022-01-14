@@ -1,8 +1,9 @@
 #![allow(non_snake_case)]
 //! All sorts of geometrical functions, constants and procedures
-use std::ops::Mul;
+use std::ops::{Mul, Neg};
 
 use crate::point::{Point, Vec2DWorld};
+use crate::transform::Transform;
 
 /// How many points will be used to approximate the bezier curve for the purpose
 /// of erasing a shape.
@@ -12,10 +13,15 @@ use crate::point::{Point, Vec2DWorld};
 /// Too many will impact performance.
 const BEZIER_PARTS: usize = 50;
 
+/// Stores the angle in radians internally
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Angle(f64);
 
 impl Angle {
+    pub fn is_zero(self) -> bool {
+        self.0 == 0.0
+    }
+
     pub fn degrees(self) -> f64 {
         self.0.to_degrees()
     }
@@ -52,6 +58,14 @@ impl Mul<f64> for Angle {
 
     fn mul(self, s: f64) -> Angle {
         Angle::from_radians(self.radians() *  s)
+    }
+}
+
+impl Neg for Angle {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        Angle(-self.0)
     }
 }
 
@@ -293,7 +307,7 @@ fn robust_length(a: f64, b: f64) -> f64 {
     }
 }
 
-const MAX_ITERATIONS: usize = 1000;
+const MAX_ITERATIONS: usize = 1074;
 
 /// from https://www.geometrictools.com/Documentation/DistancePointEllipseEllipsoid.pdf
 /// David Eberly, Geometric Tools, Redmond WA 98052
@@ -313,7 +327,7 @@ fn get_root(r0: f64, z0: f64, z1: f64, mut g: f64) -> f64 {
         let ratio0 = n0 / ( s + r0 );
         let ratio1 = z1 / ( s + 1.0 );
 
-        g = ratio0.sqrt() + ratio1.sqrt() - 1.0;
+        g = ratio0.powi(2) + ratio1.powi(2) - 1.0;
 
         if g > 0.0 {
             s0 = s;
@@ -335,10 +349,15 @@ fn get_root(r0: f64, z0: f64, z1: f64, mut g: f64) -> f64 {
 /// i.e. y0, y1 >= 0. The ellipse's longer axis e0 is along the x axis. It is
 /// assumed that e0 >= e1.
 fn distance_point_ellipse(e0: f64, e1: f64, y0: f64, y1: f64) -> ((f64, f64), f64) {
+    assert!(y0 >= 0.0);
+    assert!(y1 >= 0.0);
+    assert!(e0 >= e1);
+
     if y1 > 0.0 {
         if y0 > 0.0 {
             let z0 = y0 / e0;
             let z1 = y1 / e1;
+            // the ellipse equation
             let g = z0.powi(2) + z1.powi(2) - 1.0;
 
             if g != 0.0 {
@@ -351,6 +370,8 @@ fn distance_point_ellipse(e0: f64, e1: f64, y0: f64, y1: f64) -> ((f64, f64), f6
                     ((x0 - y0).powi(2) + (x1 - y1).powi(2)).sqrt()
                 )
             } else {
+                // the given point satisfies the ellipse equation, then the
+                // distance is 0.0
                 let x0 = y0;
                 let x1 = y1;
                 ((x0, x1), 0.0)
@@ -386,21 +407,24 @@ pub struct Ellipse<P> {
     pub angle: Angle,
 }
 
-/// Compute the distance from a point to an ellipse. Accepts the center, the
-/// two semiaxes (horizontal and vertical respectively) and the point.
-///
-/// It is assumed that e0 >= e1, this means that the point might need to be
-/// transformed in the following situations:
-///
-/// * if the ellipse is rotated
-/// * if the larger axis of the ellipse is not parallel to the x axis
 pub fn distance_from_point_to_ellipse<P: Point>(point: P, ellipse: Ellipse<P>) -> f64 {
-    todo!()
+    let point = Transform::default()
+        .translate((-ellipse.center).to_vec2d())
+        .rotate(-ellipse.angle)
+        .apply(point.to_vec2d());
+
+    // now make sure the point is in the first quadrant. This is a
+    // requirement of the algorithm and it is easy to see through symetries
+    // that it doesn't affect the result
+    let point = point.abs();
+    let (closest_point, distance) = distance_point_ellipse(ellipse.semimajor, ellipse.semiminor, point.x, point.y);
+
+    distance
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::point::Vec2DScreen;
+    use crate::point::{Vec2DScreen, Vec2D};
 
     use super::*;
 
@@ -559,5 +583,36 @@ mod tests {
         let i: Vec2DWorld = (160.0, 100.0).into();
 
         assert_eq!(mirror(j, i), (140.0, 80.0).into());
+    }
+
+    #[test]
+    fn distance_to_ellipse() {
+        let ellipse = Ellipse {
+            center: Vec2D::new(-4.08, 3.07),
+            semimajor: 3.05,
+            semiminor: 2.03,
+            angle: Angle::from_degrees(24.09),
+        };
+
+        let points = [
+            ('G', (0.0, 3.0), 1.27),
+            ('H', (-9.0, 3.0), 2.06),
+            ('I', (-4.0, 6.0), 0.77),
+            ('J', (-4.0, -4.0), 4.89),
+            ('K', (-3.0, 3.0), 1.37),
+            ('L', (-6.0, 3.0), 0.8),
+            ('M', (-4.06, 1.34), 0.39),
+            ('N', (-3.34, 4.9), 0.4),
+        ];
+
+        for (name, coords, expected) in points {
+            let distance = distance_from_point_to_ellipse(coords.into(), ellipse);
+
+            assert!(
+                (distance - expected).abs() < 0.01,
+                "Failed for point {}. Distance: {}, expected: {}",
+                name, distance, expected,
+            );
+        }
     }
 }
