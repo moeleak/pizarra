@@ -417,7 +417,7 @@ pub fn distance_from_point_to_ellipse<P: Point>(point: P, ellipse: Ellipse<P>) -
     // requirement of the algorithm and it is easy to see through symetries
     // that it doesn't affect the result
     let point = point.abs();
-    let (closest_point, distance) = distance_point_ellipse(ellipse.semimajor, ellipse.semiminor, point.x, point.y);
+    let (_closest_point, distance) = distance_point_ellipse(ellipse.semimajor, ellipse.semiminor, point.x, point.y);
 
     distance
 }
