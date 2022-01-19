@@ -66,7 +66,7 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
             State::Three(p1, p2, p3) => {
                 let (center, radius) = circle_through_three_points(p1, p2, p3);
 
-                ShapeFinished::Yes(Box::new(
+                ShapeFinished::Yes(vec![Box::new(
                     Ellipse::from_parts(
                         center,
                         radius,
@@ -74,7 +74,7 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                         Angle::from_radians(0.0),
                         self.style,
                     )
-                ))
+                )])
             }
         }
     }

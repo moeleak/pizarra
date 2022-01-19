@@ -78,9 +78,9 @@ impl ShapeBuilder for FociAndPointEllipse {
             } => {
                 let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, t.to_world_coordinates(pos));
 
-                ShapeFinished::Yes(Box::new(Ellipse::from_parts(
+                ShapeFinished::Yes(vec![Box::new(Ellipse::from_parts(
                     center, semimajor, semiminor, angle, self.style,
-                )))
+                ))])
             }
         }
     }
@@ -233,7 +233,7 @@ mod tests {
 
         match builder.handle_button_released(e, t, SNAP) {
             ShapeFinished::Yes(shape) => {
-                assert_eq!(shape.draw_commands(), DrawCommand::Ellipse {
+                assert_eq!(shape[0].draw_commands(), DrawCommand::Ellipse {
                     style: Default::default(),
                     ellipse: geom::Ellipse {
                         center: Vec2DWorld::new(-3.0257300000000003, 1.26254),

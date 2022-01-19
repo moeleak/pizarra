@@ -197,10 +197,10 @@ impl ShapeBuilder for PolygonBuilder {
             }
             BuilderState::FreePoint { .. } => ShapeFinished::No,
             BuilderState::End => {
-                ShapeFinished::Yes(Box::new(Path::from_parts(
+                ShapeFinished::Yes(vec![Box::new(Path::from_parts(
                     self.points.clone(),
                     self.style,
-                )))
+                ))])
             }
         }
     }
@@ -516,7 +516,7 @@ mod tests {
         poly.handle_mouse_moved(a, t, SNAP);
         poly.handle_button_pressed(a, t, SNAP);
         if let ShapeFinished::Yes(s) = poly.handle_button_released(a, t, SNAP) {
-            assert_eq!(s.draw_commands(), DrawCommand::Path {
+            assert_eq!(s[0].draw_commands(), DrawCommand::Path {
                 commands: vec![
                     MoveTo(t.to_world_coordinates(a)),
                     CurveTo(CubicBezierCurve {

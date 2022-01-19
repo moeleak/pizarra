@@ -19,7 +19,7 @@ use self::builder::three_point_circle::CircleThroughThreePointsBuilder;
 /// they're finished, for example in the case of a polygon
 #[derive(Debug)]
 pub enum ShapeFinished {
-    Yes(Box<dyn ShapeStored>),
+    Yes(Vec<Box<dyn ShapeStored>>),
     No,
     Cancelled,
 }

@@ -58,9 +58,9 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
             return ShapeFinished::Cancelled;
         }
 
-        ShapeFinished::Yes(Box::new(Path::from_parts(
+        ShapeFinished::Yes(vec![Box::new(Path::from_parts(
             draw_commands(self.all_four_corners()), self.style,
-        )))
+        ))])
     }
 
     fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
@@ -116,7 +116,7 @@ mod tests {
         // while finished
         match rect.handle_button_released(b, t, SNAP) {
             ShapeFinished::Yes(s) => {
-                assert_eq!(s.draw_commands(), DrawCommand::Path {
+                assert_eq!(s[0].draw_commands(), DrawCommand::Path {
                     style: Default::default(),
                     commands: vec![
                         PathCommand::MoveTo(Vec2DWorld::new(4.0, 5.0)),

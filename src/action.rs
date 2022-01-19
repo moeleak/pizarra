@@ -5,11 +5,8 @@ pub enum Action {
     Unfinished,
     Empty,
 
-    Draw(ShapeId),
-    Delete(Shape),
-
+    Draw(Vec<ShapeId>),
     Erase(Vec<Shape>),
-    Redraw(Vec<ShapeId>),
 }
 
 impl Default for Action {

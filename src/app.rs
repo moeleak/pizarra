@@ -201,12 +201,14 @@ impl Pizarra {
                 };
 
                 match finished {
-                    ShapeFinished::Yes(shape) => {
-                        let shape_id = self.storage.add(shape);
+                    ShapeFinished::Yes(shapes) => {
+                        let shape_ids = shapes.into_iter().map(|shape| {
+                            self.storage.add(shape)
+                        }).collect();
 
                         self.current_shape = None;
 
-                        Action::Draw(shape_id)
+                        Action::Draw(shape_ids)
                     },
                     ShapeFinished::Cancelled => {
                         self.current_shape = None;
@@ -270,24 +272,14 @@ impl Pizarra {
             Action::Unfinished => Action::Unfinished,
             Action::Empty => Action::Empty,
 
-            Action::Draw(id) => Action::Delete(self.storage.remove(id).unwrap()),
-
-            Action::Delete(shape) => {
-                let id = self.storage.restore(shape);
-
-                Action::Draw(id)
-            },
+            Action::Draw(ids) => Action::Erase(ids.into_iter().filter_map(|id| {
+                self.storage.remove(id)
+            }).collect()),
 
             Action::Erase(shapes) => {
                 let ids = shapes.into_iter().map(|shape| self.storage.restore(shape)).collect();
 
-                Action::Redraw(ids)
-            },
-
-            Action::Redraw(ids) => {
-                let shapes = ids.into_iter().map(|id| self.storage.remove(id)).flatten().collect();
-
-                Action::Erase(shapes)
+                Action::Draw(ids)
             },
         }
     }

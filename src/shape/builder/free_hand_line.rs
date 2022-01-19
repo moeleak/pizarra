@@ -126,9 +126,9 @@ impl ShapeBuilder for FreeHandLine {
     fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) { }
 
     fn handle_button_released(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) -> ShapeFinished {
-        ShapeFinished::Yes(Box::new(Path::from_parts(
+        ShapeFinished::Yes(vec![Box::new(Path::from_parts(
             self.commands.clone(), self.style,
-        )))
+        ))])
     }
 
     fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {

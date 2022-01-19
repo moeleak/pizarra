@@ -39,7 +39,7 @@ impl ShapeBuilder for CenterAndRadiusCircle {
             return ShapeFinished::Cancelled;
         }
 
-        ShapeFinished::Yes(Box::new(
+        ShapeFinished::Yes(vec![Box::new(
             Ellipse::from_parts(
                 self.center,
                 radius,
@@ -47,7 +47,7 @@ impl ShapeBuilder for CenterAndRadiusCircle {
                 Angle::from_radians(0.0),
                 self.style,
             )
-        ))
+        )])
     }
 
     fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
