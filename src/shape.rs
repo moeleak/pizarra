@@ -21,6 +21,7 @@ use self::builder::three_point_circle::CircleThroughThreePointsBuilder;
 pub enum ShapeFinished {
     Yes(Box<dyn ShapeStored>),
     No,
+    Cancelled,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]

@@ -1,4 +1,4 @@
-use crate::point::{Vec2DWorld, Vec2DScreen};
+use crate::point::{Vec2DWorld, Vec2DScreen, Point};
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::shape::stored::ellipse::Ellipse;
 use crate::draw_commands::{DrawCommand, circle_helper};
@@ -48,6 +48,7 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
         self.handle_mouse_moved(pos, t, snap);
 
+        let pos_new = t.to_world_coordinates(pos);
         match self.state {
             State::One(p1) => {
                 self.state = State::Two(p1, t.to_world_coordinates(pos));
@@ -55,11 +56,17 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                 ShapeFinished::No
             }
             State::Two(p1, p2) => {
+                if p1.distance(pos_new) < snap {
+                    return ShapeFinished::Cancelled;
+                }
                 self.state = State::Three(p1, p2, t.to_world_coordinates(pos));
 
                 ShapeFinished::No
             }
             State::Three(p1, p2, p3) => {
+                if p1.distance(pos_new) < snap || p2.distance(pos_new) < snap {
+                    return ShapeFinished::Cancelled;
+                }
                 let (center, radius) = circle_through_three_points(p1, p2, p3);
 
                 ShapeFinished::Yes(Box::new(

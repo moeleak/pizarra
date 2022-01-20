@@ -1,10 +1,10 @@
-use crate::point::{Point, Vec2DWorld, Vec2DScreen};
-use crate::draw_commands::{DrawCommand, circle_helper};
-use crate::transform::Transform;
-use crate::path_command::PathCommand;
+use crate::draw_commands::{circle_helper, DrawCommand};
 use crate::geom::middle_point;
-use crate::shape::{ShapeBuilder, ShapeFinished, stored::path::Path};
+use crate::path_command::PathCommand;
+use crate::point::{Point, Vec2DScreen, Vec2DWorld};
+use crate::shape::{stored::path::Path, ShapeBuilder, ShapeFinished};
 use crate::style::Style;
+use crate::transform::Transform;
 
 #[derive(Debug)]
 pub struct AxisAlignedRectangleBuilder {
@@ -52,6 +52,12 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
 
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
         self.handle_mouse_moved(pos, t, snap);
+
+        let first_point = self.corners[0];
+        let pos_new = t.to_world_coordinates(pos);
+        if first_point.distance(pos_new) < snap {
+            return ShapeFinished::Cancelled;
+        }
 
         ShapeFinished::Yes(Box::new(Path::from_parts(
             draw_commands(self.all_four_corners()), self.style,
@@ -118,6 +124,7 @@ mod tests {
                 });
             }
             ShapeFinished::No => panic!(),
+            ShapeFinished::Cancelled => panic!(),
         }
     }
 }

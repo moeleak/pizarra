@@ -1,10 +1,10 @@
-use crate::point::{Point, Vec2DWorld, Vec2DScreen};
-use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::shape::stored::ellipse::Ellipse;
-use crate::draw_commands::{DrawCommand, path_helper, circle_helper};
-use crate::transform::Transform;
+use crate::draw_commands::{circle_helper, path_helper, DrawCommand};
 use crate::geom::{self, Angle};
+use crate::point::{Point, Vec2DScreen, Vec2DWorld};
+use crate::shape::stored::ellipse::Ellipse;
+use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::style::Style;
+use crate::transform::Transform;
 
 #[derive(Debug)]
 pub struct CenterAndRadiusCircle {
@@ -34,6 +34,10 @@ impl ShapeBuilder for CenterAndRadiusCircle {
         self.handle_mouse_moved(pos, t, snap);
 
         let radius = self.point.distance(self.center);
+
+        if radius < snap {
+            return ShapeFinished::Cancelled;
+        }
 
         ShapeFinished::Yes(Box::new(
             Ellipse::from_parts(
