@@ -195,43 +195,65 @@ impl ShapeBuilder for Grid {
                 let x_cells = freep.x() / base;
                 let y_cells = freep.y() / height;
 
-                let x_max = x_cells.abs().ceil() * x_cells.signum() * base;
-                let y_max = y_cells.abs().ceil() * y_cells.signum() * height;
+                // integer amount of cells that will be created
+                let num_x_cells = x_cells.abs().ceil();
+                let num_y_cells = y_cells.abs().ceil();
+
+                // lines that divide the space (the grid separators)
+                let x_separators: Vec<_> = (1..(num_x_cells as i8)).map(|n| n * x_cells.signum() as i8).collect();
+                let y_separators: Vec<_> = (1..(num_y_cells as i8)).map(|n| n * y_cells.signum() as i8).collect();
 
                 // the boundaries of the grid in the transformed space
+                let x_max = num_x_cells * x_cells.signum() * base;
+                let y_max = num_y_cells * y_cells.signum() * height;
+
                 let b1 = Vec2D::new(x_max, 0.0);
                 let b2 = Vec2D::new(x_max, y_max);
                 let b3 = Vec2D::new(0.0, y_max);
 
+                // transform to world coordinates
                 let inverse = t.invert();
 
                 let world_b1 = inverse.apply(b1).into();
                 let world_b2 = inverse.apply(b2).into();
                 let world_b3 = inverse.apply(b3).into();
 
-                vec![
+                let world_x_seps: Vec<_> = x_separators.into_iter().map(|n| {
                     DrawCommand::Path {
                         commands: vec![
-                            MoveTo(start),
-                            LineTo(world_b1),
-                            LineTo(dbg!(world_b2)),
-                            LineTo(world_b3),
-                            LineTo(start),
-                        ],
-                        style: Style::path_helper(),
-                    },
-
-                    DrawCommand::Path {
-                        commands: vec![
-                            MoveTo(start),
-                            LineTo(p1),
-                            LineTo(p2),
-                            LineTo(start + (p2 - p1)),
-                            LineTo(start),
+                            MoveTo(inverse.apply(Vec2D::new(n as f64 * base, 0.0)).into()),
+                            LineTo(inverse.apply(Vec2D::new(n as f64 * base, y_max)).into()),
                         ],
                         style: self.style,
-                    },
-                ]
+                    }
+                }).collect();
+                let world_y_seps: Vec<_> = y_separators.into_iter().map(|n| {
+                    DrawCommand::Path {
+                        commands: vec![
+                            MoveTo(inverse.apply(Vec2D::new(0.0, n as f64 * height)).into()),
+                            LineTo(inverse.apply(Vec2D::new(x_max, n as f64 * height)).into()),
+                        ],
+                        style: self.style,
+                    }
+                }).collect();
+
+                let mut commands = Vec::with_capacity(1 + world_x_seps.len() + world_y_seps.len());
+
+                commands.push(DrawCommand::Path {
+                    commands: vec![
+                        MoveTo(start),
+                        LineTo(world_b1),
+                        LineTo(world_b2),
+                        LineTo(world_b3),
+                        LineTo(start),
+                    ],
+                    style: self.style,
+                });
+
+                commands.extend(world_x_seps);
+                commands.extend(world_y_seps);
+
+                commands
             }
 
             State::PreDefineScale { .. } => {

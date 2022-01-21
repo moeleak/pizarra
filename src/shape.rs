@@ -15,6 +15,7 @@ use self::builder::center_and_radius_circle::CenterAndRadiusCircle;
 use self::builder::rectangle::AxisAlignedRectangleBuilder;
 use self::builder::three_point_circle::CircleThroughThreePointsBuilder;
 use self::builder::grid::Grid;
+use self::builder::free_grid::FreeGrid;
 
 /// Shapes handle input from the user, and they're responsible of notifying when
 /// they're finished, for example in the case of a polygon
@@ -41,6 +42,7 @@ pub enum ShapeTool {
     CircleThroughThreePoints,
     ThreePointEllipse,
     Grid,
+    FreeGrid,
 }
 
 impl ShapeTool {
@@ -53,6 +55,7 @@ impl ShapeTool {
             ShapeTool::CircleThroughThreePoints => Box::new(CircleThroughThreePointsBuilder::start(initial, style)),
             ShapeTool::ThreePointEllipse => Box::new(FociAndPointEllipse::start(initial, style)),
             ShapeTool::Grid => Box::new(Grid::start(initial, style)),
+            ShapeTool::FreeGrid => Box::new(FreeGrid::start(initial, style)),
         }
     }
 }

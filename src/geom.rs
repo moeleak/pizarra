@@ -381,7 +381,7 @@ pub fn distance_from_point_to_ellipse<P: Point>(point: P, ellipse: Ellipse<P>) -
 /// The three points are considered to be laid out like this, modulo some
 /// rotations, scales and mirrors:
 ///
-/// ```
+/// ```text
 ///                 p2
 ///                 ^
 ///                /
