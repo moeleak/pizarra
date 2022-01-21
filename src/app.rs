@@ -380,6 +380,10 @@ impl Pizarra {
         Pizarra::new(Vec2DScreen::new(80.0, 60.0), Default::default())
     }
 
+    pub fn set_config(&mut self, config: Config) {
+        self.config = config;
+    }
+
     /// Returns a transform object needed for proper rendering. This object can
     /// translate a point from storage coordinates to screen coordinates.
     pub fn get_transform(&self) -> Transform {
@@ -1128,6 +1132,8 @@ mod tests {
     fn cache_invalidation_on_ctrl_z() {
         let mut app = Pizarra::new_for_testing();
 
+        app.config.point_snap_radius = 1.0;
+
         app.resize(Vec2DScreen::new(10.0, 10.0));
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Rectangle));
@@ -1182,6 +1188,8 @@ mod tests {
         //
         // it's expeceted for the eraser not to erase the shape
         let mut app = Pizarra::new_for_testing();
+
+        app.config.point_snap_radius = 1.0;
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Rectangle));
 

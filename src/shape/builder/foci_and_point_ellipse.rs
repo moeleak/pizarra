@@ -54,7 +54,8 @@ impl ShapeBuilder for FociAndPointEllipse {
     fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _: Transform, _snap: f64) { }
 
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
-        let pos_new = t.to_world_coordinates(pos);
+        let wpos = t.to_world_coordinates(pos);
+
         match self.state {
             State::One(f1) => {
                 self.state = State::Foci([f1, t.to_world_coordinates(pos)]);
@@ -62,7 +63,7 @@ impl ShapeBuilder for FociAndPointEllipse {
                 ShapeFinished::No
             }
             State::Foci(foci) => {
-                if foci[0].distance(pos_new) < snap {
+                if foci[0].distance(wpos) < snap {
                     return ShapeFinished::Cancelled;
                 }
                 self.state = State::FociAndPoint {

@@ -148,6 +148,7 @@ mod tests {
     use crate::path_command::PathCommand;
     use crate::geom::Angle;
     use crate::style::{Style, Stroke};
+    use crate::config::Config;
 
     use super::*;
 
@@ -177,9 +178,14 @@ mod tests {
         app.set_color(Color::red());
         app.set_stroke(3.5);
 
-        let a: Vec2DScreen = (-5.61146,3.80508).into();
-        let c: Vec2DScreen = (-0.44,-1.28).into();
-        let e: Vec2DScreen = (4.3,-0.4).into();
+        app.set_config(Config {
+            point_snap_radius: 1.0,
+            ..Default::default()
+        });
+
+        let a: Vec2DScreen = (-5.61146, 3.80508).into();
+        let c: Vec2DScreen = (-0.44, -1.28).into();
+        let e: Vec2DScreen = (4.3, -0.4).into();
 
         // start and first focus of the ellipse
         app.handle_mouse_button_pressed(MouseButton::Left, a);

@@ -75,7 +75,7 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
             circle_helper(t.to_screen_coordinates(center), snap)
         };
 
-        
+
 
         vec![
             DrawCommand::Path {
@@ -94,7 +94,7 @@ mod tests {
 
     use super::*;
 
-    const SNAP: f64 = 10.0;
+    const SNAP: f64 = 1.0;
 
     #[test]
     fn finished_shape_has_all_sides() {
@@ -132,8 +132,7 @@ mod tests {
                     ],
                 });
             }
-            ShapeFinished::No => panic!(),
-            ShapeFinished::Cancelled => panic!(),
+            _ => panic!(),
         }
     }
 }
