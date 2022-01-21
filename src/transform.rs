@@ -172,7 +172,7 @@ impl Transform {
         self.xx * self.yy - self.xy * self.yx
     }
 
-    fn invert(&self) -> Self {
+    pub fn invert(&self) -> Self {
         let det = self.determinant();
 
         let inv_det = 1.0 / det;

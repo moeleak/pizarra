@@ -391,7 +391,7 @@ pub fn distance_from_point_to_ellipse<P: Point>(point: P, ellipse: Ellipse<P>) -
 ///
 /// so that when the space is transformed they will ve the two unit vectors that
 /// define the space î and ĵ
-pub fn rombus_to_square(origin: Vec2D, p1: Vec2D, p2: Vec2D) -> Transform {
+pub fn rombus_to_rectangle(origin: Vec2D, p1: Vec2D, p2: Vec2D) -> Transform {
     // first vector. In the final transformed space this will point to the
     // positive X axis and be perfectly horizontal
     let a = p1 - origin;
@@ -613,7 +613,7 @@ mod tests {
         // this is the tolerable error for this test
         let epsilon = 0.004;
 
-        let t1 = rombus_to_square(a, b, c);
+        let t1 = rombus_to_rectangle(a, b, c);
         assert!(dbg!(t1.apply(a).distance(Vec2D::new(0.0, 0.0))) < epsilon);
         assert!(dbg!(t1.apply(b).distance(Vec2D::new(4.64, 0.0))) < epsilon);
         assert!(dbg!(t1.apply(c).distance(Vec2D::new(4.64, 3.13))) < epsilon);
