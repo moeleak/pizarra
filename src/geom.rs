@@ -403,13 +403,16 @@ pub fn rombus_to_square(origin: Vec2D, p1: Vec2D, p2: Vec2D) -> Transform {
     let area = a.cross_area(b);
     let height = area / a.magnitude();
 
-    dbg!(b.angle().degrees());
-
-    Transform::new_translate(-origin)
+    let t = Transform::new_translate(-origin)
         .rotate(-a.angle())
         .scale_x(1.0 / a.magnitude())
-        .scale_y(1.0 / height)
-        // .shear_x(-b.angle())
+        .scale_y(1.0 / height);
+
+    let p1p = t.apply(p1);
+    let p2p = t.apply(p2);
+    let bp = p2p - p1p;
+
+    t.shear_x(bp.angle() - Angle::from_radians(std::f64::consts::FRAC_PI_2))
 }
 
 #[cfg(test)]
@@ -624,11 +627,11 @@ mod tests {
         let t1 = rombus_to_square(a, b, c);
         assert!(t1.apply(a).distance(Vec2D::new(0.0, 0.0)) < epsilon);
         assert!(t1.apply(b).distance(Vec2D::new(1.0, 0.0)) < epsilon);
-        assert_eq!(t1.apply(c), Vec2D::new(1.0, 1.0));
+        assert!(dbg!(t1.apply(c).distance(Vec2D::new(1.0, 1.0))) < epsilon);
 
         let t2 = rombus_to_square(d, e, f);
-        assert_eq!(t2.apply(d), Vec2D::new(0.0, 0.0));
-        assert_eq!(t2.apply(e), Vec2D::new(1.0, 0.0));
-        assert_eq!(t2.apply(f), Vec2D::new(1.0, 1.0));
+        assert!(t2.apply(d).distance(Vec2D::new(0.0, 0.0)) < epsilon);
+        assert!(t2.apply(e).distance(Vec2D::new(1.0, 0.0)) < epsilon);
+        assert!(t2.apply(f).distance(Vec2D::new(1.0, 1.0)) < epsilon);
     }
 }
