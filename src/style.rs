@@ -48,6 +48,13 @@ impl Style {
         }
     }
 
+    pub fn red_circle_helper() -> Style {
+        Style {
+            stroke: None,
+            fill: Some(Color::red().half_transparent()),
+        }
+    }
+
     pub fn path_helper() -> Style {
         Style {
             fill: None,

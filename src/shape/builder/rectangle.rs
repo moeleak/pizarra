@@ -1,4 +1,4 @@
-use crate::draw_commands::{circle_helper, DrawCommand};
+use crate::draw_commands::{circle_helper, red_circle_helper, DrawCommand};
 use crate::geom::middle_point;
 use crate::path_command::PathCommand;
 use crate::point::{Point, Vec2DScreen, Vec2DWorld};
@@ -68,13 +68,22 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
         let corners = self.all_four_corners();
         let center = middle_point(corners[0], corners[2]);
 
+        let first_point = self.corners[0];
+        let c = if first_point.distance(center) < snap/2.0 {
+            red_circle_helper(t.to_screen_coordinates(center), snap)
+        } else {
+            circle_helper(t.to_screen_coordinates(center), snap)
+        };
+
+        
+
         vec![
             DrawCommand::Path {
                 commands: draw_commands(corners),
                 style: self.style,
             },
 
-            circle_helper(t.to_screen_coordinates(center), snap),
+            c,
         ]
     }
 }

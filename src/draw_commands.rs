@@ -68,6 +68,14 @@ pub fn circle_helper(center: Vec2DScreen, radius: f64) -> DrawCommand {
     }
 }
 
+pub fn red_circle_helper(center: Vec2DScreen, radius: f64) -> DrawCommand {
+    DrawCommand::ScreenCircle {
+        center,
+        radius,
+        style: Style::red_circle_helper(),
+    }
+}
+
 pub fn path_helper(points: Vec<Vec2DScreen>) -> DrawCommand {
     DrawCommand::ScreenPath {
         commands: points.into_iter().enumerate().map(|(i, p)| {
