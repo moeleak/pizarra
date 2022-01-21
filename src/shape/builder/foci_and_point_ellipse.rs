@@ -139,7 +139,7 @@ mod tests {
 
     use super::*;
 
-    const SNAP: f64 = 10.0;
+    const SNAP: f64 = 1.0;
 
     #[test]
     fn three_point_ellipse_builder() {
@@ -175,20 +175,12 @@ mod tests {
         builder.handle_mouse_moved(a, t, SNAP);
         builder.handle_button_released(a, t, SNAP);
 
-        // a line is drawn connecting A and A
+        // a circle is drawn around the first circle
         assert_eq!(builder.draw_commands(t, SNAP), vec![
             DrawCommand::ScreenCircle {
                 style: Style {
                     stroke: None,
-                    fill: Some(Color::gray().half_transparent()),
-                },
-                center: a,
-                radius: SNAP,
-            },
-            DrawCommand::ScreenCircle {
-                style: Style {
-                    stroke: None,
-                    fill: Some(Color::gray().half_transparent()),
+                    fill: Some(Color::red().half_transparent()),
                 },
                 center: a,
                 radius: SNAP,
