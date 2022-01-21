@@ -4,6 +4,7 @@ use crate::path_command::PathCommand::*;
 use crate::point::{Point, Vec2DScreen, Vec2DWorld};
 use crate::transform::Transform;
 use crate::style::Style;
+use crate::geom::rombus_to_square;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -131,7 +132,10 @@ impl ShapeBuilder for Grid {
             }
 
             State::TwoDimension { start, p1, free } => {
-                self.state = State::DefineGrid { start, p1, p2: free, t: todo!(), free: wpos };
+                let p2 = free;
+                let t = rombus_to_square(start.to_vec2d(), p1.to_vec2d(), p2.to_vec2d());
+
+                self.state = State::DefineGrid { start, p1, p2, t, free: wpos };
 
                 ShapeFinished::No
             }
@@ -184,6 +188,12 @@ impl ShapeBuilder for Grid {
             }
 
             State::DefineGrid { start, p1, p2, t, free } => {
+                let base = t.apply(p1.to_vec2d()).x();
+                let height = t.apply(p2.to_vec2d()).y();
+                let freep = t.apply(free.to_vec2d());
+
+                dbg!((freep.x() / base, freep.y() / height));
+
                 vec![DrawCommand::Path {
                     commands: vec![
                         MoveTo(start),

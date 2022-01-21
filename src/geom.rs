@@ -375,15 +375,17 @@ pub fn distance_from_point_to_ellipse<P: Point>(point: P, ellipse: Ellipse<P>) -
 }
 
 /// Given the three points that define a rombus in some space, return the
-/// matrix that transform its space into one where that very rombus is a square
-/// of size 1.
+/// matrix that transform its space into one where that very rombus is rectangle
+/// in the first quadrant.
 ///
-/// The three points are considered to be laid out like this:
+/// The three points are considered to be laid out like this, modulo some
+/// rotations, scales and mirrors:
 ///
 /// ```
-///             p2
-///              ^
-///              |
+///                 p2
+///                 ^
+///                /
+///               /
 /// origin ---> p1
 /// ```
 ///
@@ -394,25 +396,18 @@ pub fn rombus_to_square(origin: Vec2D, p1: Vec2D, p2: Vec2D) -> Transform {
     // positive X axis and be perfectly horizontal
     let a = p1 - origin;
 
-    // second vector. In the final transformed space this will be a vertical
-    // vector pointing to the positive Y axis
-    let b = p2 - p1;
+    let t = Transform::new_translate(-origin).rotate(-a.angle());
 
-    // the following is used to compute the height of the parallelogram and
-    // then used to scale the Y axis
-    let area = a.cross_area(b);
-    let height = area / a.magnitude();
-
-    let t = Transform::new_translate(-origin)
-        .rotate(-a.angle())
-        .scale_x(1.0 / a.magnitude())
-        .scale_y(1.0 / height);
+    // Ensure that the second point is in the first quadrant by reflecting along
+    // the X axis only of the Y coordinate of a transformed point is negative.
+    let t = if t.apply(p2).y() < 0.0 { t.scale_y(-1.0) } else { t };
 
     let p1p = t.apply(p1);
     let p2p = t.apply(p2);
     let bp = p2p - p1p;
+    let shear_factor = bp.x() / bp.y();
 
-    t.shear_x(bp.angle() - Angle::from_radians(std::f64::consts::FRAC_PI_2))
+    t.shear_x(-shear_factor)
 }
 
 #[cfg(test)]
@@ -611,27 +606,16 @@ mod tests {
 
     #[test]
     fn can_turn_a_rombus_into_a_square() {
-        // first rombus
         let a = Vec2D::new(1.64,1.06);
         let b = Vec2D::new(6.2,1.9);
         let c = Vec2D::new(8.72,-0.82);
 
-        // second rombus
-        let d = Vec2D::new(-6.76,-2.92);
-        let e = Vec2D::new(-3.28,-0.64);
-        let f = Vec2D::new(-4.9,3.22);
-
         // this is the tolerable error for this test
-        let epsilon = 0.001;
+        let epsilon = 0.004;
 
         let t1 = rombus_to_square(a, b, c);
         assert!(dbg!(t1.apply(a).distance(Vec2D::new(0.0, 0.0))) < epsilon);
-        assert!(dbg!(t1.apply(b).distance(Vec2D::new(1.0, 0.0))) < epsilon);
-        assert!(dbg!(t1.apply(c).distance(Vec2D::new(1.0, 1.0))) < epsilon);
-
-        let t2 = rombus_to_square(d, e, f);
-        assert!(t2.apply(d).distance(Vec2D::new(0.0, 0.0)) < epsilon);
-        assert!(t2.apply(e).distance(Vec2D::new(1.0, 0.0)) < epsilon);
-        assert!(t2.apply(f).distance(Vec2D::new(1.0, 1.0)) < epsilon);
+        assert!(dbg!(t1.apply(b).distance(Vec2D::new(4.64, 0.0))) < epsilon);
+        assert!(dbg!(t1.apply(c).distance(Vec2D::new(4.64, 3.13))) < epsilon);
     }
 }
