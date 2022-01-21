@@ -1,5 +1,6 @@
 use std::fmt;
 use std::ops::{Mul, Add, Sub, Div, Neg};
+use std::f64::consts::FRAC_PI_2;
 
 use crate::geom::Angle;
 
@@ -92,7 +93,7 @@ pub trait Point: Sized + Copy + PartialEq +Add<Output=Self> + Sub<Output=Self> +
         if self.x() == 0.0 && self.y() == 0.0 {
             Angle::from_radians(0.0)
         } else if self.x() == 0.0 {
-            Angle::from_degrees(90.0) * self.y().signum() * -1.0
+            Angle::from_radians(FRAC_PI_2) * self.y().signum() * -1.0
         } else {
             Angle::from_radians((self.y() / self.x()).atan())
         }
