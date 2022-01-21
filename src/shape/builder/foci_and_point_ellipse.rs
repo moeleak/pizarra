@@ -76,9 +76,6 @@ impl ShapeBuilder for FociAndPointEllipse {
             State::FociAndPoint {
                 foci, ..
             } => {
-                if foci[0].distance(pos_new) < snap || foci[1].distance(pos_new) < snap{
-                    return ShapeFinished::Cancelled;
-                }
                 let (center, semimajor, semiminor, angle) = ellipse_from_foci_and_point(foci, t.to_world_coordinates(pos));
 
                 ShapeFinished::Yes(Box::new(Ellipse::from_parts(
@@ -97,13 +94,12 @@ impl ShapeBuilder for FociAndPointEllipse {
                 if f1.distance(f2) < snap {
                     vec![
                         red_circle_helper(t.to_screen_coordinates(f1), snap),
-                        red_circle_helper(t.to_screen_coordinates(f2), snap),
-                        ]
+                    ]
                 } else {
                     vec![
                         circle_helper(t.to_screen_coordinates(f1), snap),
                         circle_helper(t.to_screen_coordinates(f2), snap),
-                        ]
+                    ]
                 }
             },
             State::FociAndPoint {
@@ -125,17 +121,8 @@ impl ShapeBuilder for FociAndPointEllipse {
                         t.to_screen_coordinates(foci[1]),
                     ]),
 
-                    if foci[0].distance(point) < snap {
-                        red_circle_helper(t.to_screen_coordinates(foci[0]), snap)
-                    } else {
-                        circle_helper(t.to_screen_coordinates(foci[0]), snap)
-                    },
-                    if foci[1].distance(point) < snap {
-                        red_circle_helper(t.to_screen_coordinates(foci[1]), snap)
-                    } else {
-                        circle_helper(t.to_screen_coordinates(foci[1]), snap)
-                    }
-                    
+                    circle_helper(t.to_screen_coordinates(foci[0]), snap),
+                    circle_helper(t.to_screen_coordinates(foci[1]), snap),
                 ]
             }
         }
