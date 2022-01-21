@@ -73,6 +73,13 @@ pub trait Point: Sized + Copy + PartialEq +Add<Output=Self> + Sub<Output=Self> +
         self.x() * other.x() + self.y() * other.y()
     }
 
+    /// Returns the area of the parallelogram defined by the two vectors.
+    ///
+    /// The area is signed
+    fn cross_area(self, other: Self) -> f64 {
+        self.x() * other.y() - self.y() * other.x()
+    }
+
     fn is_nan(&self) -> bool {
         self.x().is_nan() || self.y().is_nan()
     }

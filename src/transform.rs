@@ -49,6 +49,20 @@ impl Transform {
         )
     }
 
+    pub fn new_scale_x(factor: f64) -> Transform {
+        Transform::new(
+            factor, 0.0, 0.0,
+            0.0,    1.0, 0.0,
+        )
+    }
+
+    pub fn new_scale_y(factor: f64) -> Transform {
+        Transform::new(
+            1.0,    0.0, 0.0,
+            0.0, factor, 0.0,
+        )
+    }
+
     pub fn new_translate(vector: Vec2D) -> Transform {
         Transform::new(
             1.0, 0.0, vector.x,
@@ -62,8 +76,26 @@ impl Transform {
         let theta = angle.radians();
 
         Transform::new(
-            theta.cos(), -1.0 * theta.sin(), 0.0,
-            theta.sin(),        theta.cos(), 0.0,
+            theta.cos(), -theta.sin(), 0.0,
+            theta.sin(),  theta.cos(), 0.0,
+        )
+    }
+
+    pub fn new_shear_x(angle: Angle) -> Transform {
+        let theta = angle.radians();
+
+        Transform::new(
+            1.0, -theta, 0.0,
+            0.0,    1.0, 0.0,
+        )
+    }
+
+    pub fn new_shear_y(angle: Angle) -> Transform {
+        let theta = angle.radians();
+
+        Transform::new(
+            1.0,         0.0, 0.0,
+            theta.sin(), 1.0, 0.0,
         )
     }
 
@@ -77,8 +109,16 @@ impl Transform {
     ///
     /// Implemented as multiplying the current matrix to the left by a scaling
     /// matrix
-    fn scale(&self, factor: f64) -> Transform {
+    pub fn scale(&self, factor: f64) -> Transform {
         multiply(&Transform::new_scale(factor), self)
+    }
+
+    pub fn scale_x(&self, factor: f64) -> Transform {
+        multiply(&Transform::new_scale_x(factor), self)
+    }
+
+    pub fn scale_y(&self, factor: f64) -> Transform {
+        multiply(&Transform::new_scale_y(factor), self)
     }
 
     /// Take the current transformation matrix and translate it by this factor.
@@ -97,6 +137,14 @@ impl Transform {
     /// matrix.
     pub fn rotate(&self, angle: Angle) -> Transform {
         multiply(&Transform::new_rotate(angle), self)
+    }
+
+    pub fn shear_x(&self, angle: Angle) -> Transform {
+        multiply(&Transform::new_shear_x(angle), self)
+    }
+
+    pub fn shear_y(&self, angle: Angle) -> Transform {
+        multiply(&Transform::new_shear_y(angle), self)
     }
 
     /// Objects on the screen look `factor` times bigger. Specified fixed point

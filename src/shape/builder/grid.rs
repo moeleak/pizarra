@@ -24,6 +24,10 @@ enum State {
         start: Vec2DWorld,
         p1: Vec2DWorld,
         p2: Vec2DWorld,
+
+        /// A transform matrix that turns the parallelogram defined by start, p1
+        /// and p2 into a square of size 1 in the first quadrant
+        t: Transform,
         free: Vec2DWorld,
     },
 
@@ -75,8 +79,8 @@ impl ShapeBuilder for Grid {
                 self.state = State::TwoDimension { start, p1, free: wpos };
             }
 
-            State::DefineGrid { start, p1, p2, .. } => {
-                self.state = State::DefineGrid { start, p1, p2, free: wpos };
+            State::DefineGrid { start, p1, p2, t, .. } => {
+                self.state = State::DefineGrid { start, p1, p2, t, free: wpos };
             }
 
             State::PreDefineScale { .. } => { }
@@ -127,7 +131,7 @@ impl ShapeBuilder for Grid {
             }
 
             State::TwoDimension { start, p1, free } => {
-                self.state = State::DefineGrid { start, p1, p2: free, free: wpos };
+                self.state = State::DefineGrid { start, p1, p2: free, t: todo!(), free: wpos };
 
                 ShapeFinished::No
             }
@@ -179,8 +183,17 @@ impl ShapeBuilder for Grid {
                 }]
             }
 
-            State::DefineGrid { .. } => {
-                todo!()
+            State::DefineGrid { start, p1, p2, t, free } => {
+                vec![DrawCommand::Path {
+                    commands: vec![
+                        MoveTo(start),
+                        LineTo(p1),
+                        LineTo(p2),
+                        LineTo(start + (p2 - p1)),
+                        LineTo(start),
+                    ],
+                    style: self.style,
+                }]
             }
 
             State::PreDefineScale { .. } => {
