@@ -82,20 +82,11 @@ impl Transform {
     }
 
     pub fn new_shear_x(angle: Angle) -> Transform {
-        let theta = angle.radians();
+        let theta  = angle.radians();
 
         Transform::new(
-            1.0, -theta, 0.0,
-            0.0,    1.0, 0.0,
-        )
-    }
-
-    pub fn new_shear_y(angle: Angle) -> Transform {
-        let theta = angle.radians();
-
-        Transform::new(
-            1.0,         0.0, 0.0,
-            theta.sin(), 1.0, 0.0,
+            1.0, theta, 0.0,
+            0.0,   1.0, 0.0,
         )
     }
 
@@ -141,10 +132,6 @@ impl Transform {
 
     pub fn shear_x(&self, angle: Angle) -> Transform {
         multiply(&Transform::new_shear_x(angle), self)
-    }
-
-    pub fn shear_y(&self, angle: Angle) -> Transform {
-        multiply(&Transform::new_shear_y(angle), self)
     }
 
     /// Objects on the screen look `factor` times bigger. Specified fixed point
