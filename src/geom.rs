@@ -625,8 +625,8 @@ mod tests {
         let epsilon = 0.001;
 
         let t1 = rombus_to_square(a, b, c);
-        assert!(t1.apply(a).distance(Vec2D::new(0.0, 0.0)) < epsilon);
-        assert!(t1.apply(b).distance(Vec2D::new(1.0, 0.0)) < epsilon);
+        assert!(dbg!(t1.apply(a).distance(Vec2D::new(0.0, 0.0))) < epsilon);
+        assert!(dbg!(t1.apply(b).distance(Vec2D::new(1.0, 0.0))) < epsilon);
         assert!(dbg!(t1.apply(c).distance(Vec2D::new(1.0, 1.0))) < epsilon);
 
         let t2 = rombus_to_square(d, e, f);
