@@ -114,8 +114,74 @@ impl ShapeBuilder for Grid {
             State::DefineGrid { cell: (p1, p2), free } => {
                 let p1s = t.to_screen_coordinates(p1);
                 let p2s = t.to_screen_coordinates(p2);
+                let diagonal = p2s - p1s;
+                let freep = t.to_screen_coordinates(free) - p1s;
 
-                vec![]
+                let base = diagonal.x;
+                let height = diagonal.y;
+
+                let x_cells = freep.x / base;
+                let y_cells = freep.y / height;
+
+                // integer amount of cells that will be created
+                let num_x_cells = x_cells.abs().ceil();
+                let num_y_cells = y_cells.abs().ceil();
+
+                // lines that divide the space (the grid separators)
+                let x_separators: Vec<_> = (1..(num_x_cells as i8)).map(|n| n * x_cells.signum() as i8).collect();
+                let y_separators: Vec<_> = (1..(num_y_cells as i8)).map(|n| n * y_cells.signum() as i8).collect();
+
+                // the boundaries of the grid in the transformed space
+                let x_max = num_x_cells * x_cells.signum() * base;
+                let y_max = num_y_cells * y_cells.signum() * height;
+
+                // the box boundaries in screen coordinates
+                let b1 = p1s + Vec2DScreen::new(x_max, 0.0);
+                let b2 = p1s + Vec2DScreen::new(x_max, y_max);
+                let b3 = p1s + Vec2DScreen::new(0.0, y_max);
+
+                let world_b1 = t.to_world_coordinates(b1).into();
+                let world_b2 = t.to_world_coordinates(b2).into();
+                let world_b3 = t.to_world_coordinates(b3).into();
+
+                let world_x_seps: Vec<_> = x_separators.into_iter().map(|n| {
+                    DrawCommand::Path {
+                        commands: vec![
+                            MoveTo(t.to_world_coordinates(Vec2DScreen::new(n as f64 * base, 0.0)).into()),
+                            LineTo(t.to_world_coordinates(Vec2DScreen::new(n as f64 * base, y_max)).into()),
+                        ],
+                        style: self.style,
+                    }
+                }).collect();
+                let world_y_seps: Vec<_> = y_separators.into_iter().map(|n| {
+                    DrawCommand::Path {
+                        commands: vec![
+                            MoveTo(t.to_world_coordinates(Vec2DScreen::new(0.0, n as f64 * height)).into()),
+                            LineTo(t.to_world_coordinates(Vec2DScreen::new(x_max, n as f64 * height)).into()),
+                        ],
+                        style: self.style,
+                    }
+                }).collect();
+
+                let mut commands = Vec::with_capacity(1 + world_x_seps.len() + world_y_seps.len());
+
+                // the big rectangle
+                commands.push(DrawCommand::Path {
+                    commands: vec![
+                        MoveTo(p1),
+                        LineTo(world_b1),
+                        LineTo(world_b2),
+                        LineTo(world_b3),
+                        LineTo(p1),
+                    ],
+                    style: self.style,
+                });
+
+                // the separators that make it a grid
+                commands.extend(world_x_seps);
+                commands.extend(world_y_seps);
+
+                commands
             }
         }
     }
