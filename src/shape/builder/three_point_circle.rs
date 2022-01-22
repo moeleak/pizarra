@@ -64,9 +64,6 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                 ShapeFinished::No
             }
             State::Three(p1, p2, p3) => {
-                if p1.distance(pos_new) < snap || p2.distance(pos_new) < snap {
-                    return ShapeFinished::Cancelled;
-                }
                 let (center, radius) = circle_through_three_points(p1, p2, p3);
 
                 ShapeFinished::Yes(Box::new(
@@ -114,19 +111,9 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                         style: self.style,
                     },
 
-                    if p1.distance(p3) < snap {
-                        red_circle_helper(t.to_screen_coordinates(p1), snap)
-                    } else {
-                        circle_helper(t.to_screen_coordinates(p1), snap)
-                    },
-                    if p2.distance(p3) < snap {
-                        red_circle_helper(t.to_screen_coordinates(p2), snap)
-                    } else {
-                        circle_helper(t.to_screen_coordinates(p2), snap)
-                    },
+                    circle_helper(t.to_screen_coordinates(p1), snap),
+                    circle_helper(t.to_screen_coordinates(p2), snap),
                     circle_helper(t.to_screen_coordinates(p3), snap),
-
-                    circle_helper(t.to_screen_coordinates(center), snap),
                 ]
             }
         }
