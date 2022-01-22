@@ -188,12 +188,6 @@ impl Pizarra {
         }
     }
 
-    fn drop_current_shape(&mut self) {
-        if self.current_shape.is_some() {
-            self.current_shape = None;
-            self.board_state = BoardState::Idle;
-        }
-    }
 
     fn handle_tool_button_released(&mut self, point: Vec2DScreen, tool_override: Option<SelectedTool>) -> Action {
         let transformed_point = self.transform.to_world_coordinates(point);
@@ -209,11 +203,14 @@ impl Pizarra {
                 match finished {
                     ShapeFinished::Yes(shape) => {
                         let shape_id = self.storage.add(shape);
+
                         self.current_shape = None;
+
                         Action::Draw(shape_id)
                     },
                     ShapeFinished::Cancelled => {
-                        self.drop_current_shape();
+                        self.current_shape = None;
+
                         Action::Empty
                     },
                     ShapeFinished::No => Action::Unfinished,
@@ -633,7 +630,8 @@ impl Pizarra {
 
         match key {
             Key::Escape => {
-                self.drop_current_shape();
+                self.current_shape = None;
+                self.board_state = BoardState::Idle;
 
                 ShouldRedraw::All
             }
