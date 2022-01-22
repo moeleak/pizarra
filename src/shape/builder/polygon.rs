@@ -283,7 +283,11 @@ impl ShapeBuilder for PolygonBuilder {
                     stroke: None,
                     fill: Some(match self.tip {
                         BuilderState::FreePoint { to, .. } if t.to_screen_coordinates(to).distance(t.to_screen_coordinates(p.to())) <= snap => {
-                            Color::green().half_transparent()
+                            if i == 0 && path_commands.len() == 2 {
+                                Color::red().half_transparent()
+                            } else {
+                                Color::green().half_transparent()
+                            }
                         }
                         _ => Color::gray().half_transparent()
                     }),
@@ -468,7 +472,7 @@ mod tests {
             radius: SNAP,
             style: Style {
                 stroke: None,
-                fill: Some(Color::green().half_transparent()),
+                fill: Some(Color::red().half_transparent()),
             },
         });
     }
