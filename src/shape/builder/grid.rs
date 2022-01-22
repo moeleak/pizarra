@@ -147,8 +147,8 @@ impl ShapeBuilder for Grid {
                 let world_x_seps: Vec<_> = x_separators.into_iter().map(|n| {
                     DrawCommand::Path {
                         commands: vec![
-                            MoveTo(t.to_world_coordinates(Vec2DScreen::new(n as f64 * base, 0.0)).into()),
-                            LineTo(t.to_world_coordinates(Vec2DScreen::new(n as f64 * base, y_max)).into()),
+                            MoveTo(t.to_world_coordinates(p1s + Vec2DScreen::new(n as f64 * base, 0.0)).into()),
+                            LineTo(t.to_world_coordinates(p1s + Vec2DScreen::new(n as f64 * base, y_max)).into()),
                         ],
                         style: self.style,
                     }
@@ -156,8 +156,8 @@ impl ShapeBuilder for Grid {
                 let world_y_seps: Vec<_> = y_separators.into_iter().map(|n| {
                     DrawCommand::Path {
                         commands: vec![
-                            MoveTo(t.to_world_coordinates(Vec2DScreen::new(0.0, n as f64 * height)).into()),
-                            LineTo(t.to_world_coordinates(Vec2DScreen::new(x_max, n as f64 * height)).into()),
+                            MoveTo(t.to_world_coordinates(p1s + Vec2DScreen::new(0.0, n as f64 * height)).into()),
+                            LineTo(t.to_world_coordinates(p1s + Vec2DScreen::new(x_max, n as f64 * height)).into()),
                         ],
                         style: self.style,
                     }
