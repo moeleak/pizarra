@@ -57,5 +57,6 @@ pub mod config;
 pub mod ui;
 pub mod path_command;
 pub mod style;
+pub(crate) mod matrix;
 
 pub mod prelude;
