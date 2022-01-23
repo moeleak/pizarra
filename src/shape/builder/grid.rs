@@ -143,8 +143,8 @@ fn grid_from_cell_and_point<P: Point>((p1, p2): (P, P), free: P) -> Matrix<P> {
 
     let mut grid = Vec::with_capacity((num_x_cells + 1) * (num_y_cells + 1));
 
-    for xi in x_separators {
-        for &yi in y_separators.iter() {
+    for yi in y_separators {
+        for &xi in x_separators.iter() {
             grid.push(p1 + P::new(xi as f64 * width, yi as f64 * height));
         }
     }
@@ -196,5 +196,84 @@ mod tests {
         assert_eq!(grid, Matrix::from_parts(xs.into_iter().map(|x| {
             ys.iter().map(move |y| Vec2D::new(x, *y))
         }).flatten().collect(), 3));
+    }
+
+    #[test]
+    fn can_make_a_rectangular_grid() {
+        // the points for a 2x2 grid
+        let a = Vec2D::new(-3.0, 3.0);
+        let b = Vec2D::new(-1.5, 2.0);
+        let c = Vec2D::new(0.85, 1.39);
+
+        let grid = grid_from_cell_and_point((a, b), c);
+
+        let xs = [-3.0, -1.5, 0.0, 1.5];
+        let ys = [3.0, 2.0, 1.0];
+
+        assert_eq!(grid, Matrix::from_parts(ys.into_iter().map(|y| {
+            xs.iter().map(move |x| Vec2D::new(*x, y))
+        }).flatten().collect(), 4));
+    }
+
+    #[test]
+    fn can_render_a_grid() {
+        let a = Vec2DScreen::new(-3.0, 3.0);
+        let b = Vec2DScreen::new(-1.5, 2.0);
+        let p = Vec2DScreen::new(0.85, 1.39);
+
+        let cols = [-3.0, -1.5, 0.0, 1.5];
+        let rows = [3.0, 2.0, 1.0];
+
+        let t = Transform::default();
+        let snap = 1.0;
+
+        let mut grid = Grid::start(t.to_world_coordinates(a), Default::default());
+
+        grid.handle_mouse_moved(b, t, snap);
+        grid.handle_button_released(b, t, snap);
+        grid.handle_mouse_moved(p, t, snap);
+
+        let mut expected_rows: Vec<_> = rows.iter().map(|&r| {
+            DrawCommand::Path {
+                commands: vec![
+                    MoveTo(Vec2DWorld::new(cols[0], r)),
+                    LineTo(Vec2DWorld::new(cols[3], r)),
+                ],
+                style: Default::default(),
+            }
+        }).collect();
+        expected_rows.extend(cols.iter().map(|&c| {
+            DrawCommand::Path {
+                commands: vec![
+                    MoveTo(Vec2DWorld::new(c, rows[0])),
+                    LineTo(Vec2DWorld::new(c, rows[2])),
+                ],
+                style: Default::default(),
+            }
+        }));
+
+        assert_eq!(grid.draw_commands(t, snap), expected_rows);
+    }
+
+    #[test]
+    fn can_draw_a_grid() {
+        let a = Vec2DScreen::new(-3.0, 3.0);
+        let b = Vec2DScreen::new(-1.5, 2.0);
+        let p = Vec2DScreen::new(0.85, 1.39);
+        let t = Transform::default();
+        let snap = 1.0;
+
+        let mut grid = Grid::start(t.to_world_coordinates(a), Default::default());
+
+        grid.handle_mouse_moved(b, t, snap);
+        grid.handle_button_released(b, t, snap);
+        grid.handle_mouse_moved(p, t, snap);
+
+        match grid.handle_button_released(p, t, snap) {
+            ShapeFinished::Yes(shapes) => {
+                todo!("there is a shape for every segment");
+            }
+            _ => panic!()
+        }
     }
 }
