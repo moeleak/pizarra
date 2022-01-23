@@ -112,21 +112,32 @@ impl ShapeBuilder for Grid {
                 ]
             },
 
-            State::DefineGrid { cell, free } => {
+            State::DefineGrid { cell: (p1, p2), free } => {
+                let cell = (
+                    t.to_screen_coordinates(p1),
+                    t.to_screen_coordinates(p2),
+                );
+                let free = t.to_screen_coordinates(free);
                 let grid = grid_from_cell_and_point(cell, free);
 
                 let mut commands = Vec::with_capacity(grid.row_count() * grid.col_count());
 
                 for row in grid.rows() {
                     commands.push(DrawCommand::Path {
-                        commands: vec![MoveTo(row[0]), LineTo(*row.last().unwrap())],
+                        commands: vec![
+                            MoveTo(t.to_world_coordinates(row[0])),
+                            LineTo(t.to_world_coordinates(*row.last().unwrap())),
+                        ],
                         style: self.style,
                     });
                 }
 
                 for col in grid.cols() {
                     commands.push(DrawCommand::Path {
-                        commands: vec![MoveTo(col[0]), LineTo(*col.last().unwrap())],
+                        commands: vec![
+                            MoveTo(t.to_world_coordinates(col[0])),
+                            LineTo(t.to_world_coordinates(*col.last().unwrap())),
+                        ],
                         style: self.style,
                     });
                 }
@@ -272,24 +283,10 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn can_draw_a_grid() {
-        let a = Vec2DScreen::new(-3.0, 3.0);
-        let b = Vec2DScreen::new(-1.5, 2.0);
-        let p = Vec2DScreen::new(0.85, 1.39);
-        let t = Transform::default();
-        let snap = 1.0;
-
-        let mut grid = Grid::start(t.to_world_coordinates(a), Default::default());
-
-        grid.handle_mouse_moved(b, t, snap);
-        grid.handle_button_released(b, t, snap);
-        grid.handle_mouse_moved(p, t, snap);
-
-        match grid.handle_button_released(p, t, snap) {
-            ShapeFinished::Yes(shapes) => {
-                todo!("there is a shape for every segment");
-            }
-            _ => panic!()
-        }
+        todo!("the thing is, this is hard to test because of the trait object,
+        but it would be nice to have it converted to an enum and then this can
+        be properly tested")
     }
 }
