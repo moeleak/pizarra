@@ -115,7 +115,23 @@ impl ShapeBuilder for Grid {
             State::DefineGrid { cell, free } => {
                 let grid = grid_from_cell_and_point(cell, free);
 
-                todo!()
+                let mut commands = Vec::with_capacity(grid.row_count() * grid.col_count());
+
+                for row in grid.rows() {
+                    commands.push(DrawCommand::Path {
+                        commands: vec![MoveTo(row[0]), LineTo(*row.last().unwrap())],
+                        style: self.style,
+                    });
+                }
+
+                for col in grid.cols() {
+                    commands.push(DrawCommand::Path {
+                        commands: vec![MoveTo(col[0]), LineTo(*col.last().unwrap())],
+                        style: self.style,
+                    });
+                }
+
+                commands
             }
         }
     }

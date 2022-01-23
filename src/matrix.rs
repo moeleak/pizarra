@@ -35,7 +35,7 @@ impl<T: Copy> Matrix<T> {
     }
 
     pub fn cols(&self) -> Vec<Vec<T>> {
-        let output = Vec::with_capacity(self.width);
+        let mut output = Vec::with_capacity(self.width);
         let col_num = self.width;
         let row_num = self.contents.len() / self.width;
 
@@ -46,6 +46,8 @@ impl<T: Copy> Matrix<T> {
             for j in 0..row_num {
                 col.push(self.contents[j * col_num + i]);
             }
+
+            output.push(col);
         }
 
         output
@@ -77,6 +79,8 @@ mod tests {
             [2, 5],
             [3, 6],
         ];
+
+        assert_eq!(matrix.cols().len(), 3);
 
         for (orig, new) in matrix.cols().into_iter().zip(expected_cols.iter()) {
             assert_eq!(orig, new);
