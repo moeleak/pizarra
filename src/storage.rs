@@ -146,7 +146,7 @@ impl Storage {
 
     /// Returns the id of a shape intersecting the circle described by center
     /// and radius, if any.
-    pub fn remove_circle<'a>(&'a mut self, center: Vec2DWorld, radius: f64) -> impl Iterator<Item=Shape> + 'a {
+    pub fn remove_circle(&mut self, center: Vec2DWorld, radius: f64) -> impl Iterator<Item=Shape> + '_ {
         self.shapes
             .drain_with_selection_function(CenterAndRadiusSelection::new(center, radius))
     }
