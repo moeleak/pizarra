@@ -6,6 +6,8 @@ use crate::transform::Transform;
 use crate::style::Style;
 use crate::geom::rombus_to_rectangle;
 use crate::shape::builder::grid::grid_from_cell_and_point;
+use crate::shape::ShapeStored;
+use crate::shape::stored::path::Path;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -26,11 +28,11 @@ enum State {
         start: Vec2DWorld,
         p1: Vec2DWorld,
         p2: Vec2DWorld,
+        free: Vec2DWorld,
 
         /// A transform matrix that turns the parallelogram defined by start, p1
         /// and p2 into a square of size 1 in the first quadrant
         t: Transform,
-        free: Vec2DWorld,
     },
 }
 
@@ -103,8 +105,47 @@ impl ShapeBuilder for FreeGrid {
                 ShapeFinished::No
             }
 
-            State::DefineGrid { .. } => {
-                ShapeFinished::Yes(todo!())
+            State::DefineGrid { start, p2, free, t, ..} => {
+                let cell = (
+                    t.to_screen_coordinates(start),
+                    t.to_screen_coordinates(p2),
+                );
+                let free = t.to_screen_coordinates(free);
+                let grid = grid_from_cell_and_point(cell, free);
+
+                let mut shapes: Vec<Box<dyn ShapeStored>> = Vec::with_capacity(
+                    grid.row_count() * (grid.col_count() - 1) +
+                    grid.col_count() * (grid.row_count() - 1)
+                );
+
+                let rows = grid.rows();
+                let cols = grid.cols();
+
+                for row in rows.iter() {
+                    for (&a, &b) in row.iter().zip(row.iter().skip(1)) {
+                        shapes.push(Box::new(Path::from_parts(
+                            vec![
+                                MoveTo(t.to_world_coordinates(a)),
+                                LineTo(t.to_world_coordinates(b)),
+                            ],
+                            self.style,
+                        )));
+                    }
+                }
+
+                for col in cols.iter() {
+                    for (&a, &b) in col.iter().zip(col.iter().skip(1)) {
+                        shapes.push(Box::new(Path::from_parts(
+                            vec![
+                                MoveTo(t.to_world_coordinates(a)),
+                                LineTo(t.to_world_coordinates(b)),
+                            ],
+                            self.style,
+                        )));
+                    }
+                }
+
+                ShapeFinished::Yes(shapes)
             }
         }
     }
