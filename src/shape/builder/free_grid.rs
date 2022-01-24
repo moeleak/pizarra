@@ -1,10 +1,11 @@
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::draw_commands::DrawCommand;
 use crate::path_command::PathCommand::*;
-use crate::point::{Point, Vec2DScreen, Vec2DWorld, Vec2D};
+use crate::point::{Point, Vec2DScreen, Vec2DWorld};
 use crate::transform::Transform;
 use crate::style::Style;
 use crate::geom::rombus_to_rectangle;
+use crate::shape::builder::grid::grid_from_cell_and_point;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -139,71 +140,36 @@ impl ShapeBuilder for FreeGrid {
                 }]
             }
 
-            State::DefineGrid { start, p1, p2, t, free } => {
-                let base = t.apply(p1.to_vec2d()).x();
-                let height = t.apply(p2.to_vec2d()).y();
-                let freep = t.apply(free.to_vec2d());
-
-                let x_cells = freep.x() / base;
-                let y_cells = freep.y() / height;
-
-                // integer amount of cells that will be created
-                let num_x_cells = x_cells.abs().ceil();
-                let num_y_cells = y_cells.abs().ceil();
-
-                // lines that divide the space (the grid separators)
-                let x_separators: Vec<_> = (1..(num_x_cells as i8)).map(|n| n * x_cells.signum() as i8).collect();
-                let y_separators: Vec<_> = (1..(num_y_cells as i8)).map(|n| n * y_cells.signum() as i8).collect();
-
-                // the boundaries of the grid in the transformed space
-                let x_max = num_x_cells * x_cells.signum() * base;
-                let y_max = num_y_cells * y_cells.signum() * height;
-
-                let b1 = Vec2D::new(x_max, 0.0);
-                let b2 = Vec2D::new(x_max, y_max);
-                let b3 = Vec2D::new(0.0, y_max);
-
-                // transform to world coordinates
+            State::DefineGrid { start, p1: _, p2, t, free } => {
+                let cell = (
+                    t.apply(start.to_vec2d()),
+                    t.apply(p2.to_vec2d()),
+                );
+                let free = t.apply(free.to_vec2d());
                 let inverse = t.invert();
+                let grid = grid_from_cell_and_point(cell, free);
 
-                let world_b1 = inverse.apply(b1).into();
-                let world_b2 = inverse.apply(b2).into();
-                let world_b3 = inverse.apply(b3).into();
+                let mut commands = Vec::with_capacity(grid.row_count() + grid.col_count());
 
-                let world_x_seps: Vec<_> = x_separators.into_iter().map(|n| {
-                    DrawCommand::Path {
+                for row in grid.rows() {
+                    commands.push(DrawCommand::Path {
                         commands: vec![
-                            MoveTo(inverse.apply(Vec2D::new(n as f64 * base, 0.0)).into()),
-                            LineTo(inverse.apply(Vec2D::new(n as f64 * base, y_max)).into()),
+                            MoveTo(inverse.apply(row[0]).into()),
+                            LineTo(inverse.apply(*row.last().unwrap()).into()),
                         ],
                         style: self.style,
-                    }
-                }).collect();
-                let world_y_seps: Vec<_> = y_separators.into_iter().map(|n| {
-                    DrawCommand::Path {
+                    });
+                }
+
+                for col in grid.cols() {
+                    commands.push(DrawCommand::Path {
                         commands: vec![
-                            MoveTo(inverse.apply(Vec2D::new(0.0, n as f64 * height)).into()),
-                            LineTo(inverse.apply(Vec2D::new(x_max, n as f64 * height)).into()),
+                            MoveTo(inverse.apply(col[0]).into()),
+                            LineTo(inverse.apply(*col.last().unwrap()).into()),
                         ],
                         style: self.style,
-                    }
-                }).collect();
-
-                let mut commands = Vec::with_capacity(1 + world_x_seps.len() + world_y_seps.len());
-
-                commands.push(DrawCommand::Path {
-                    commands: vec![
-                        MoveTo(start),
-                        LineTo(world_b1),
-                        LineTo(world_b2),
-                        LineTo(world_b3),
-                        LineTo(start),
-                    ],
-                    style: self.style,
-                });
-
-                commands.extend(world_x_seps);
-                commands.extend(world_y_seps);
+                    });
+                }
 
                 commands
             }

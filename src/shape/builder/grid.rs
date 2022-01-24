@@ -191,7 +191,7 @@ impl ShapeBuilder for Grid {
 
 /// Given the two points that define a cell and a third point outside (or
 /// inside) it, return a matrix of all the points that make it and its width
-fn grid_from_cell_and_point<P: Point>((p1, p2): (P, P), free: P) -> Matrix<P> {
+pub(crate) fn grid_from_cell_and_point<P: Point>((p1, p2): (P, P), free: P) -> Matrix<P> {
     let diagonal = p2 - p1;
     let freep = free - p1;
 
