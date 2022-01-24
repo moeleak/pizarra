@@ -31,17 +31,6 @@ enum State {
         t: Transform,
         free: Vec2DWorld,
     },
-
-    PreDefineScale {
-        start: Vec2DWorld,
-        p1: Vec2DWorld,
-    },
-
-    DefineScale {
-        start: Vec2DWorld,
-        p1: Vec2DWorld,
-        free: Vec2DWorld,
-    },
 }
 
 /// This tools builds a grid through a 5-step process. It might seem complicated
@@ -83,37 +72,10 @@ impl ShapeBuilder for FreeGrid {
             State::DefineGrid { start, p1, p2, t, .. } => {
                 self.state = State::DefineGrid { start, p1, p2, t, free: wpos };
             }
-
-            State::PreDefineScale { .. } => { }
-
-            State::DefineScale { start, p1, .. } => {
-                self.state = State::DefineScale { start, p1, free: wpos };
-            }
         }
     }
 
-    fn handle_button_pressed(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) {
-        let wpos = t.to_world_coordinates(pos);
-
-        match self.state {
-            State::Initial(_) => {}
-
-            State::OneDimension { .. } => {
-            }
-
-            State::TwoDimension { start, p1, .. } => {
-                if wpos.distance(p1) < snap {
-                    self.state = State::PreDefineScale { start, p1 };
-                }
-            }
-
-            State::DefineGrid { .. } => { }
-
-            State::PreDefineScale { .. } => { }
-
-            State::DefineScale { .. } => { }
-        }
-    }
+    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) { }
 
     fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) -> ShapeFinished {
         let wpos = t.to_world_coordinates(pos);
@@ -141,16 +103,6 @@ impl ShapeBuilder for FreeGrid {
             }
 
             State::DefineGrid { .. } => {
-                ShapeFinished::Yes(todo!())
-            }
-
-            State::PreDefineScale { start, p1 } => {
-                self.state = State::DefineScale  { start, p1, free: wpos };
-
-                ShapeFinished::No
-            }
-
-            State::DefineScale { .. } => {
                 ShapeFinished::Yes(todo!())
             }
         }
@@ -254,14 +206,6 @@ impl ShapeBuilder for FreeGrid {
                 commands.extend(world_y_seps);
 
                 commands
-            }
-
-            State::PreDefineScale { .. } => {
-                todo!()
-            }
-
-            State::DefineScale { .. } => {
-                todo!()
             }
         }
     }
