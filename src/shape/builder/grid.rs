@@ -5,6 +5,8 @@ use crate::point::{Point, Vec2DScreen, Vec2DWorld};
 use crate::transform::Transform;
 use crate::style::Style;
 use crate::matrix::Matrix;
+use crate::shape::stored::path::Path;
+use crate::shape::ShapeStored;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -80,8 +82,47 @@ impl ShapeBuilder for Grid {
                 }
             }
 
-            State::DefineGrid { cell, free } => {
-                ShapeFinished::Yes(todo!())
+            State::DefineGrid { cell: (p1, p2), free } => {
+                let cell = (
+                    t.to_screen_coordinates(p1),
+                    t.to_screen_coordinates(p2),
+                );
+                let free = t.to_screen_coordinates(free);
+                let grid = grid_from_cell_and_point(cell, free);
+
+                let mut shapes: Vec<Box<dyn ShapeStored>> = Vec::with_capacity(
+                    grid.row_count() * (grid.col_count() - 1) +
+                    grid.col_count() * (grid.row_count() - 1)
+                );
+
+                let rows = grid.rows();
+                let cols = grid.cols();
+
+                for row in rows.iter() {
+                    for (&a, &b) in row.iter().zip(row.iter().skip(1)) {
+                        shapes.push(Box::new(Path::from_parts(
+                            vec![
+                                MoveTo(t.to_world_coordinates(a)),
+                                LineTo(t.to_world_coordinates(b)),
+                            ],
+                            self.style,
+                        )));
+                    }
+                }
+
+                for col in cols.iter() {
+                    for (&a, &b) in col.iter().zip(col.iter().skip(1)) {
+                        shapes.push(Box::new(Path::from_parts(
+                            vec![
+                                MoveTo(t.to_world_coordinates(a)),
+                                LineTo(t.to_world_coordinates(b)),
+                            ],
+                            self.style,
+                        )));
+                    }
+                }
+
+                ShapeFinished::Yes(shapes)
             }
         }
     }
@@ -120,7 +161,7 @@ impl ShapeBuilder for Grid {
                 let free = t.to_screen_coordinates(free);
                 let grid = grid_from_cell_and_point(cell, free);
 
-                let mut commands = Vec::with_capacity(grid.row_count() * grid.col_count());
+                let mut commands = Vec::with_capacity(grid.row_count() + grid.col_count());
 
                 for row in grid.rows() {
                     commands.push(DrawCommand::Path {

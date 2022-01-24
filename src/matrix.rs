@@ -30,8 +30,8 @@ impl<T: Copy> Matrix<T> {
         self.width
     }
 
-    pub fn rows(&self) -> impl Iterator<Item=&[T]> {
-        self.contents.chunks_exact(self.width)
+    pub fn rows(&self) -> Vec<&[T]> {
+        self.contents.chunks_exact(self.width).collect()
     }
 
     pub fn cols(&self) -> Vec<Vec<T>> {
@@ -70,7 +70,7 @@ mod tests {
             [4, 5, 6],
         ];
 
-        for (orig, new) in matrix.rows().zip(expected_rows.iter()) {
+        for (orig, new) in matrix.rows().iter().zip(expected_rows.iter()) {
             assert_eq!(orig, new);
         }
 
