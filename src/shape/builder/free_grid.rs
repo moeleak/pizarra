@@ -220,3 +220,16 @@ impl ShapeBuilder for FreeGrid {
         }
     }
 }
+
+#[cfg(test)]
+mod tests  {
+    use super::*;
+
+    #[test]
+    fn figure_is_cancelled() {
+        let mut grid = FreeGrid::start(Vec2DWorld::new(0.0, 0.0), Default::default());
+
+        todo!("check that the grid can be cancelled when placing the second and
+        third points. I the latter there should be two possibilities of cancelling");
+    }
+}

@@ -1414,4 +1414,13 @@ mod tests {
 
         assert_eq!(app.storage.shape_count(), 0);
     }
+
+    #[test]
+    fn on_cancelled_shape_remaining_is_deleted_on_mousebutton_release() {
+        let mut app = Pizarra::new_for_testing();
+
+        app.set_tool(SelectedTool::Shape(ShapeTool::Rectangle));
+
+        todo!()
+    }
 }
