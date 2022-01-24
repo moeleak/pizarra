@@ -15,6 +15,8 @@ use crate::config::Config;
 use crate::ui::Flags;
 use crate::serialize;
 use crate::style::{Style, Stroke};
+#[cfg(test)]
+use crate::shape::ShapeStored;
 
 #[derive(Copy,Clone,Debug, PartialEq, Eq)]
 /// Describes the possible states of the undo_queue and a pointer that moves
@@ -170,16 +172,14 @@ impl Pizarra {
                 ShouldRedraw::Shape
             },
             SelectedTool::Eraser => {
-                let deleted_shape = self.storage
-                    .query_circle(transformed_point, self.transform.to_world_units(self.erase_radius))
-                    .map(|id| self.storage.remove(id))
-                    .flatten();
+                let deleted_shapes = self.storage
+                    .remove_circle(transformed_point, self.transform.to_world_units(self.erase_radius));
 
                 self.eraser_is_active = true;
+                let prev_len = self.erased.len();
+                self.erased.extend(deleted_shapes);
 
-                if let Some(shape) = deleted_shape {
-                    self.erased.push(shape);
-
+                if self.erased.len() > prev_len {
                     ShouldRedraw::All
                 } else {
                     ShouldRedraw::No
@@ -219,16 +219,12 @@ impl Pizarra {
                 }
             },
             SelectedTool::Eraser => {
-                let deleted_shape = self.storage
-                    .query_circle(transformed_point, self.transform.to_world_units(self.erase_radius))
-                    .map(|id| self.storage.remove(id))
-                    .flatten();
+                let deleted_shapes = self.storage
+                    .remove_circle(transformed_point, self.transform.to_world_units(self.erase_radius));
 
                 self.eraser_is_active = false;
 
-                if let Some(shape) = deleted_shape {
-                    self.erased.push(shape);
-                }
+                self.erased.extend(deleted_shapes);
 
                 if !self.erased.is_empty() {
                     Action::Erase(self.erased.drain(..).collect())
@@ -252,13 +248,14 @@ impl Pizarra {
                 }
             },
             SelectedTool::Eraser => {
-                let deleted_shape = self.storage
-                    .query_circle(transformed_point, self.transform.to_world_units(self.erase_radius))
-                    .map(|id| self.storage.remove(id))
-                    .flatten();
+                let deleted_shapes = self.storage
+                    .remove_circle(transformed_point, self.transform.to_world_units(self.erase_radius));
 
-                if let Some(shape) = deleted_shape {
-                    self.erased.push(shape);
+                let prev_len = self.erased.len();
+
+                self.erased.extend(deleted_shapes);
+
+                if self.erased.len() > prev_len {
                     ShouldRedraw::All
                 } else {
                     ShouldRedraw::No
@@ -362,11 +359,6 @@ impl Pizarra {
 
             save_status: SaveStatus::NewAndEmpty,
         }
-    }
-
-    #[cfg(test)]
-    pub fn new_for_testing() -> Pizarra {
-        Pizarra::new(Vec2DScreen::new(80.0, 60.0), Default::default())
     }
 
     pub fn set_config(&mut self, config: Config) {
@@ -788,17 +780,30 @@ impl Pizarra {
     }
 }
 
+// For testing purposes only
+#[cfg(test)]
+impl Pizarra {
+    /// Only for tests. Creates a pizarra instance with a 80x60 window size and
+    /// default config
+    pub fn new_for_testing() -> Pizarra {
+        Pizarra::new(Vec2DScreen::new(80.0, 60.0), Default::default())
+    }
+
+    fn add_sample_shape(&mut self, shape: Box<dyn ShapeStored>) {
+        self.storage.add(shape);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         draw_commands::DrawCommand, app::SelectedTool,
-        path_command::{PathCommand, CubicBezierCurve},
+        path_command::{PathCommand::*, CubicBezierCurve},
     };
     use crate::style::{Style, Stroke};
+    use crate::shape::stored::path::Path;
 
     use super::*;
-
-    use PathCommand::*;
 
     #[test]
     fn draw_a_line() {
@@ -1386,6 +1391,27 @@ mod tests {
         app.undo();
 
         // no line because line itself was undone
+        assert_eq!(app.storage.shape_count(), 0);
+    }
+
+    #[test]
+    fn all_shapes_that_are_touched_are_erased_at_once() {
+        let mut app = Pizarra::new_for_testing();
+
+        app.add_sample_shape(Box::new(Path::from_parts(vec![
+            MoveTo(Vec2DWorld::new(0.0, 0.0)), LineTo(Vec2DWorld::new(20.0, 0.0)),
+        ], Default::default())));
+        app.add_sample_shape(Box::new(Path::from_parts(vec![
+            MoveTo(Vec2DWorld::new(0.0, 0.0)), LineTo(Vec2DWorld::new(20.0, 0.0)),
+        ], Default::default())));
+
+        assert_eq!(app.storage.shape_count(), 2);
+
+        app.set_tool(SelectedTool::Eraser);
+
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(0.0, 0.0));
+        app.handle_mouse_move(Vec2DScreen::new(40.0, 30.0));
+
         assert_eq!(app.storage.shape_count(), 0);
     }
 }

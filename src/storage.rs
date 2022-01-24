@@ -146,8 +146,9 @@ impl Storage {
 
     /// Returns the id of a shape intersecting the circle described by center
     /// and radius, if any.
-    pub fn query_circle(&self, center: Vec2DWorld, radius: f64) -> Option<ShapeId> {
-        self.shapes.locate_with_selection_function(CenterAndRadiusSelection::new(center, radius)).next().map(|shape| shape.id())
+    pub fn remove_circle<'a>(&'a mut self, center: Vec2DWorld, radius: f64) -> impl Iterator<Item=Shape> + 'a {
+        self.shapes
+            .drain_with_selection_function(CenterAndRadiusSelection::new(center, radius))
     }
 
     /// Returns the number of shapes in this storage
@@ -275,10 +276,10 @@ mod tests {
 
         storage.add(Box::new(line));
 
-        assert!(storage.query_circle(Vec2DWorld::new(0.5, -0.5), 0.5).is_none());
-        assert!(storage.query_circle(Vec2DWorld::new(0.5, 0.5), 0.5).is_none());
+        assert_eq!(storage.remove_circle(Vec2DWorld::new(0.5, -0.5), 0.5).collect::<Vec<_>>().len(), 0);
+        assert_eq!(storage.remove_circle(Vec2DWorld::new(0.5, 0.5), 0.5).collect::<Vec<_>>().len(), 0);
 
-        assert_eq!(storage.query_circle(Vec2DWorld::new(-0.25, -1.25), 0.5).unwrap(), ShapeId::from(1));
+        assert!(storage.remove_circle(Vec2DWorld::new(-0.25, -1.25), 0.5).next().is_some());
     }
 
     #[test]
