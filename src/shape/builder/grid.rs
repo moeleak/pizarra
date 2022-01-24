@@ -261,8 +261,8 @@ mod tests {
         let xs = [-2.9, -1.44, 0.020000000000000018];
         let ys = [1.66, 0.82, -0.020000000000000018];
 
-        assert_eq!(grid, Matrix::from_parts(xs.into_iter().map(|x| {
-            ys.iter().map(move |y| Vec2D::new(x, *y))
+        assert_eq!(grid, Matrix::from_parts(ys.into_iter().map(|y| {
+            xs.iter().map(move |&x| Vec2D::new(x, y))
         }).flatten().collect(), 3));
     }
 
