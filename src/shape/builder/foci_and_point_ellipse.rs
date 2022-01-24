@@ -3,7 +3,7 @@ use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::transform::Transform;
 use crate::geom::{self, ellipse_from_foci_and_point};
 use crate::shape::stored::ellipse::Ellipse;
-use crate::draw_commands::{DrawCommand, circle_helper, red_circle_helper, path_helper};
+use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper, path_helper};
 use crate::style::Style;
 
 #[derive(Debug, Copy, Clone)]
@@ -90,18 +90,10 @@ impl ShapeBuilder for FociAndPointEllipse {
             State::One(f1) => vec![
                 circle_helper(t.to_screen_coordinates(f1), snap),
             ],
-            State::Foci([f1, f2]) => {
-                if f1.distance(f2) < snap {
-                    vec![
-                        red_circle_helper(t.to_screen_coordinates(f1), snap),
-                    ]
-                } else {
-                    vec![
-                        circle_helper(t.to_screen_coordinates(f1), snap),
-                        circle_helper(t.to_screen_coordinates(f2), snap),
-                    ]
-                }
-            },
+            State::Foci([f1, f2]) => vec![
+                cancel_helper(f1, f2, t, snap),
+                cancel_helper(f2, f1, t, snap),
+            ],
             State::FociAndPoint {
                 foci, point,
             } => {

@@ -1,7 +1,7 @@
 use crate::point::{Vec2DWorld, Vec2DScreen, Point};
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::shape::stored::ellipse::Ellipse;
-use crate::draw_commands::{DrawCommand, circle_helper, red_circle_helper};
+use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper};
 use crate::transform::Transform;
 use crate::geom::{self, Angle, circle_through_three_points};
 use crate::style::Style;
@@ -84,19 +84,9 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
             State::One(p1) => vec![
                 circle_helper(t.to_screen_coordinates(p1), snap),
             ],
-            State::Two(p1, p2) =>{
-                if p1.distance(p2) < snap {
-                    vec![
-                red_circle_helper(t.to_screen_coordinates(p1), snap),
-                red_circle_helper(t.to_screen_coordinates(p2), snap),
-            ]
-                } else {
-                    vec![
-                        circle_helper(t.to_screen_coordinates(p1), snap),
-                        circle_helper(t.to_screen_coordinates(p2), snap),
-                    ]
-            }
-            },
+            State::Two(p1, p2) => vec![
+                cancel_helper(p1, p2, t, snap),
+            ],
             State::Three(p1, p2, p3) => {
                 let (center, radius) = circle_through_three_points(p1, p2, p3);
 

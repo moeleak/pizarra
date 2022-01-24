@@ -1,4 +1,4 @@
-use crate::draw_commands::{circle_helper, red_circle_helper, DrawCommand};
+use crate::draw_commands::{DrawCommand, cancel_helper};
 use crate::path_command::PathCommand;
 use crate::point::{Point, Vec2DScreen, Vec2DWorld};
 use crate::shape::{stored::path::Path, ShapeBuilder, ShapeFinished};
@@ -53,8 +53,8 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
         self.handle_mouse_moved(pos, t, snap);
 
         let first_point = self.corners[0];
-        let pos_new = t.to_world_coordinates(pos);
-        if first_point.distance(pos_new) < snap {
+
+        if t.to_screen_coordinates(first_point).distance(pos) < snap {
             return ShapeFinished::Cancelled;
         }
 
@@ -66,19 +66,13 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
     fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
         let corners = self.all_four_corners();
 
-        let c = if corners[0].distance(corners[1]) < snap {
-            red_circle_helper(t.to_screen_coordinates(corners[0]), snap)
-        } else {
-            circle_helper(t.to_screen_coordinates(corners[0]), snap)
-        };
-
         vec![
             DrawCommand::Path {
                 commands: draw_commands(corners),
                 style: self.style,
             },
 
-            c,
+            cancel_helper(corners[0], corners[1], t, snap),
         ]
     }
 }

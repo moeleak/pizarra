@@ -1,5 +1,5 @@
 use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::draw_commands::{DrawCommand, circle_helper, red_circle_helper};
+use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper};
 use crate::path_command::PathCommand::{self, *};
 use crate::point::{Point, Vec2DScreen, Vec2DWorld};
 use crate::transform::Transform;
@@ -133,25 +133,16 @@ impl ShapeBuilder for Grid {
                 circle_helper(t.to_screen_coordinates(p), snap),
             ],
 
-            State::DefineCell(p1, p2) => {
-                let p1s = t.to_screen_coordinates(p1);
-                let p2s = t.to_screen_coordinates(p2);
+            State::DefineCell(p1, p2) => vec![
+                cancel_helper(p1, p2, t, snap),
 
-                vec![
-                    if p1s.distance(p2s) < snap {
-                        red_circle_helper(p1s, snap)
-                    } else {
-                        circle_helper(p1s, snap)
-                    },
-
-                    DrawCommand::Path {
-                        commands: corners_to_path_commands(
-                            corners_from_two_points(p1, p2, t)
-                        ),
-                        style: self.style,
-                    },
-                ]
-            },
+                DrawCommand::Path {
+                    commands: corners_to_path_commands(
+                        corners_from_two_points(p1, p2, t)
+                    ),
+                    style: self.style,
+                },
+            ],
 
             State::DefineGrid { cell: (p1, p2), free } => {
                 let cell = (

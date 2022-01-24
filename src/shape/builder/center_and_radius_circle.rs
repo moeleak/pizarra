@@ -1,4 +1,4 @@
-use crate::draw_commands::{circle_helper, red_circle_helper, path_helper, DrawCommand};
+use crate::draw_commands::{cancel_helper, path_helper, DrawCommand};
 use crate::geom::{self, Angle};
 use crate::point::{Point, Vec2DScreen, Vec2DWorld};
 use crate::shape::stored::ellipse::Ellipse;
@@ -52,6 +52,7 @@ impl ShapeBuilder for CenterAndRadiusCircle {
 
     fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
         let radius = self.center.distance(self.point);
+
         vec![
             DrawCommand::Ellipse {
                 ellipse: geom::Ellipse {
@@ -68,11 +69,7 @@ impl ShapeBuilder for CenterAndRadiusCircle {
                 t.to_screen_coordinates(self.point),
             ]),
 
-            if radius < snap {
-                red_circle_helper(t.to_screen_coordinates(self.center), snap)
-            } else {
-                circle_helper(t.to_screen_coordinates(self.center), snap)
-            }
+            cancel_helper(self.center, self.point, t, snap),
         ]
     }
 }

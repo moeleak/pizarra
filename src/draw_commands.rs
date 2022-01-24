@@ -1,8 +1,9 @@
-use crate::point::{Vec2DWorld, Vec2DScreen};
+use crate::point::{Point, Vec2DWorld, Vec2DScreen};
 use crate::color::Color;
 use crate::path_command::PathCommand::{self, *};
 use crate::geom::Ellipse;
 use crate::style::Style;
+use crate::transform::Transform;
 
 /// This enum is returned by the shapes (both stored and the one being drawn).
 /// It is the interface between the backend (libpizarra) and the frontend
@@ -68,11 +69,19 @@ pub fn circle_helper(center: Vec2DScreen, radius: f64) -> DrawCommand {
     }
 }
 
-pub fn red_circle_helper(center: Vec2DScreen, radius: f64) -> DrawCommand {
+fn red_circle_helper(center: Vec2DScreen, radius: f64) -> DrawCommand {
     DrawCommand::ScreenCircle {
         center,
         radius,
         style: Style::red_circle_helper(),
+    }
+}
+
+pub fn cancel_helper(prev: Vec2DWorld, new: Vec2DWorld, t: Transform, snap: f64) -> DrawCommand {
+    if t.to_screen_coordinates(new).distance(t.to_screen_coordinates(prev)) < snap {
+        red_circle_helper(t.to_screen_coordinates(prev), snap)
+    } else {
+        circle_helper(t.to_screen_coordinates(prev), snap)
     }
 }
 

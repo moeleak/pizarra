@@ -1,5 +1,5 @@
 use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::draw_commands::DrawCommand;
+use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper};
 use crate::path_command::PathCommand::*;
 use crate::point::{Point, Vec2DScreen, Vec2DWorld};
 use crate::transform::Transform;
@@ -150,26 +150,29 @@ impl ShapeBuilder for FreeGrid {
         }
     }
 
-    fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
+    fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
         match self.state {
-            State::Initial(p) => vec![DrawCommand::Path {
-                commands: vec![
-                    MoveTo(p),
-                    LineTo(p),
-                ],
-                style: self.style,
-            }],
+            State::Initial(p) => vec![
+                circle_helper(t.to_screen_coordinates(p), snap),
+            ],
 
-            State::OneDimension { start, free } => vec![DrawCommand::Path {
-                commands: vec![
-                    MoveTo(start),
-                    LineTo(free),
-                ],
-                style: self.style,
-            }],
+            State::OneDimension { start, free } => vec![
+                cancel_helper(start, free, t, snap),
 
-            State::TwoDimension { start, p1, free } => {
-                vec![DrawCommand::Path {
+                DrawCommand::Path {
+                    commands: vec![
+                        MoveTo(start),
+                        LineTo(free),
+                    ],
+                    style: self.style,
+                },
+            ],
+
+            State::TwoDimension { start, p1, free } => vec![
+                cancel_helper(start, free, t, snap),
+                cancel_helper(p1, free, t, snap),
+
+                DrawCommand::Path {
                     commands: vec![
                         MoveTo(start),
                         LineTo(p1),
@@ -178,8 +181,8 @@ impl ShapeBuilder for FreeGrid {
                         LineTo(start),
                     ],
                     style: self.style,
-                }]
-            }
+                }
+            ],
 
             State::DefineGrid { start, p1: _, p2, t, free } => {
                 let cell = (
