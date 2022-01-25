@@ -1,6 +1,6 @@
 use crate::draw_commands::{cancel_helper, path_helper, DrawCommand};
 use crate::geom::{self, Angle};
-use crate::point::{Point, Vec2DScreen, Vec2DWorld};
+use crate::point::{Vec2D, ScreenUnit, WorldUnit};
 use crate::shape::stored::ellipse::Ellipse;
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::style::Style;
@@ -8,13 +8,13 @@ use crate::transform::Transform;
 
 #[derive(Debug)]
 pub struct CenterAndRadiusCircle {
-    center: Vec2DWorld,
-    point: Vec2DWorld,
+    center: Vec2D<WorldUnit>,
+    point: Vec2D<WorldUnit>,
     style: Style,
 }
 
 impl CenterAndRadiusCircle {
-    pub fn start(initial: Vec2DWorld, style: Style) -> CenterAndRadiusCircle {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> CenterAndRadiusCircle {
         CenterAndRadiusCircle {
             center: initial,
             point: initial,
@@ -24,13 +24,13 @@ impl CenterAndRadiusCircle {
 }
 
 impl ShapeBuilder for CenterAndRadiusCircle {
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
+    fn handle_mouse_moved(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, _snap: ScreenUnit) {
         self.point = t.to_world_coordinates(pos);
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) {}
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) {}
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
+    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
         self.handle_mouse_moved(pos, t, snap);
 
         let radius = self.point.distance(self.center);
@@ -50,7 +50,7 @@ impl ShapeBuilder for CenterAndRadiusCircle {
         )])
     }
 
-    fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
+    fn draw_commands(&self, t: Transform, snap: ScreenUnit) -> Vec<DrawCommand> {
         let radius = self.center.distance(self.point);
 
         vec![

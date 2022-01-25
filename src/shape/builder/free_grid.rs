@@ -1,7 +1,7 @@
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper};
 use crate::path_command::PathCommand::*;
-use crate::point::{Point, Vec2DScreen, Vec2DWorld};
+use crate::point::{Vec2D, WorldUnit, ScreenUnit};
 use crate::transform::Transform;
 use crate::style::Style;
 use crate::geom::rombus_to_rectangle;
@@ -11,24 +11,24 @@ use crate::shape::stored::path::Path;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
-    Initial(Vec2DWorld),
+    Initial(Vec2D<WorldUnit>),
 
     OneDimension {
-        start: Vec2DWorld,
-        free: Vec2DWorld
+        start: Vec2D<WorldUnit>,
+        free: Vec2D<WorldUnit>
     },
 
     TwoDimension {
-        start: Vec2DWorld,
-        p1: Vec2DWorld,
-        free: Vec2DWorld,
+        start: Vec2D<WorldUnit>,
+        p1: Vec2D<WorldUnit>,
+        free: Vec2D<WorldUnit>,
     },
 
     DefineGrid {
-        start: Vec2DWorld,
-        p1: Vec2DWorld,
-        p2: Vec2DWorld,
-        free: Vec2DWorld,
+        start: Vec2D<WorldUnit>,
+        p1: Vec2D<WorldUnit>,
+        p2: Vec2D<WorldUnit>,
+        free: Vec2D<WorldUnit>,
 
         /// A transform matrix that turns the parallelogram defined by start, p1
         /// and p2 into a square of size 1 in the first quadrant
@@ -47,7 +47,7 @@ pub struct FreeGrid {
 }
 
 impl FreeGrid {
-    pub fn start(initial: Vec2DWorld, style: Style) -> FreeGrid {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> FreeGrid {
         FreeGrid {
             style,
             state: State::Initial(initial),
@@ -56,7 +56,7 @@ impl FreeGrid {
 }
 
 impl ShapeBuilder for FreeGrid {
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
+    fn handle_mouse_moved(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, _snap: ScreenUnit) {
         let wpos = t.to_world_coordinates(pos);
 
         match self.state {
@@ -78,9 +78,9 @@ impl ShapeBuilder for FreeGrid {
         }
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) { }
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) -> ShapeFinished {
+    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, _snap: ScreenUnit) -> ShapeFinished {
         let wpos = t.to_world_coordinates(pos);
 
         match self.state {
@@ -150,7 +150,7 @@ impl ShapeBuilder for FreeGrid {
         }
     }
 
-    fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
+    fn draw_commands(&self, t: Transform, snap: ScreenUnit) -> Vec<DrawCommand> {
         match self.state {
             State::Initial(p) => vec![
                 circle_helper(t.to_screen_coordinates(p), snap),
@@ -227,7 +227,7 @@ mod tests  {
 
     #[test]
     fn figure_is_cancelled() {
-        let mut grid = FreeGrid::start(Vec2DWorld::new(0.0, 0.0), Default::default());
+        let mut grid = FreeGrid::start(Vec2D::new_world(0.0, 0.0), Default::default());
 
         todo!("check that the grid can be cancelled when placing the second and
         third points. I the latter there should be two possibilities of cancelling");

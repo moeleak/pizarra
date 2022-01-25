@@ -1,6 +1,6 @@
 use crate::transform::Transform;
 use crate::path_command::{PathCommand, CubicBezierCurve};
-use crate::point::{Point, Vec2DWorld, Vec2DScreen};
+use crate::point::{Vec2D, Unit, WorldUnit, ScreenUnit};
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::geom::{thirds, bisector};
 use crate::shape::stored::path::Path;
@@ -12,7 +12,7 @@ use crate::style::Style;
 ///
 /// This means that the command at the last position before the operation must
 /// be replaced with the one provided first by this function.
-fn add_smooth<T: 'static + Point>(sec: Option<PathCommand<T>>, last: PathCommand<T>, pos: T) -> (PathCommand<T>, Option<PathCommand<T>>) {
+fn add_smooth<T: Unit>(sec: Option<PathCommand<T>>, last: PathCommand<T>, pos: Vec2D<T>) -> (PathCommand<T>, Option<PathCommand<T>>) {
     match last {
         PathCommand::MoveTo(p) | PathCommand::LineTo(p) => {
             // Second point, put pt1 and pt2 at 1/3 and 2/3 of the
@@ -65,7 +65,7 @@ fn add_smooth<T: 'static + Point>(sec: Option<PathCommand<T>>, last: PathCommand
     }
 }
 
-fn add_point<T: 'static + Point>(commands: &mut Vec<PathCommand<T>>, pos: T) {
+fn add_point<T: Unit>(commands: &mut Vec<PathCommand<T>>, pos: Vec2D<T>) {
     let sub = commands
         .len()
         .checked_sub(2)
@@ -85,12 +85,12 @@ fn add_point<T: 'static + Point>(commands: &mut Vec<PathCommand<T>>, pos: T) {
 
 #[derive(Debug, PartialEq)]
 pub struct FreeHandLine {
-    commands: Vec<PathCommand<Vec2DWorld>>,
+    commands: Vec<PathCommand<WorldUnit>>,
     style: Style,
 }
 
 impl FreeHandLine {
-    pub fn start(initial: Vec2DWorld, style: Style) -> FreeHandLine {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> FreeHandLine {
         let mut commands = Vec::with_capacity(1000);
 
         commands.push(PathCommand::MoveTo(initial));
@@ -101,7 +101,7 @@ impl FreeHandLine {
         }
     }
 
-    pub fn with_params(commands: Vec<PathCommand<Vec2DWorld>>, style: Style) -> FreeHandLine {
+    pub fn with_params(commands: Vec<PathCommand<WorldUnit>>, style: Style) -> FreeHandLine {
         FreeHandLine {
             commands, style,
         }
@@ -119,19 +119,19 @@ impl ShapeBuilder for FreeHandLine {
     //    control point respecting its length. It sets correctly the length of
     //    its two control points but the last one sits in the segment between
     //    the last two points.
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
+    fn handle_mouse_moved(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, _snap: ScreenUnit) {
         add_point(&mut self.commands, t.to_world_coordinates(pos));
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) { }
 
-    fn handle_button_released(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) -> ShapeFinished {
+    fn handle_button_released(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) -> ShapeFinished {
         ShapeFinished::Yes(vec![Box::new(Path::from_parts(
             self.commands.clone(), self.style,
         ))])
     }
 
-    fn draw_commands(&self, _t: Transform, _snap: f64) -> Vec<DrawCommand> {
+    fn draw_commands(&self, _t: Transform, _snap: ScreenUnit) -> Vec<DrawCommand> {
         vec![DrawCommand::Path {
             commands: self.commands.clone(),
             style: self.style,

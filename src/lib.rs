@@ -41,6 +41,9 @@ la fecha en hora local en que se hizo.
 
 */
 
+#[macro_use]
+extern crate num_derive;
+
 pub mod color;
 pub mod shape;
 pub mod storage;

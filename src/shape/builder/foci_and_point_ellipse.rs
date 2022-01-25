@@ -1,4 +1,4 @@
-use crate::point::{Vec2DWorld, Vec2DScreen, Point};
+use crate::point::{Vec2D, ScreenUnit, WorldUnit};
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::transform::Transform;
 use crate::geom::{self, ellipse_from_foci_and_point};
@@ -8,11 +8,11 @@ use crate::style::Style;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
-    One(Vec2DWorld),
-    Foci([Vec2DWorld; 2]),
+    One(Vec2D<WorldUnit>),
+    Foci([Vec2D<WorldUnit>; 2]),
     FociAndPoint {
-        foci: [Vec2DWorld; 2],
-        point: Vec2DWorld,
+        foci: [Vec2D<WorldUnit>; 2],
+        point: Vec2D<WorldUnit>,
     }
 }
 
@@ -23,7 +23,7 @@ pub struct FociAndPointEllipse {
 }
 
 impl FociAndPointEllipse {
-    pub fn start(initial: Vec2DWorld, style: Style) -> FociAndPointEllipse {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> FociAndPointEllipse {
         FociAndPointEllipse {
             state: State::One(initial),
             style,
@@ -32,7 +32,7 @@ impl FociAndPointEllipse {
 }
 
 impl ShapeBuilder for FociAndPointEllipse {
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
+    fn handle_mouse_moved(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, _snap: ScreenUnit) {
         match self.state {
             State::One(_) => {
                 self.state = State::One(t.to_world_coordinates(pos));
@@ -51,9 +51,9 @@ impl ShapeBuilder for FociAndPointEllipse {
         }
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _: Transform, _snap: f64) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _: Transform, _snap: ScreenUnit) { }
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
+    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
         let wpos = t.to_world_coordinates(pos);
 
         match self.state {
@@ -85,7 +85,7 @@ impl ShapeBuilder for FociAndPointEllipse {
         }
     }
 
-    fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
+    fn draw_commands(&self, t: Transform, snap: ScreenUnit) -> Vec<DrawCommand> {
         match self.state {
             State::One(f1) => vec![
                 circle_helper(t.to_screen_coordinates(f1), snap),
@@ -125,23 +125,22 @@ impl ShapeBuilder for FociAndPointEllipse {
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use crate::point::Point;
     use crate::geom::Angle;
     use crate::color::Color;
 
     use super::*;
 
-    const SNAP: f64 = 1.0;
+    const SNAP: ScreenUnit = 1.0;
 
     #[test]
     fn three_point_ellipse_builder() {
-        let a0: Vec2DScreen = (-5.69132,5.13608).into();
-        let a1: Vec2DScreen = (-6.41006,4.44396).into();
-        let a: Vec2DScreen = (-5.61146,3.80508).into();
-        let b: Vec2DScreen = (-4.36,0.52).into();
-        let c: Vec2DScreen = (-0.44,-1.28).into();
-        let d: Vec2DScreen = (2.2,0.56).into();
-        let e: Vec2DScreen = (4.3,-0.4).into();
+        let a0: Vec2D<ScreenUnit> = (-5.69132,5.13608).into();
+        let a1: Vec2D<ScreenUnit> = (-6.41006,4.44396).into();
+        let a: Vec2D<ScreenUnit> = (-5.61146,3.80508).into();
+        let b: Vec2D<ScreenUnit> = (-4.36,0.52).into();
+        let c: Vec2D<ScreenUnit> = (-0.44,-1.28).into();
+        let d: Vec2D<ScreenUnit> = (2.2,0.56).into();
+        let e: Vec2D<ScreenUnit> = (4.3,-0.4).into();
 
         let t: Transform = Default::default();
 
@@ -213,7 +212,7 @@ mod tests {
         assert_eq!(builder.draw_commands(t, SNAP)[0], DrawCommand::Ellipse {
             style: Default::default(),
             ellipse: geom::Ellipse {
-                center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
+                center: Vec2D::new_world(-3.0257300000000003, 1.26254),
                 semimajor: 5.838320272867801,
                 semiminor: 4.575529950080007,
                 angle: Angle::from_radians(-0.7769764190469384),
@@ -228,7 +227,7 @@ mod tests {
                 assert_eq!(shape[0].draw_commands(), DrawCommand::Ellipse {
                     style: Default::default(),
                     ellipse: geom::Ellipse {
-                        center: Vec2DWorld::new(-3.0257300000000003, 1.26254),
+                        center: Vec2D::new_world(-3.0257300000000003, 1.26254),
                         semimajor: 7.793799303722533,
                         semiminor: 6.898753387548061,
                         angle: Angle::from_radians(-0.7769764190469384),

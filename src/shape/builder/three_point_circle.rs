@@ -1,4 +1,4 @@
-use crate::point::{Vec2DWorld, Vec2DScreen, Point};
+use crate::point::{Vec2D, WorldUnit, ScreenUnit};
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::shape::stored::ellipse::Ellipse;
 use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper};
@@ -8,9 +8,9 @@ use crate::style::Style;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
-    One(Vec2DWorld),
-    Two(Vec2DWorld, Vec2DWorld),
-    Three(Vec2DWorld, Vec2DWorld, Vec2DWorld),
+    One(Vec2D<WorldUnit>),
+    Two(Vec2D<WorldUnit>, Vec2D<WorldUnit>),
+    Three(Vec2D<WorldUnit>, Vec2D<WorldUnit>, Vec2D<WorldUnit>),
 }
 
 #[derive(Debug)]
@@ -20,7 +20,7 @@ pub struct CircleThroughThreePointsBuilder {
 }
 
 impl CircleThroughThreePointsBuilder {
-    pub fn start(initial: Vec2DWorld, style: Style) -> CircleThroughThreePointsBuilder {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> CircleThroughThreePointsBuilder {
         CircleThroughThreePointsBuilder {
             state: State::One(initial),
             style,
@@ -29,7 +29,7 @@ impl CircleThroughThreePointsBuilder {
 }
 
 impl ShapeBuilder for CircleThroughThreePointsBuilder {
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
+    fn handle_mouse_moved(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, _snap: ScreenUnit) {
         match self.state {
             State::One(_) => {
                 self.state = State::One(t.to_world_coordinates(pos));
@@ -43,9 +43,9 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
         }
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) {}
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) {}
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
+    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
         self.handle_mouse_moved(pos, t, snap);
 
         let pos_new = t.to_world_coordinates(pos);
@@ -79,7 +79,7 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
         }
     }
 
-    fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
+    fn draw_commands(&self, t: Transform, snap: ScreenUnit) -> Vec<DrawCommand> {
         match self.state {
             State::One(p1) => vec![
                 circle_helper(t.to_screen_coordinates(p1), snap),

@@ -11,7 +11,7 @@ use lazy_static::lazy_static;
 use crate::storage::Storage;
 use crate::shape::{ShapeStored, stored::{path::Path, ellipse::Ellipse}};
 use crate::color::Color;
-use crate::point::{Point, Vec2DWorld};
+use crate::point::{Vec2D, WorldUnit};
 use crate::geom::Angle;
 use crate::config::Config;
 use crate::style::{Style, Stroke};
@@ -75,12 +75,12 @@ impl std::error::Error for Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
-impl FromStr for Vec2DWorld {
+impl FromStr for Vec2D<WorldUnit> {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         if let Some(captures) = POINT_REGEX.captures(s) {
-            Ok(Vec2DWorld::new(
+            Ok(Vec2D::new(
                 captures["x"].parse::<f64>()?,
                 captures["y"].parse::<f64>()?,
             ))
@@ -187,7 +187,7 @@ impl Deserialize for Ellipse {
 
         let angle: Angle = angle.parse()?;
 
-        let center = Vec2DWorld::new(cx.parse()?, cy.parse()?);
+        let center = Vec2D::new_world(cx.parse()?, cy.parse()?);
         let rx: f64 = rx.parse()?;
         let ry: f64 = ry.parse()?;
 
@@ -287,21 +287,21 @@ mod tests {
         } = line.draw_commands() {
             assert_eq!(style.stroke.unwrap().color, Color::from_float_rgb(0.5390625, 0.8828125, 0.203125));
             assert_eq!(commands, vec![
-                PathCommand::MoveTo(Vec2DWorld::new(147.570312, 40.121094)),
-                PathCommand::LineTo(Vec2DWorld::new(146.9375, 40.121094)),
-                PathCommand::LineTo(Vec2DWorld::new(145.296875, 40.460938)),
-                PathCommand::LineTo(Vec2DWorld::new(142.519531, 41.710938)),
-                PathCommand::LineTo(Vec2DWorld::new(139.613281, 43.304688)),
-                PathCommand::LineTo(Vec2DWorld::new(138.097656, 44.894531)),
-                PathCommand::LineTo(Vec2DWorld::new(137.339844, 46.714844)),
-                PathCommand::LineTo(Vec2DWorld::new(138.097656, 47.621094)),
-                PathCommand::LineTo(Vec2DWorld::new(139.992188, 47.851562)),
-                PathCommand::LineTo(Vec2DWorld::new(142.898438, 47.621094)),
-                PathCommand::LineTo(Vec2DWorld::new(146.179688, 47.167969)),
-                PathCommand::LineTo(Vec2DWorld::new(150.097656, 47.964844)),
-                PathCommand::LineTo(Vec2DWorld::new(151.738281, 49.667969)),
-                PathCommand::LineTo(Vec2DWorld::new(152.496094, 51.714844)),
-                PathCommand::LineTo(Vec2DWorld::new(152.875, 53.191406)),
+                PathCommand::MoveTo(Vec2D::new_world(147.570312, 40.121094)),
+                PathCommand::LineTo(Vec2D::new_world(146.9375, 40.121094)),
+                PathCommand::LineTo(Vec2D::new_world(145.296875, 40.460938)),
+                PathCommand::LineTo(Vec2D::new_world(142.519531, 41.710938)),
+                PathCommand::LineTo(Vec2D::new_world(139.613281, 43.304688)),
+                PathCommand::LineTo(Vec2D::new_world(138.097656, 44.894531)),
+                PathCommand::LineTo(Vec2D::new_world(137.339844, 46.714844)),
+                PathCommand::LineTo(Vec2D::new_world(138.097656, 47.621094)),
+                PathCommand::LineTo(Vec2D::new_world(139.992188, 47.851562)),
+                PathCommand::LineTo(Vec2D::new_world(142.898438, 47.621094)),
+                PathCommand::LineTo(Vec2D::new_world(146.179688, 47.167969)),
+                PathCommand::LineTo(Vec2D::new_world(150.097656, 47.964844)),
+                PathCommand::LineTo(Vec2D::new_world(151.738281, 49.667969)),
+                PathCommand::LineTo(Vec2D::new_world(152.496094, 51.714844)),
+                PathCommand::LineTo(Vec2D::new_world(152.875, 53.191406)),
             ]);
             assert_eq!(style.stroke.unwrap().size, 3.0);
         } else {
@@ -313,7 +313,7 @@ mod tests {
     fn test_parse_point() {
         let p = " 152.496094 51.714844 ";
 
-        assert_eq!(p.parse::<Vec2DWorld>().unwrap(), Vec2DWorld::new(152.496094, 51.714844));
+        assert_eq!(p.parse::<Vec2DWorld>().unwrap(), Vec2D::new_world(152.496094, 51.714844));
     }
 
     #[test]
@@ -338,7 +338,7 @@ mod tests {
 
         match deserialized.draw_commands() {
             DrawCommand::Ellipse { ellipse: e, style } => {
-                assert_eq!(e.center, Vec2DWorld::new(20.4, -30.5));
+                assert_eq!(e.center, Vec2D::new_world(20.4, -30.5));
                 assert_eq!(e.semimajor, 5.6);
                 assert_eq!(e.semiminor, 3.5);
                 assert_eq!(e.angle.degrees(), 34.5);

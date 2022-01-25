@@ -5,7 +5,7 @@ use std::str;
 use std::str::Bytes;
 
 use crate::path_command::{PathCommand::{self, *}, CubicBezierCurve};
-use crate::point::{Point, Vec2DWorld};
+use crate::point::{Vec2D, WorldUnit};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Token {
@@ -177,7 +177,7 @@ impl Iterator for Lexer<'_> {
 }
 
 pub struct PathBuilder {
-    commands: Vec<PathCommand<Vec2DWorld>>,
+    commands: Vec<PathCommand<WorldUnit>>,
 }
 
 impl PathBuilder {
@@ -187,23 +187,23 @@ impl PathBuilder {
         }
     }
 
-    pub fn into_path(self) -> Vec<PathCommand<Vec2DWorld>> {
+    pub fn into_path(self) -> Vec<PathCommand<WorldUnit>> {
         self.commands
     }
 
     fn move_to(&mut self, x: f64, y: f64) {
-        self.commands.push(MoveTo(Vec2DWorld::new(x, y)));
+        self.commands.push(MoveTo(Vec2D::new_world(x, y)));
     }
 
     fn line_to(&mut self, x: f64, y: f64) {
-        self.commands.push(LineTo(Vec2DWorld::new(x, y)));
+        self.commands.push(LineTo(Vec2D::new_world(x, y)));
     }
 
     fn curve_to(&mut self, pt1x: f64, pt1y: f64, pt2x: f64, pt2y: f64, tox: f64, toy: f64) {
         self.commands.push(CurveTo(CubicBezierCurve {
-            pt1: Vec2DWorld::new(pt1x, pt1y),
-            pt2: Vec2DWorld::new(pt2x, pt2y),
-            to: Vec2DWorld::new(tox, toy),
+            pt1: Vec2D::new_world(pt1x, pt1y),
+            pt2: Vec2D::new_world(pt2x, pt2y),
+            to: Vec2D::new_world(tox, toy),
         }));
     }
 }
@@ -809,7 +809,7 @@ mod tests {
     fn test_parser(
         path_str: &str,
         error_pos_str: &str,
-        expected_commands: &[PathCommand<Vec2DWorld>],
+        expected_commands: &[PathCommand<WorldUnit>],
         expected_error_kind: Option<ErrorKind>,
     ) {
         let expected_result = make_parse_result(error_pos_str, expected_error_kind);
@@ -822,19 +822,19 @@ mod tests {
         assert_eq!(expected_result, result);
     }
 
-    fn moveto(x: f64, y: f64) -> PathCommand<Vec2DWorld> {
-        PathCommand::MoveTo(Vec2DWorld::new(x, y))
+    fn moveto(x: f64, y: f64) -> PathCommand<WorldUnit> {
+        PathCommand::MoveTo(Vec2D::new_world(x, y))
     }
 
-    fn lineto(x: f64, y: f64) -> PathCommand<Vec2DWorld> {
-        PathCommand::LineTo(Vec2DWorld::new(x, y))
+    fn lineto(x: f64, y: f64) -> PathCommand<WorldUnit> {
+        PathCommand::LineTo(Vec2D::new_world(x, y))
     }
 
-    fn curveto(x2: f64, y2: f64, x3: f64, y3: f64, x4: f64, y4: f64) -> PathCommand<Vec2DWorld> {
+    fn curveto(x2: f64, y2: f64, x3: f64, y3: f64, x4: f64, y4: f64) -> PathCommand<WorldUnit> {
         PathCommand::CurveTo(CubicBezierCurve {
-            pt1: Vec2DWorld::new(x2, y2),
-            pt2: Vec2DWorld::new(x3, y3),
-            to: Vec2DWorld::new(x4, y4),
+            pt1: Vec2D::new_world(x2, y2),
+            pt2: Vec2D::new_world(x3, y3),
+            to: Vec2D::new_world(x4, y4),
         })
     }
 
@@ -843,7 +843,7 @@ mod tests {
         test_parser(
             "",
             "",
-            &Vec::<PathCommand<Vec2DWorld>>::new(),
+            &Vec::<PathCommand<WorldUnit>>::new(),
             None,
         );
     }

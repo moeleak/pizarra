@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub, Mul, Neg};
 
-use crate::point::Point;
+use crate::point::{Vec2D, Unit};
 
 use super::dot;
 
@@ -29,14 +29,14 @@ impl Angle {
         Angle(degrees.to_radians())
     }
 
-    pub fn between<P: Point>(a: P, b: P) -> Angle {
+    pub fn between<T: Unit>(a: Vec2D<T>, b: Vec2D<T>) -> Angle {
         if a == b {
             return Angle::from_radians(0.0);
         }
 
         let angle = (dot(a, b)/(a.magnitude() * b.magnitude())).acos();
 
-        Self::from_radians(if a.x() * b.y() - a.y() * b.x() < 0.0 {
+        Self::from_radians(if a.x.val() * b.y.val() - a.y.val() * b.x.val() < 0.0 {
             -angle
         } else {
             angle

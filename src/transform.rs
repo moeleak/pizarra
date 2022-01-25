@@ -1,4 +1,4 @@
-use crate::point::{Point, Vec2D, Vec2DWorld, Vec2DScreen};
+use crate::point::{Vec2D, Unit, WorldUnit, ScreenUnit, Unittless};
 use crate::geom::Angle;
 
 fn multiply(t2: &Transform, t1: &Transform) -> Transform {
@@ -63,10 +63,10 @@ impl Transform {
         )
     }
 
-    pub fn new_translate(vector: Vec2D) -> Transform {
+    pub fn new_translate(vector: Vec2D<Unittless>) -> Transform {
         Transform::new(
-            1.0, 0.0, vector.x,
-            0.0, 1.0, vector.y,
+            1.0, 0.0, vector.x.val(),
+            0.0, 1.0, vector.y.val(),
         )
     }
 
@@ -89,8 +89,8 @@ impl Transform {
     }
 
     /// Computes a transform to go back to 1.0 zoom with the drawing's origin centered in the viewport.
-    pub fn default_for_viewport(viewport_dimensions: Vec2DScreen) -> Transform {
-        Transform::new_translate(Vec2D::new(viewport_dimensions.x, viewport_dimensions.y) * 0.5)
+    pub fn default_for_viewport(viewport_dimensions: Vec2D<ScreenUnit>) -> Transform {
+        Transform::new_translate(Vec2D::new_unitless(viewport_dimensions.x.val(), viewport_dimensions.y.val()) * 0.5)
     }
 
     /// Take the current transformation matrix and scale it by this factor. New
@@ -115,7 +115,7 @@ impl Transform {
     ///
     /// Implemented as multiplying the current matrix to the left by a
     /// translation matrix
-    pub fn translate(&self, delta: Vec2D) -> Transform {
+    pub fn translate(&self, delta: Vec2D<Unittless>) -> Transform {
         multiply(&Transform::new_translate(delta), self)
     }
 
@@ -135,7 +135,7 @@ impl Transform {
     /// Objects on the screen look `factor` times bigger. Specified fixed point
     /// is, well, fixed in the sense that before and after the zoom this point
     /// maps to the same point of the world.
-    pub fn zoom(&self, factor: f64, fixed: Vec2DScreen) -> Transform {
+    pub fn zoom(&self, factor: f64, fixed: Vec2D<ScreenUnit>) -> Transform {
         let t = fixed * -1.0;
         let t1 = fixed;
 
@@ -144,7 +144,7 @@ impl Transform {
 
     /// Objects on the screen rotate `angle`. Rotation happens around the
     /// specified fixed point
-    pub fn turn(&self, angle: Angle, fixed: Vec2DScreen) -> Transform {
+    pub fn turn(&self, angle: Angle, fixed: Vec2D<ScreenUnit>) -> Transform {
         let t = fixed * -1.0;
         let t1 = fixed;
 
@@ -152,19 +152,19 @@ impl Transform {
     }
 
     /// Objects on the screen move by this delta in screen units
-    pub fn r#move(&self, delta: Vec2DScreen) -> Transform {
+    pub fn r#move(&self, delta: Vec2D<ScreenUnit>) -> Transform {
         self.translate(delta.to_vec2d())
     }
 
     #[inline]
-    fn transform_distance(&self, dx: f64, dy: f64) -> Vec2D {
-        Vec2D::new(dx * self.xx + dy * self.xy, dx * self.yx + dy * self.yy)
+    fn transform_distance(&self, dx: f64, dy: f64) -> Vec2D<Unittless> {
+        Vec2D::new_unitless(dx * self.xx + dy * self.xy, dx * self.yx + dy * self.yy)
     }
 
     #[inline]
     fn transform_point(&self, px: f64, py: f64) -> (f64, f64) {
         let Vec2D {x, y} = self.transform_distance(px, py);
-        (x + self.x0, y + self.y0)
+        (x.val() + self.x0, y.val() + self.y0)
     }
 
     #[inline]
@@ -187,22 +187,22 @@ impl Transform {
         }
     }
 
-    pub fn apply(&self, p: Vec2D) -> Vec2D {
-        self.transform_point(p.x, p.y).into()
+    pub fn apply(&self, p: Vec2D<Unittless>) -> Vec2D<Unittless> {
+        self.transform_point(p.x.val(), p.y.val()).into()
     }
 
-    pub fn to_screen_coordinates(&self, p: Vec2DWorld) -> Vec2DScreen {
+    pub fn to_screen_coordinates(&self, p: Vec2D<WorldUnit>) -> Vec2D<ScreenUnit> {
         // directly transform
-        self.transform_point(p.x, p.y).into()
+        self.transform_point(p.x.val(), p.y.val()).into()
     }
 
-    pub fn to_world_coordinates(&self, p: Vec2DScreen) -> Vec2DWorld {
+    pub fn to_world_coordinates(&self, p: Vec2D<ScreenUnit>) -> Vec2D<WorldUnit> {
         // invert matrix, then transform
-        self.invert().transform_point(p.x, p.y).into()
+        self.invert().transform_point(p.x.val(), p.y.val()).into()
     }
 
-    pub fn to_world_units(&self, length: f64) -> f64 {
-        let vec: Vec2DWorld = self.invert().transform_distance(length, 0.0).into();
+    pub fn to_world_units(&self, length: ScreenUnit) -> WorldUnit {
+        let vec: Vec2D<WorldUnit> = self.invert().transform_distance(length, 0.0).into();
 
         vec.magnitude()
     }
@@ -212,26 +212,24 @@ impl Transform {
 mod tests {
     use super::*;
 
-    use crate::point::Point;
-
     #[test]
     fn default_viewport_transform_centers_the_origin() {
-        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let dimensions = Vec2D::new_screen(200.0, 100.0);
         let t = Transform::default_for_viewport(dimensions);
 
         let center = dimensions / 2.0;
         let transformed = t.to_world_coordinates(center);
-        assert_eq!(transformed, Vec2DWorld::new(0.0, 0.0));
+        assert_eq!(transformed, Vec2D::new_world(0.0, 0.0));
     }
 
     #[test]
     fn screen_center_is_drawing_origin() {
-        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let dimensions = Vec2D::new_screen(200.0, 100.0);
         let t = Transform::default_for_viewport(dimensions);
 
-        let center = Vec2DScreen::new(100.0, 50.0);
+        let center = Vec2D::new_screen(100.0, 50.0);
         let transformed = t.to_world_coordinates(center);
-        assert_eq!(transformed, Vec2DWorld::new(0.0, 0.0));
+        assert_eq!(transformed, Vec2D::new_world(0.0, 0.0));
     }
 
     #[test]
@@ -239,9 +237,9 @@ mod tests {
         let dimensions = (200.0, 100.0).into();
         let t = Transform::default_for_viewport(dimensions);
 
-        let origin = Vec2DWorld::new(0.0, 0.0);
+        let origin = Vec2D::new_world(0.0, 0.0);
         let transformed = t.to_screen_coordinates(origin);
-        assert_eq!(transformed, Vec2DScreen::new(100.0, 50.0));
+        assert_eq!(transformed, Vec2D::new_screen(100.0, 50.0));
     }
 
     #[test]
@@ -249,8 +247,8 @@ mod tests {
     /// while zooming
     fn zoom_in_scales_as_expected() {
         let dimensions = (200.0, 100.0).into();
-        let a = Vec2DWorld::new(0.0, 0.0);
-        let b = Vec2DWorld::new(3.0, 4.0);
+        let a = Vec2D::new_world(0.0, 0.0);
+        let b = Vec2D::new_world(3.0, 4.0);
         let t = Transform::default_for_viewport(dimensions);
 
         let t1 = t.zoom(2.0, dimensions);
@@ -258,12 +256,12 @@ mod tests {
         let a1 = t1.to_screen_coordinates(a);
         let b1 = t1.to_screen_coordinates(b);
 
-        assert_eq!(a1.distance(b1), 10.0);
+        assert_eq!(a1.distance(b1), 10.0.into());
     }
 
     #[test]
     fn zoom_in_preserves_center_point() {
-        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let dimensions = Vec2D::new_screen(200.0, 100.0);
         let center = dimensions * 0.5;
 
         let t = Transform::default_for_viewport(dimensions);
@@ -277,7 +275,7 @@ mod tests {
 
     #[test]
     fn zoom_out_preserves_center_point() {
-        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let dimensions = Vec2D::new_screen(200.0, 100.0);
         let t = Transform::default_for_viewport(dimensions);
 
         let center = dimensions * 0.5;
@@ -290,77 +288,77 @@ mod tests {
 
     #[test]
     fn translated_screen_point_preserves_drawing_coordinates() {
-        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let dimensions = Vec2D::new_screen(200.0, 100.0);
         let t = Transform::default_for_viewport(dimensions);
 
-        let screen_point = Vec2DScreen::new(20.0, 30.0);
+        let screen_point = Vec2D::new_screen(20.0, 30.0);
         let drawing_point = t.to_world_coordinates(screen_point);
 
-        let t = t.r#move(Vec2DScreen::new(10.0, 5.0));
-        let translated_screen_point = Vec2DScreen::new(30.0, 35.0);
+        let t = t.r#move(Vec2D::new_screen(10.0, 5.0));
+        let translated_screen_point = Vec2D::new_screen(30.0, 35.0);
         let translated_drawing_point = t.to_world_coordinates(translated_screen_point);
         assert_eq!(drawing_point, translated_drawing_point);
     }
 
     #[test]
     fn units_in_screen_coordinates_can_be_converted_to_world() {
-        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let dimensions = Vec2D::new_screen(200.0, 100.0);
         let mut t = Transform::default_for_viewport(dimensions);
 
-        assert_eq!(t.to_world_units(1.0), 1.0);
+        assert_eq!(t.to_world_units(1.0), 1.0.into());
 
         t = t.zoom(2.0, dimensions);
 
-        assert_eq!(t.to_world_units(1.0), 0.5);
+        assert_eq!(t.to_world_units(1.0), 0.5.into());
 
         t = t.zoom(0.5, dimensions);
 
-        assert_eq!(t.to_world_units(1.0), 1.0);
+        assert_eq!(t.to_world_units(1.0), 1.0.into());
 
         t = t.zoom(0.5, dimensions);
 
-        assert_eq!(t.to_world_units(1.0), 2.0);
+        assert_eq!(t.to_world_units(1.0), 2.0.into());
     }
 
     #[test]
     fn zoom_fixes_world_origin() {
-        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let dimensions = Vec2D::new_screen(200.0, 100.0);
         let center = dimensions / 2.0;
         let mut t = Transform::default_for_viewport(dimensions);
 
-        assert_eq!(t.to_screen_coordinates(Vec2DWorld::new(0.0, 0.0)), Vec2DScreen::new(100.0, 50.0));
+        assert_eq!(t.to_screen_coordinates(Vec2D::new_world(0.0, 0.0)), Vec2D::new_screen(100.0, 50.0));
 
         t = t.zoom(2.0, center);
 
-        assert_eq!(t.to_screen_coordinates(Vec2DWorld::new(0.0, 0.0)), Vec2DScreen::new(100.0, 50.0));
+        assert_eq!(t.to_screen_coordinates(Vec2D::new_world(0.0, 0.0)), Vec2D::new_screen(100.0, 50.0));
 
         t = t.zoom(2.0, center);
 
-        assert_eq!(t.to_screen_coordinates(Vec2DWorld::new(0.0, 0.0)), Vec2DScreen::new(100.0, 50.0));
+        assert_eq!(t.to_screen_coordinates(Vec2D::new_world(0.0, 0.0)), Vec2D::new_screen(100.0, 50.0));
     }
 
     #[test]
     fn zoom_fixes_viewport_center_even_when_translated() {
-        let dimensions = Vec2DScreen::new(200.0, 100.0);
+        let dimensions = Vec2D::new_screen(200.0, 100.0);
         let screen_center = dimensions / 2.0;
         let mut t = Transform::default_for_viewport(dimensions);
 
         // screen center is world origin
-        assert_eq!(t.to_world_coordinates(screen_center), Vec2DWorld::new(0.0, 0.0));
+        assert_eq!(t.to_world_coordinates(screen_center), Vec2D::new_world(0.0, 0.0));
 
         // zoom in
         t = t.zoom(2.0, screen_center);
 
         // screen center is still world origin
-        assert_eq!(t.to_world_coordinates(screen_center), Vec2DWorld::new(0.0, 0.0));
+        assert_eq!(t.to_world_coordinates(screen_center), Vec2D::new_world(0.0, 0.0));
 
         // move the screen by this vector
-        t = t.r#move(Vec2DScreen::new(5.0, 0.0));
+        t = t.r#move(Vec2D::new_screen(5.0, 0.0));
 
         // this is the new point in the world that maps to the screen center
         let fixed = t.to_world_coordinates(screen_center);
         // it is not the origin anymore
-        assert_ne!(fixed, Vec2DWorld::new(0.0, 0.0));
+        assert_ne!(fixed, Vec2D::new_world(0.0, 0.0));
 
         // zoom out
         t = t.zoom(0.5, screen_center);

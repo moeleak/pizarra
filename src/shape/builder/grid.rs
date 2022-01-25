@@ -1,7 +1,7 @@
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper};
 use crate::path_command::PathCommand::{self, *};
-use crate::point::{Point, Vec2DScreen, Vec2DWorld};
+use crate::point::{Vec2D, Unit, WorldUnit, ScreenUnit};
 use crate::transform::Transform;
 use crate::style::Style;
 use crate::matrix::Matrix;
@@ -10,13 +10,13 @@ use crate::shape::ShapeStored;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
-    Initial(Vec2DWorld),
+    Initial(Vec2D<WorldUnit>),
 
-    DefineCell(Vec2DWorld, Vec2DWorld),
+    DefineCell(Vec2D<WorldUnit>, Vec2D<WorldUnit>),
 
     DefineGrid {
-        cell: (Vec2DWorld, Vec2DWorld),
-        free: Vec2DWorld,
+        cell: (Vec2D<WorldUnit>, Vec2D<WorldUnit>),
+        free: Vec2D<WorldUnit>,
     },
 }
 
@@ -31,7 +31,7 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub fn start(initial: Vec2DWorld, style: Style) -> Grid {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> Grid {
         Grid {
             style,
             state: State::Initial(initial),
@@ -40,7 +40,7 @@ impl Grid {
 }
 
 impl ShapeBuilder for Grid {
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
+    fn handle_mouse_moved(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, _snap: ScreenUnit) {
         let wpos = t.to_world_coordinates(pos);
 
         match self.state {
@@ -58,9 +58,9 @@ impl ShapeBuilder for Grid {
         }
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2DScreen, _t: Transform, _snap: f64) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) { }
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
+    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
         let wpos = t.to_world_coordinates(pos);
 
         match self.state {
@@ -127,7 +127,7 @@ impl ShapeBuilder for Grid {
         }
     }
 
-    fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
+    fn draw_commands(&self, t: Transform, snap: ScreenUnit) -> Vec<DrawCommand> {
         match self.state {
             State::Initial(p) => vec![
                 circle_helper(t.to_screen_coordinates(p), snap),
@@ -182,7 +182,7 @@ impl ShapeBuilder for Grid {
 
 /// Given the two points that define a cell and a third point outside (or
 /// inside) it, return a matrix of all the points that make it and its width
-pub(crate) fn grid_from_cell_and_point<P: Point>((p1, p2): (P, P), free: P) -> Matrix<P> {
+pub(crate) fn grid_from_cell_and_point<T: Unit>((p1, p2): (Vec2D<T>, Vec2D<T>), free: Vec2D<T>) -> Matrix<Vec2D<T>> {
     let diagonal = p2 - p1;
     let freep = free - p1;
 
@@ -204,27 +204,27 @@ pub(crate) fn grid_from_cell_and_point<P: Point>((p1, p2): (P, P), free: P) -> M
 
     for yi in y_separators {
         for &xi in x_separators.iter() {
-            grid.push(p1 + P::new(xi as f64 * width, yi as f64 * height));
+            grid.push(p1 + Vec2D::new(xi as f64 * width, yi as f64 * height));
         }
     }
 
     Matrix::from_parts(grid, num_x_cells + 1)
 }
 
-fn corners_from_two_points(p1: Vec2DWorld, p2: Vec2DWorld, t: Transform) -> [Vec2DWorld; 4] {
+fn corners_from_two_points(p1: Vec2D<WorldUnit>, p2: Vec2D<WorldUnit>, t: Transform) -> [Vec2D<WorldUnit>; 4] {
     let p1s = t.to_screen_coordinates(p1);
     let p2s = t.to_screen_coordinates(p2);
     let diagonal = p2s - p1s;
 
     [
         p1,
-        t.to_world_coordinates(p1s + Vec2DScreen::new(diagonal.x, 0.0)),
+        t.to_world_coordinates(p1s + Vec2D::new_screen(diagonal.x, 0.0)),
         p2,
-        t.to_world_coordinates(p1s + Vec2DScreen::new(0.0, diagonal.y)),
+        t.to_world_coordinates(p1s + Vec2D::new_screen(0.0, diagonal.y)),
     ]
 }
 
-fn corners_to_path_commands(corners: [Vec2DWorld; 4]) -> Vec<PathCommand<Vec2DWorld>> {
+fn corners_to_path_commands(corners: [Vec2D<WorldUnit>; 4]) -> Vec<PathCommand<WorldUnit>> {
     corners.into_iter().cycle().take(5).enumerate().map(|(i, p)| if i == 0 {
         MoveTo(p)
     } else {
@@ -276,9 +276,9 @@ mod tests {
 
     #[test]
     fn can_render_a_grid() {
-        let a = Vec2DScreen::new(-3.0, 3.0);
-        let b = Vec2DScreen::new(-1.5, 2.0);
-        let p = Vec2DScreen::new(0.85, 1.39);
+        let a = Vec2D::new_screen(-3.0, 3.0);
+        let b = Vec2D::new_screen(-1.5, 2.0);
+        let p = Vec2D::new_screen(0.85, 1.39);
 
         let cols = [-3.0, -1.5, 0.0, 1.5];
         let rows = [3.0, 2.0, 1.0];
@@ -295,8 +295,8 @@ mod tests {
         let mut expected_rows: Vec<_> = rows.iter().map(|&r| {
             DrawCommand::Path {
                 commands: vec![
-                    MoveTo(Vec2DWorld::new(cols[0], r)),
-                    LineTo(Vec2DWorld::new(cols[3], r)),
+                    MoveTo(Vec2D::new_world(cols[0], r)),
+                    LineTo(Vec2D::new_world(cols[3], r)),
                 ],
                 style: Default::default(),
             }
@@ -304,8 +304,8 @@ mod tests {
         expected_rows.extend(cols.iter().map(|&c| {
             DrawCommand::Path {
                 commands: vec![
-                    MoveTo(Vec2DWorld::new(c, rows[0])),
-                    LineTo(Vec2DWorld::new(c, rows[2])),
+                    MoveTo(Vec2D::new_world(c, rows[0])),
+                    LineTo(Vec2D::new_world(c, rows[2])),
                 ],
                 style: Default::default(),
             }

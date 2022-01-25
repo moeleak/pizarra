@@ -1,19 +1,18 @@
 use crate::draw_commands::DrawCommand;
-use crate::point::Vec2DWorld;
+use crate::point::{Vec2D, WorldUnit};
 use crate::geom::bbox_from_points;
 use crate::path_command::PathCommand;
 use crate::shape::{ShapeStored, ShapeType};
 use crate::style::Style;
-use crate::point::Point;
 
 #[derive(Debug)]
 pub struct Path {
-    commands: Vec<PathCommand<Vec2DWorld>>,
+    commands: Vec<PathCommand<WorldUnit>>,
     style: Style,
 }
 
 impl Path {
-    pub fn from_parts(commands: Vec<PathCommand<Vec2DWorld>>, style: Style) -> Path {
+    pub fn from_parts(commands: Vec<PathCommand<WorldUnit>>, style: Style) -> Path {
         Path {
             commands, style,
         }
@@ -29,13 +28,13 @@ impl ShapeStored for Path {
     }
 
     // The bounding box of the path needs to consider the beizer handles
-    fn bbox(&self) -> [Vec2DWorld; 2] {
+    fn bbox(&self) -> [Vec2D<WorldUnit>; 2] {
         let points = self.commands.iter().map(|c| c.points()).flatten();
         let [topleft, bottomright] = bbox_from_points(points);
         let (topleftpad, bottomrightpad) = if let Some(stroke) = self.style.stroke {
             let size = stroke.size;
 
-            (Vec2DWorld::new(-size, -size), Vec2DWorld::new(size, size))
+            (Vec2D::new_world(-size, -size), Vec2D::new_world(size, size))
         } else {
             Default::default()
         };
@@ -50,7 +49,7 @@ impl ShapeStored for Path {
         ShapeType::Path
     }
 
-    fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool {
+    fn intersects_circle(&self, center: Vec2D<WorldUnit>, radius: f64) -> bool {
         let mut last_point = None;
         let radius = if let Some(stroke) = self.style.stroke {
             radius + stroke.size / 2.0
@@ -78,7 +77,6 @@ impl ShapeStored for Path {
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use crate::point::{Point, Vec2DWorld};
     use crate::path_command::{PathCommand::*, CubicBezierCurve};
     use crate::style::Stroke;
 
@@ -87,58 +85,58 @@ mod tests {
     #[test]
     fn test_bbox() {
         let line = Path::from_parts(vec![
-            MoveTo(Vec2DWorld::new(1.0, 0.0)),
-            LineTo(Vec2DWorld::new(0.0, 1.0)),
+            MoveTo(Vec2D::new_world(1.0, 0.0)),
+            LineTo(Vec2D::new_world(0.0, 1.0)),
         ], Style {
             stroke: None,
             fill: None,
         });
 
-        assert_eq!(line.bbox(), [Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(1.0, 1.0)]);
+        assert_eq!(line.bbox(), [Vec2D::new_world(0.0, 0.0), Vec2D::new_world(1.0, 1.0)]);
     }
 
     #[test]
     fn test_bbox_twisted_line() {
         let line = Path::from_parts(vec![
-            MoveTo(Vec2DWorld::new(-12.0, -1.0)),
-            LineTo(Vec2DWorld::new(-5.0, 0.0)),
-            LineTo(Vec2DWorld::new(-2.0, 7.0)),
-            LineTo(Vec2DWorld::new(2.0, -8.0)),
+            MoveTo(Vec2D::new_world(-12.0, -1.0)),
+            LineTo(Vec2D::new_world(-5.0, 0.0)),
+            LineTo(Vec2D::new_world(-2.0, 7.0)),
+            LineTo(Vec2D::new_world(2.0, -8.0)),
         ], Style {
             stroke: None,
             fill: None,
         });
 
-        assert_eq!(line.bbox(), [Vec2DWorld::new(-12.0, -8.0), Vec2DWorld::new(2.0, 7.0)]);
+        assert_eq!(line.bbox(), [Vec2D::new_world(-12.0, -8.0), Vec2D::new_world(2.0, 7.0)]);
     }
 
     #[test]
     fn can_delete_single_point_paths() {
         let poly = Path::from_parts(vec![
-            MoveTo(Vec2DWorld::new(0.0, 0.0)),
+            MoveTo(Vec2D::new_world(0.0, 0.0)),
         ], Default::default());
 
-        assert!(poly.intersects_circle(Vec2DWorld::new(0.0, 0.0), 10.0));
+        assert!(poly.intersects_circle(Vec2D::new_world(0.0, 0.0), 10.0));
     }
 
     #[test]
     fn can_delete_beizer_curves() {
         let path = Path::from_parts(vec![
-            MoveTo(Vec2DWorld::new(33.0, 135.0)),
+            MoveTo(Vec2D::new_world(33.0, 135.0)),
             CurveTo(CubicBezierCurve {
-                pt1: Vec2DWorld::new(50.0, 200.0),
-                pt2: Vec2DWorld::new(171.0, 70.0),
-                to: Vec2DWorld::new(196.0, 113.0),
+                pt1: Vec2D::new_world(50.0, 200.0),
+                pt2: Vec2D::new_world(171.0, 70.0),
+                to: Vec2D::new_world(196.0, 113.0),
             }),
         ], Default::default());
 
         let cases = [
-             (Vec2DWorld::new(37.0, 129.0), true),
-             (Vec2DWorld::new(81.0, 154.0), true),
-             (Vec2DWorld::new(127.0, 109.0), true),
-             (Vec2DWorld::new(74.0, 90.0), false),
-             (Vec2DWorld::new(147.0, 165.0), false),
-             (Vec2DWorld::new(177.0, 121.0), false),
+             (Vec2D::new_world(37.0, 129.0), true),
+             (Vec2D::new_world(81.0, 154.0), true),
+             (Vec2D::new_world(127.0, 109.0), true),
+             (Vec2D::new_world(74.0, 90.0), false),
+             (Vec2D::new_world(147.0, 165.0), false),
+             (Vec2D::new_world(177.0, 121.0), false),
         ];
 
         for (center, result) in cases {
@@ -149,17 +147,17 @@ mod tests {
     #[test]
     fn can_delete_straight_segments() {
         let path = Path::from_parts(vec![
-            MoveTo(Vec2DWorld::new(33.0, 135.0)),
-            LineTo(Vec2DWorld::new(196.0, 113.0)),
+            MoveTo(Vec2D::new_world(33.0, 135.0)),
+            LineTo(Vec2D::new_world(196.0, 113.0)),
         ], Default::default());
 
         let cases = [
-             (Vec2DWorld::new(37.0, 129.0), true),
-             (Vec2DWorld::new(81.0, 154.0), false),
-             (Vec2DWorld::new(127.0, 109.0), true),
-             (Vec2DWorld::new(74.0, 90.0), false),
-             (Vec2DWorld::new(147.0, 165.0), false),
-             (Vec2DWorld::new(177.0, 121.0), true),
+             (Vec2D::new_world(37.0, 129.0), true),
+             (Vec2D::new_world(81.0, 154.0), false),
+             (Vec2D::new_world(127.0, 109.0), true),
+             (Vec2D::new_world(74.0, 90.0), false),
+             (Vec2D::new_world(147.0, 165.0), false),
+             (Vec2D::new_world(177.0, 121.0), true),
         ];
 
         for (center, result) in cases {
@@ -170,32 +168,32 @@ mod tests {
     #[test]
     fn line_thickness_affects_bbox() {
         let path = Path::from_parts(vec![
-            MoveTo(Vec2DWorld::new(0.0, 0.0)),
-            LineTo(Vec2DWorld::new(30.0, 30.0)),
+            MoveTo(Vec2D::new_world(0.0, 0.0)),
+            LineTo(Vec2D::new_world(30.0, 30.0)),
             CurveTo(CubicBezierCurve {
-                pt1: Vec2DWorld::new(30.0, 60.0),
-                pt2: Vec2DWorld::new(60.0, 60.0),
-                to: Vec2DWorld::new(60.0, 30.0),
+                pt1: Vec2D::new_world(30.0, 60.0),
+                pt2: Vec2D::new_world(60.0, 60.0),
+                to: Vec2D::new_world(60.0, 30.0),
             }),
         ], Default::default());
 
         let stroke = Style::default().stroke.unwrap().size;
 
         assert_eq!(path.bbox(), [
-            Vec2DWorld::new(0.0 - stroke, 0.0 - stroke),
-            Vec2DWorld::new(60.0 + stroke, 60.0 + stroke),
+            Vec2D::new_world(0.0 - stroke, 0.0 - stroke),
+            Vec2D::new_world(60.0 + stroke, 60.0 + stroke),
         ]);
     }
 
     #[test]
     fn erase_on_touch_stroke() {
-        let start = Vec2DWorld::new(27.410791, 119.70396);
+        let start = Vec2D::new_world(27.410791, 119.70396);
         let path = Path::from_parts(vec![
             MoveTo(start),
             CurveTo(CubicBezierCurve {
-                pt1: start + Vec2DWorld::new(0.06519,-10.40955),
-                pt2: start + Vec2DWorld::new(11.676337,-10.01372),
-                to: start + Vec2DWorld::new(11.966013,0.48172),
+                pt1: start + Vec2D::new_world(0.06519,-10.40955),
+                pt2: start + Vec2D::new_world(11.676337,-10.01372),
+                to: start + Vec2D::new_world(11.966013,0.48172),
             }),
         ], Style {
             stroke: Some(Stroke {
@@ -206,14 +204,14 @@ mod tests {
         });
 
         // these must touch
-        assert!(path.intersects_circle(Vec2DWorld::new(29.841375, 116.64932), 1.3229166));
-        assert!(path.intersects_circle(Vec2DWorld::new(33.242252, 110.06812), 1.3229166));
-        assert!(path.intersects_circle(Vec2DWorld::new(37.421051, 120.87376), 1.3229166));
+        assert!(path.intersects_circle(Vec2D::new_world(29.841375, 116.64932), 1.3229166));
+        assert!(path.intersects_circle(Vec2D::new_world(33.242252, 110.06812), 1.3229166));
+        assert!(path.intersects_circle(Vec2D::new_world(37.421051, 120.87376), 1.3229166));
 
         // these must touchn't
-        assert!(!path.intersects_circle(Vec2DWorld::new(39.535831, 112.48697), 1.3229166));
-        assert!(!path.intersects_circle(Vec2DWorld::new(34.404907, 115.59615), 1.3229166));
-        assert!(!path.intersects_circle(Vec2DWorld::new(27.536837, 110.98792), 1.3229166));
+        assert!(!path.intersects_circle(Vec2D::new_world(39.535831, 112.48697), 1.3229166));
+        assert!(!path.intersects_circle(Vec2D::new_world(34.404907, 115.59615), 1.3229166));
+        assert!(!path.intersects_circle(Vec2D::new_world(27.536837, 110.98792), 1.3229166));
     }
 
     #[test]

@@ -2,28 +2,29 @@ use serde::{Serialize, Deserialize};
 use serde_with::{serde_as, DisplayFromStr};
 
 use crate::color::Color;
+use crate::point::{ScreenUnit, WorldUnit};
 
 #[serde_as]
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     /// Thikness in pixels used by default while drawing.
     #[serde(default = "default_thickness")]
-    pub thickness: f64,
+    pub thickness: ScreenUnit,
 
     /// Padding in pixels added to drawings while exporting.
     #[serde(default = "default_export_padding")]
-    pub export_padding: f64,
+    pub export_padding: WorldUnit,
 
     /// If the cursor's distance to a shape is less than this it will be
     /// considered to be touching and thus be erased.
     #[serde(default = "default_erase_radius")]
-    pub erase_radius: f64,
+    pub erase_radius: ScreenUnit,
 
     /// When drawing polygons and possibly other shapes in the future this
     /// radius in screen units is used to decide if the cursor is touching a
     /// previous point of the current shape.
     #[serde(default = "default_point_snap_radius")]
-    pub point_snap_radius: f64,
+    pub point_snap_radius: ScreenUnit,
 
     /// When pressing + and - keys on the keyboard the zoom increases and
     /// decreases by this factor (must be > 1 so that + zooms in).

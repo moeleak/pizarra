@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::point::{Vec2DWorld, Vec2DScreen};
+use crate::point::{Vec2D, ScreenUnit, WorldUnit};
 use crate::transform::Transform;
 use crate::draw_commands::DrawCommand;
 use crate::style::Style;
@@ -46,7 +46,7 @@ pub enum ShapeTool {
 }
 
 impl ShapeTool {
-    pub fn start(&self, initial: Vec2DWorld, style: Style) -> Box<dyn ShapeBuilder> {
+    pub fn start(&self, initial: Vec2D<WorldUnit>, style: Style) -> Box<dyn ShapeBuilder> {
         match *self {
             ShapeTool::Path => Box::new(FreeHandLine::start(initial, style)),
             ShapeTool::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(initial, style)),
@@ -64,15 +64,15 @@ pub trait ShapeBuilder: fmt::Debug {
     /// Must handle new coordinates given to this shape. If this method is
     /// called it means that the shape is being modified (thus this is the most
     /// recently added shape
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, transform: Transform, snap: f64);
+    fn handle_mouse_moved(&mut self, pos: Vec2D<ScreenUnit>, transform: Transform, snap: ScreenUnit);
 
-    fn handle_button_pressed(&mut self, pos: Vec2DScreen, transform: Transform, snap: f64);
+    fn handle_button_pressed(&mut self, pos: Vec2D<ScreenUnit>, transform: Transform, snap: ScreenUnit);
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, transform: Transform, snap: f64) -> ShapeFinished;
+    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, transform: Transform, snap: ScreenUnit) -> ShapeFinished;
 
     /// Must return the necessary commands to display this shape on the screen
     /// when building it
-    fn draw_commands(&self, transform: Transform, snap: f64) -> Vec<DrawCommand>;
+    fn draw_commands(&self, transform: Transform, snap: ScreenUnit) -> Vec<DrawCommand>;
 }
 
 pub trait ShapeStored: fmt::Debug {
@@ -80,13 +80,13 @@ pub trait ShapeStored: fmt::Debug {
     fn draw_commands(&self) -> DrawCommand;
 
     /// Must know its bbox
-    fn bbox(&self) -> [Vec2DWorld; 2];
+    fn bbox(&self) -> [Vec2D<WorldUnit>; 2];
 
     /// Returns the current shape type
     fn shape_type(&self) -> ShapeType;
 
     /// does this circle intersect this shape? Used by the eraser
-    fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool;
+    fn intersects_circle(&self, center: Vec2D<WorldUnit>, radius: WorldUnit) -> bool;
 
     /// returns this shape's style
     fn style(&self) -> Style;
@@ -148,11 +148,11 @@ impl Shape {
         self.shape_impl.style()
     }
 
-    pub fn bbox(&self) -> [Vec2DWorld; 2] {
+    pub fn bbox(&self) -> [Vec2D<WorldUnit>; 2] {
         self.shape_impl.bbox()
     }
 
-    pub fn intersects_circle(&self, center: Vec2DWorld, radius: f64) -> bool {
+    pub fn intersects_circle(&self, center: Vec2D<WorldUnit>, radius: WorldUnit) -> bool {
         self.shape_impl.intersects_circle(center, radius)
     }
 }

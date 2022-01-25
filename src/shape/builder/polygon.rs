@@ -1,5 +1,5 @@
 use crate::color::Color;
-use crate::point::{Point, Vec2DWorld, Vec2DScreen};
+use crate::point::{Vec2D, WorldUnit, ScreenUnit};
 use crate::path_command::{PathCommand::{self, *}, CubicBezierCurve};
 use crate::shape::{ShapeBuilder, ShapeFinished, stored::path::Path};
 use crate::draw_commands::{DrawCommand, path_helper};
@@ -11,23 +11,23 @@ use crate::style::Style;
 #[derive(Debug, Copy, Clone)]
 enum BuilderState {
     /// Initial state, only on initialization
-    Init(Vec2DWorld),
+    Init(Vec2D<WorldUnit>),
 
     /// Transition to this state on pressed and change to something else
     /// immediatly after
-    PointStart(Vec2DWorld),
+    PointStart(Vec2D<WorldUnit>),
 
     /// Transition to this from PointStart if the next event is mouse move
     Handle {
-        to: Vec2DWorld,
-        pt1: Vec2DWorld,
+        to: Vec2D<WorldUnit>,
+        pt1: Vec2D<WorldUnit>,
     },
 
     /// Transition to this after a release event
     FreePoint {
-        pt1: Vec2DWorld,
-        pt2: Vec2DWorld,
-        to: Vec2DWorld,
+        pt1: Vec2D<WorldUnit>,
+        pt2: Vec2D<WorldUnit>,
+        to: Vec2D<WorldUnit>,
     },
 
     /// End is detected on the pressed event but this event doesn't return a
@@ -38,13 +38,13 @@ enum BuilderState {
 
 #[derive(Debug)]
 pub struct PolygonBuilder {
-    points: Vec<PathCommand<Vec2DWorld>>,
+    points: Vec<PathCommand<WorldUnit>>,
     tip: BuilderState,
     style: Style,
 }
 
 impl PolygonBuilder {
-    pub fn start(initial: Vec2DWorld, style: Style) -> PolygonBuilder {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> PolygonBuilder {
         let mut init_vec = Vec::with_capacity(8);
 
         init_vec.push(MoveTo(initial));
@@ -69,7 +69,7 @@ impl PolygonBuilder {
     ///    It is not necessary to add more sections
     /// 3. None
     ///    It is not close enough to any of the polygon's points
-    fn touches_prev_point(&self, point: Vec2DWorld, t: Transform, radius: f64) -> Option<Option<(Vec2DWorld, Vec2DWorld)>> {
+    fn touches_prev_point(&self, point: Vec2D<WorldUnit>, t: Transform, radius: ScreenUnit) -> Option<Option<(Vec2D<WorldUnit>, Vec2D<WorldUnit>)>> {
         let point = t.to_screen_coordinates(point);
 
         // Check all but the last point for a coincidence
@@ -102,7 +102,7 @@ impl PolygonBuilder {
 }
 
 impl ShapeBuilder for PolygonBuilder {
-    fn handle_mouse_moved(&mut self, pos: Vec2DScreen, t: Transform, _snap: f64) {
+    fn handle_mouse_moved(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, _snap: ScreenUnit) {
         let pos = t.to_world_coordinates(pos);
 
         match self.tip {
@@ -127,7 +127,7 @@ impl ShapeBuilder for PolygonBuilder {
         }
     }
 
-    fn handle_button_pressed(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) {
+    fn handle_button_pressed(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) {
         let pos = t.to_world_coordinates(pos);
 
         if let BuilderState::FreePoint { pt1, .. } = self.tip {
@@ -156,7 +156,7 @@ impl ShapeBuilder for PolygonBuilder {
         }
     }
 
-    fn handle_button_released(&mut self, pos: Vec2DScreen, t: Transform, snap: f64) -> ShapeFinished {
+    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
         let pos = t.to_world_coordinates(pos);
 
         match self.tip {
@@ -205,7 +205,7 @@ impl ShapeBuilder for PolygonBuilder {
         }
     }
 
-    fn draw_commands(&self, t: Transform, snap: f64) -> Vec<DrawCommand> {
+    fn draw_commands(&self, t: Transform, snap: ScreenUnit) -> Vec<DrawCommand> {
         let mut path_commands = self.points.clone();
 
         // add a command to the path_commands depending on the last part of the
@@ -307,33 +307,33 @@ mod tests {
 
     use super::*;
 
-    const SNAP: f64 = 10.0;
+    const SNAP: ScreenUnit = 10.0;
 
     /// This tests the polygon's normal behavior of clicking here and there
     /// until some last click falls very close (in screen units) from one of the
     /// previous ones
     #[test]
     fn it_behaves() {
-        let mut poly = PolygonBuilder::start(Vec2DWorld::new(0.0, 0.0), Default::default());
+        let mut poly = PolygonBuilder::start(Vec2D::new_world(0.0, 0.0), Default::default());
         let t = Default::default();
 
-        poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP);
+        poly.handle_button_released(Vec2D::new_screen(0.0, 0.0), t, SNAP);
 
-        poly.handle_mouse_moved(Vec2DScreen::new(20.0, 0.0), t, SNAP);
-        poly.handle_button_pressed(Vec2DScreen::new(20.0, 0.0), t, SNAP);
-        if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2DScreen::new(20.0, 0.0), t, SNAP) {
+        poly.handle_mouse_moved(Vec2D::new_screen(20.0, 0.0), t, SNAP);
+        poly.handle_button_pressed(Vec2D::new_screen(20.0, 0.0), t, SNAP);
+        if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2D::new_screen(20.0, 0.0), t, SNAP) {
             panic!()
         }
 
-        poly.handle_mouse_moved(Vec2DScreen::new(20.0, 20.0), t, SNAP);
-        poly.handle_button_pressed(Vec2DScreen::new(20.0, 20.0), t, SNAP);
-        if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2DScreen::new(20.0, 20.0), t, SNAP) {
+        poly.handle_mouse_moved(Vec2D::new_screen(20.0, 20.0), t, SNAP);
+        poly.handle_button_pressed(Vec2D::new_screen(20.0, 20.0), t, SNAP);
+        if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2D::new_screen(20.0, 20.0), t, SNAP) {
             panic!()
         }
 
-        poly.handle_mouse_moved(Vec2DScreen::new(20.0, 20.0), t, SNAP);
-        poly.handle_button_pressed(Vec2DScreen::new(20.0, 20.0), t, SNAP);
-        if let ShapeFinished::No = poly.handle_button_released(Vec2DScreen::new(20.0, 20.0), t, SNAP) {
+        poly.handle_mouse_moved(Vec2D::new_screen(20.0, 20.0), t, SNAP);
+        poly.handle_button_pressed(Vec2D::new_screen(20.0, 20.0), t, SNAP);
+        if let ShapeFinished::No = poly.handle_button_released(Vec2D::new_screen(20.0, 20.0), t, SNAP) {
             panic!()
         }
     }
@@ -343,28 +343,28 @@ mod tests {
     /// the user was aiming to even if the event is registered somewhere else.
     #[test]
     fn no_clunky_path_ends() {
-        let mut poly = PolygonBuilder::start(Vec2DWorld::new(0.0, 0.0), Default::default());
+        let mut poly = PolygonBuilder::start(Vec2D::new_world(0.0, 0.0), Default::default());
         let t = Default::default();
 
-        poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP);
+        poly.handle_button_released(Vec2D::new_screen(0.0, 0.0), t, SNAP);
 
-        poly.handle_mouse_moved(Vec2DScreen::new(30.0, 0.0), t, SNAP);
-        poly.handle_button_pressed(Vec2DScreen::new(30.0, 0.0), t, SNAP);
-        poly.handle_button_released(Vec2DScreen::new(30.0, 0.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2D::new_screen(30.0, 0.0), t, SNAP);
+        poly.handle_button_pressed(Vec2D::new_screen(30.0, 0.0), t, SNAP);
+        poly.handle_button_released(Vec2D::new_screen(30.0, 0.0), t, SNAP);
 
-        poly.handle_mouse_moved(Vec2DScreen::new(29.0, 0.0), t, SNAP);
-        poly.handle_button_pressed(Vec2DScreen::new(29.0, 0.0), t, SNAP);
-        if let ShapeFinished::No = poly.handle_button_released(Vec2DScreen::new(29.0, 0.0), t, SNAP) {
+        poly.handle_mouse_moved(Vec2D::new_screen(29.0, 0.0), t, SNAP);
+        poly.handle_button_pressed(Vec2D::new_screen(29.0, 0.0), t, SNAP);
+        if let ShapeFinished::No = poly.handle_button_released(Vec2D::new_screen(29.0, 0.0), t, SNAP) {
             panic!()
         }
 
         assert_eq!(poly.draw_commands(t, SNAP)[0], DrawCommand::Path {
             commands: vec![
-                MoveTo(Vec2DWorld::new(0.0, 0.0)),
+                MoveTo(Vec2D::new_world(0.0, 0.0)),
                 CurveTo(CubicBezierCurve {
-                    pt1: Vec2DWorld::new(0.0, 0.0),
-                    pt2: Vec2DWorld::new(30.0, 0.0),
-                    to: Vec2DWorld::new(30.0, 0.0),
+                    pt1: Vec2D::new_world(0.0, 0.0),
+                    pt2: Vec2D::new_world(30.0, 0.0),
+                    to: Vec2D::new_world(30.0, 0.0),
                 }),
             ],
             style: Default::default(),
@@ -374,19 +374,19 @@ mod tests {
     #[test]
     fn can_render_first_point_when_building() {
         let t = Default::default();
-        let poly = PolygonBuilder::start(Vec2DWorld::new(0.0, 0.0), Default::default());
+        let poly = PolygonBuilder::start(Vec2D::new_world(0.0, 0.0), Default::default());
 
         assert_eq!(poly.draw_commands(t, SNAP)[0], DrawCommand::Path {
             commands: vec![
-                MoveTo(Vec2DWorld::new(0.0, 0.0)),
+                MoveTo(Vec2D::new_world(0.0, 0.0)),
             ],
             style: Default::default(),
         });
     }
 
     fn make_this_poly(t: Transform) -> PolygonBuilder {
-        let center = Vec2DWorld::new(0.0, 0.0);
-        let pf = Vec2DWorld::new(0.0, -100.0);
+        let center = Vec2D::new_world(0.0, 0.0);
+        let pf = Vec2D::new_world(0.0, -100.0);
         let mut poly = PolygonBuilder::start(center, Default::default());
 
         poly.handle_button_released(t.to_screen_coordinates(center), t, SNAP);
@@ -400,13 +400,13 @@ mod tests {
     #[test]
     fn the_polygon_closes_itself_in_screen_units() {
         // at home scale
-        let screen = Vec2DScreen::new(800.0, 600.0);
+        let screen = Vec2D::new_screen(800.0, 600.0);
         let center = screen / 2.0;
 
         // No matter the zoom level the first point should finish a shape but
         // the second shouldn't at the default 10 px radius
-        let p1 = center + Vec2DScreen::new(9.9, 0.0);
-        let p2 = center + Vec2DScreen::new(10.1, 0.0);
+        let p1 = center + Vec2D::new_screen(9.9, 0.0);
+        let p2 = center + Vec2D::new_screen(10.1, 0.0);
 
         let t0 = Transform::default_for_viewport(screen);
 
@@ -460,15 +460,15 @@ mod tests {
     #[test]
     fn guide_circles_color_when_cursor_is_close() {
         let t: Transform = Default::default();
-        let mut poly = PolygonBuilder::start(Vec2DWorld::new(0.0, 0.0), Default::default());
+        let mut poly = PolygonBuilder::start(Vec2D::new_world(0.0, 0.0), Default::default());
 
-        poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP);
-        poly.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t, SNAP);
+        poly.handle_button_released(Vec2D::new_screen(0.0, 0.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2D::new_screen(0.0, 0.0), t, SNAP);
 
         let commands = poly.draw_commands(t, SNAP);
 
         assert_eq!(commands.last().unwrap(), &DrawCommand::ScreenCircle {
-            center: Vec2DScreen::new(0.0, 0.0),
+            center: Vec2D::new_screen(0.0, 0.0),
             radius: SNAP,
             style: Style {
                 stroke: None,
@@ -484,14 +484,14 @@ mod tests {
         let t: Transform = Default::default();
 
         // the points
-        let a = Vec2DScreen::new(0.0, -80.0);
-        let b = Vec2DScreen::new(30.0, -80.0);
-        let c = Vec2DScreen::new(80.0, 0.0);
-        let d = Vec2DScreen::new(80.0, 20.0);
-        let e = Vec2DScreen::new(0.0, 60.0);
-        let f = Vec2DScreen::new(-20.0, 60.0);
-        let g = Vec2DScreen::new(-80.0, 0.0);
-        let h = Vec2DScreen::new(-80.0, -20.0);
+        let a = Vec2D::new_screen(0.0, -80.0);
+        let b = Vec2D::new_screen(30.0, -80.0);
+        let c = Vec2D::new_screen(80.0, 0.0);
+        let d = Vec2D::new_screen(80.0, 20.0);
+        let e = Vec2D::new_screen(0.0, 60.0);
+        let f = Vec2D::new_screen(-20.0, 60.0);
+        let g = Vec2D::new_screen(-80.0, 0.0);
+        let h = Vec2D::new_screen(-80.0, -20.0);
 
         let mut poly = PolygonBuilder::start(t.to_world_coordinates(a), Default::default());
 
@@ -521,22 +521,22 @@ mod tests {
                     MoveTo(t.to_world_coordinates(a)),
                     CurveTo(CubicBezierCurve {
                         pt1: t.to_world_coordinates(b),
-                        pt2: Vec2DWorld::new(80.0, -20.0),
+                        pt2: Vec2D::new_world(80.0, -20.0),
                         to: t.to_world_coordinates(c),
                     }),
                     CurveTo(CubicBezierCurve {
                         pt1: t.to_world_coordinates(d),
-                        pt2: Vec2DWorld::new(20.0, 60.0),
+                        pt2: Vec2D::new_world(20.0, 60.0),
                         to: t.to_world_coordinates(e),
                     }),
                     CurveTo(CubicBezierCurve {
                         pt1: t.to_world_coordinates(f),
-                        pt2: Vec2DWorld::new(-80.0, 20.0),
+                        pt2: Vec2D::new_world(-80.0, 20.0),
                         to: t.to_world_coordinates(g),
                     }),
                     CurveTo(CubicBezierCurve {
                         pt1: t.to_world_coordinates(h),
-                        pt2: Vec2DWorld::new(-30.0, -80.0),
+                        pt2: Vec2D::new_world(-30.0, -80.0),
                         to: t.to_world_coordinates(a),
                     }),
                 ],
@@ -555,28 +555,28 @@ mod tests {
     #[test]
     fn sharp_polygons_are_still_possible_by_hand() {
         let t: Transform = Default::default();
-        let mut poly = PolygonBuilder::start(Vec2DWorld::new(0.0, 0.0), Default::default());
+        let mut poly = PolygonBuilder::start(Vec2D::new_world(0.0, 0.0), Default::default());
 
         // move slightly after starting the polygon
-        poly.handle_mouse_moved(Vec2DScreen::new(1.0, 1.0), t, SNAP);
-        poly.handle_button_released(Vec2DScreen::new(1.0, 1.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2D::new_screen(1.0, 1.0), t, SNAP);
+        poly.handle_button_released(Vec2D::new_screen(1.0, 1.0), t, SNAP);
 
         // second point, also drag a little bit
-        poly.handle_mouse_moved(Vec2DScreen::new(0.0, -50.0), t, SNAP);
-        poly.handle_button_pressed(Vec2DScreen::new(0.0, -50.0), t, SNAP);
-        poly.handle_mouse_moved(Vec2DScreen::new(1.0, -51.0), t, SNAP);
-        poly.handle_button_released(Vec2DScreen::new(1.0, -51.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2D::new_screen(0.0, -50.0), t, SNAP);
+        poly.handle_button_pressed(Vec2D::new_screen(0.0, -50.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2D::new_screen(1.0, -51.0), t, SNAP);
+        poly.handle_button_released(Vec2D::new_screen(1.0, -51.0), t, SNAP);
 
         // third point
-        poly.handle_mouse_moved(Vec2DScreen::new(50.0, 0.0), t, SNAP);
-        poly.handle_button_pressed(Vec2DScreen::new(50.0, 0.0), t, SNAP);
-        poly.handle_mouse_moved(Vec2DScreen::new(51.0, 1.0), t, SNAP);
-        poly.handle_button_released(Vec2DScreen::new(51.0, 1.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2D::new_screen(50.0, 0.0), t, SNAP);
+        poly.handle_button_pressed(Vec2D::new_screen(50.0, 0.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2D::new_screen(51.0, 1.0), t, SNAP);
+        poly.handle_button_released(Vec2D::new_screen(51.0, 1.0), t, SNAP);
 
         // closing
-        poly.handle_mouse_moved(Vec2DScreen::new(0.0, 0.0), t, SNAP);
-        poly.handle_button_pressed(Vec2DScreen::new(0.0, 0.0), t, SNAP);
-        poly.handle_button_released(Vec2DScreen::new(0.0, 0.0), t, SNAP);
+        poly.handle_mouse_moved(Vec2D::new_screen(0.0, 0.0), t, SNAP);
+        poly.handle_button_pressed(Vec2D::new_screen(0.0, 0.0), t, SNAP);
+        poly.handle_button_released(Vec2D::new_screen(0.0, 0.0), t, SNAP);
 
         let commands = poly.draw_commands(t, SNAP);
 
@@ -584,50 +584,50 @@ mod tests {
             DrawCommand::Path {
                 style: Default::default(),
                 commands: vec![
-                    MoveTo(Vec2DWorld { x: 0.0, y: 0.0 }),
-                    CurveTo(CubicBezierCurve { pt1: Vec2DWorld { x: 0.0, y: 0.0 }, pt2: Vec2DWorld { x: 0.0, y: -50.0 }, to: Vec2DWorld { x: 0.0, y: -50.0 } }),
-                    CurveTo(CubicBezierCurve { pt1: Vec2DWorld { x: 0.0, y: -50.0 }, pt2: Vec2DWorld { x: 50.0, y: 0.0 }, to: Vec2DWorld { x: 50.0, y: 0.0 } }),
-                    CurveTo(CubicBezierCurve { pt1: Vec2DWorld { x: 50.0, y: 0.0 }, pt2: Vec2DWorld { x: 0.0, y: 0.0 }, to: Vec2DWorld { x: 0.0, y: 0.0 } })
+                    MoveTo(Vec2D::new_world( 0.0, 0.0 )),
+                    CurveTo(CubicBezierCurve { pt1: Vec2D::new_world( 0.0, 0.0 ), pt2: Vec2D::new_world( 0.0, -50.0 ), to: Vec2D::new_world( 0.0, -50.0 ) }),
+                    CurveTo(CubicBezierCurve { pt1: Vec2D::new_world( 0.0, -50.0 ), pt2: Vec2D::new_world( 50.0, 0.0 ), to: Vec2D::new_world( 50.0, 0.0 ) }),
+                    CurveTo(CubicBezierCurve { pt1: Vec2D::new_world( 50.0, 0.0 ), pt2: Vec2D::new_world( 0.0, 0.0 ), to: Vec2D::new_world( 0.0, 0.0 ) })
                 ]},
             DrawCommand::ScreenPath {
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 })
+                    MoveTo(Vec2D::new_screen( 0.0, 0.0 )), LineTo(Vec2D::new_screen( 0.0, 0.0 ))
                 ], style: Style::path_helper(), },
             DrawCommand::ScreenPath {
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: -50.0 }), LineTo(Vec2DScreen { x: 0.0, y: -50.0 }),
+                    MoveTo(Vec2D::new_screen( 0.0, -50.0 )), LineTo(Vec2D::new_screen( 0.0, -50.0 )),
                 ], style: Style::path_helper(), },
             DrawCommand::ScreenPath {
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 }),
+                    MoveTo(Vec2D::new_screen( 0.0, 0.0 )), LineTo(Vec2D::new_screen( 0.0, 0.0 )),
                 ], style: Style::path_helper(), },
             DrawCommand::ScreenCircle {
-                center: Vec2DScreen { x: 0.0, y: 0.0 }, radius: 10.0,
+                center: Vec2D::new_screen( 0.0, 0.0 ), radius: 10.0,
                 style: Style::circle_helper(),
             },
             DrawCommand::ScreenPath {
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 50.0, y: 0.0 }), LineTo(Vec2DScreen { x: 50.0, y: 0.0 }),
+                    MoveTo(Vec2D::new_screen( 50.0, 0.0 )), LineTo(Vec2D::new_screen( 50.0, 0.0 )),
                 ], style: Style::path_helper(), },
             DrawCommand::ScreenPath {
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: -50.0 }), LineTo(Vec2DScreen { x: 0.0, y: -50.0 })], style: Style::path_helper(), },
+                    MoveTo(Vec2D::new_screen( 0.0, -50.0 )), LineTo(Vec2D::new_screen( 0.0, -50.0 ))], style: Style::path_helper(), },
             DrawCommand::ScreenCircle {
-                center: Vec2DScreen { x: 0.0, y: -50.0 }, radius: 10.0,
+                center: Vec2D::new_screen( 0.0, -50.0 ), radius: 10.0,
                 style: Style::circle_helper(),
             },
             DrawCommand::ScreenPath {
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: 0.0 }), LineTo(Vec2DScreen { x: 0.0, y: 0.0 }),
+                    MoveTo(Vec2D::new_screen( 0.0, 0.0 )), LineTo(Vec2D::new_screen( 0.0, 0.0 )),
                 ], style: Style::path_helper(),
             },
             DrawCommand::ScreenPath {
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 50.0, y: 0.0 }), LineTo(Vec2DScreen { x: 50.0, y: 0.0 })
+                    MoveTo(Vec2D::new_screen( 50.0, 0.0 )), LineTo(Vec2D::new_screen( 50.0, 0.0 ))
                 ], style: Style::path_helper(),
             },
             DrawCommand::ScreenCircle {
-                center: Vec2DScreen { x: 50.0, y: 0.0 }, radius: 10.0,
+                center: Vec2D::new_screen( 50.0, 0.0 ), radius: 10.0,
                 style: Style::circle_helper(),
             },
         ]);
@@ -640,10 +640,10 @@ mod tests {
         let t: Transform = Default::default();
 
         // the points
-        let a = Vec2DScreen::new(0.0, -80.0);
-        let b = Vec2DScreen::new(30.0, -80.0);
-        let c = Vec2DScreen::new(80.0, 0.0);
-        let d = Vec2DScreen::new(80.0, 20.0);
+        let a = Vec2D::new_screen(0.0, -80.0);
+        let b = Vec2D::new_screen(30.0, -80.0);
+        let c = Vec2D::new_screen(80.0, 0.0);
+        let d = Vec2D::new_screen(80.0, 20.0);
 
         let mut poly = PolygonBuilder::start(t.to_world_coordinates(a), Default::default());
 
@@ -661,7 +661,7 @@ mod tests {
                     MoveTo(t.to_world_coordinates(a)),
                     CurveTo(CubicBezierCurve {
                         pt1: t.to_world_coordinates(b),
-                        pt2: Vec2DWorld::new(80.0, -20.0),
+                        pt2: Vec2D::new_world(80.0, -20.0),
                         to: t.to_world_coordinates(c),
                     }),
                     CurveTo(CubicBezierCurve {
@@ -677,39 +677,39 @@ mod tests {
             DrawCommand::ScreenPath {
                 style: Style::path_helper(),
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: -80.0 }), LineTo(Vec2DScreen { x: -30.0, y: -80.0 }),
+                    MoveTo(Vec2D::new_screen( 0.0, -80.0 )), LineTo(Vec2D::new_screen( -30.0, -80.0 )),
                 ],
             },
             DrawCommand::ScreenPath {
                 style: Style::path_helper(),
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 80.0, y: 0.0 }), LineTo(Vec2DScreen { x: 80.0, y: -20.0 })
+                    MoveTo(Vec2D::new_screen( 80.0, 0.0 )), LineTo(Vec2D::new_screen( 80.0, -20.0 ))
                 ],
             },
             DrawCommand::ScreenPath {
                 style: Style::path_helper(),
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 0.0, y: -80.0 }), LineTo(Vec2DScreen { x: 30.0, y: -80.0 })
+                    MoveTo(Vec2D::new_screen( 0.0, -80.0 )), LineTo(Vec2D::new_screen( 30.0, -80.0 ))
                 ],
             },
             DrawCommand::ScreenCircle {
-                center: Vec2DScreen { x: 0.0, y: -80.0 }, radius: 10.0,
+                center: Vec2D::new_screen( 0.0, -80.0 ), radius: 10.0,
                 style: Style::circle_helper(),
             },
             DrawCommand::ScreenPath {
                 style: Style::path_helper(),
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 80.0, y: 20.0 }), LineTo(Vec2DScreen { x: 80.0, y: 20.0 }),
+                    MoveTo(Vec2D::new_screen( 80.0, 20.0 )), LineTo(Vec2D::new_screen( 80.0, 20.0 )),
                 ],
             },
             DrawCommand::ScreenPath {
                 style: Style::path_helper(),
                 commands: vec![
-                    MoveTo(Vec2DScreen { x: 80.0, y: 0.0 }), LineTo(Vec2DScreen { x: 80.0, y: 20.0 }),
+                    MoveTo(Vec2D::new_screen( 80.0, 0.0 )), LineTo(Vec2D::new_screen( 80.0, 20.0 )),
                 ],
             },
             DrawCommand::ScreenCircle {
-                center: Vec2DScreen { x: 80.0, y: 0.0 }, radius: 10.0,
+                center: Vec2D::new_screen( 80.0, 0.0 ), radius: 10.0,
                 style: Style::circle_helper(),
             },
         ]);

@@ -2,13 +2,13 @@ use std::fmt;
 
 use xml::writer::{EmitterConfig, XmlEvent, EventWriter};
 
-use crate::point::{Point, Vec2DWorld};
+use crate::point::{Vec2D, WorldUnit};
 use crate::draw_commands::DrawCommand;
 use crate::path_command::PathCommand;
 use crate::storage::Storage;
 use crate::color::Color;
 
-impl fmt::Display for PathCommand<Vec2DWorld> {
+impl fmt::Display for PathCommand<WorldUnit> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PathCommand::MoveTo(p) => write!(f, "M {} ", p),
@@ -71,7 +71,7 @@ impl DrawCommand {
 }
 
 pub struct Settings {
-    pub export_padding: f64,
+    pub export_padding: ScreenUnit,
     pub bgcolor: Color,
 }
 
@@ -93,8 +93,8 @@ impl Storage {
 
         let export_padding = settings.export_padding;
 
-        let bbox = self.get_bounds().unwrap_or([Vec2DWorld::new(0.0, 0.0), Vec2DWorld::new(0.0, 0.0)]);
-        let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2DWorld::new(export_padding*2.0, export_padding*2.0);
+        let bbox = self.get_bounds().unwrap_or([Vec2D::new_world(0.0, 0.0), Vec2D::new_world(0.0, 0.0)]);
+        let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2D::new_world(export_padding*2.0, export_padding*2.0);
         let width = svg_dimensions.x.to_string();
         let height = svg_dimensions.y.to_string();
         let min = bbox[0].min(bbox[1]);
@@ -141,7 +141,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::color::Color;
-    use crate::point::Vec2DScreen;
+    use crate::point::ScreenUnit;
     use crate::app::{Pizarra, MouseButton, SelectedTool};
     use crate::shape::ShapeTool;
     use crate::shape::stored::{path::Path, ellipse::Ellipse};
@@ -156,14 +156,14 @@ mod tests {
     fn test_serialize() {
         let mut app = Pizarra::new_for_testing();
 
-        app.resize(Vec2DScreen::new(40.0, 40.0));
+        app.resize(Vec2D::new_screen(40.0, 40.0));
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Path));
         app.set_color(Color::red());
         app.set_stroke(3.5);
 
-        app.handle_mouse_button_pressed(MouseButton::Left, Vec2DScreen::new(20.0, 20.0));
-        app.handle_mouse_button_released(MouseButton::Left, Vec2DScreen::new(21.0, 20.0));
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2D::new_screen(20.0, 20.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2D::new_screen(21.0, 20.0));
 
         assert_eq!(app.to_svg(), include_str!("../res/serialize_test.svg"));
     }
@@ -172,7 +172,7 @@ mod tests {
     fn serialize_ellipse() {
         let mut app = Pizarra::new_for_testing();
 
-        app.resize(Vec2DScreen::new(40.0, 40.0));
+        app.resize(Vec2D::new_screen(40.0, 40.0));
 
         app.set_tool(SelectedTool::Shape(ShapeTool::ThreePointEllipse));
         app.set_color(Color::red());
@@ -183,9 +183,9 @@ mod tests {
             ..Default::default()
         });
 
-        let a: Vec2DScreen = (-5.61146, 3.80508).into();
-        let c: Vec2DScreen = (-0.44, -1.28).into();
-        let e: Vec2DScreen = (4.3, -0.4).into();
+        let a: Vec2D<ScreenUnit> = (-5.61146, 3.80508).into();
+        let c: Vec2D<ScreenUnit> = (-0.44, -1.28).into();
+        let e: Vec2D<ScreenUnit> = (4.3, -0.4).into();
 
         // start and first focus of the ellipse
         app.handle_mouse_button_pressed(MouseButton::Left, a);
@@ -207,8 +207,8 @@ mod tests {
         let mut storage = Storage::new();
 
         storage.add(Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DWorld::new(10.0, 10.0)),
-            PathCommand::LineTo(Vec2DWorld::new(10.0, 10.0)),
+            PathCommand::MoveTo(Vec2D::new_world(10.0, 10.0)),
+            PathCommand::LineTo(Vec2D::new_world(10.0, 10.0)),
         ], Style {
             stroke: Some(Stroke {
                 color: Color::green().with_alpha(127),
@@ -232,14 +232,14 @@ mod tests {
         let mut storage = Storage::new();
 
         storage.add(Box::new(Path::from_parts(vec![
-            PathCommand::MoveTo(Vec2DWorld::new(0.0, 0.0)),
-            PathCommand::LineTo(Vec2DWorld::new(10.0, 10.0)),
+            PathCommand::MoveTo(Vec2D::new_world(0.0, 0.0)),
+            PathCommand::LineTo(Vec2D::new_world(10.0, 10.0)),
         ], Style {
             stroke: None,
             fill: None,
         })));
         storage.add(Box::new(Ellipse::from_parts(
-            Vec2DWorld::new(0.0, 0.0),
+            Vec2D::new_world(0.0, 0.0),
             10.0,
             15.0,
             Angle::from_radians(0.0),

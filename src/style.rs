@@ -1,8 +1,9 @@
 use crate::color::Color;
+use crate::point::WorldUnit;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Stroke {
-    pub size: f64,
+    pub size: WorldUnit,
     pub color: Color,
 }
 

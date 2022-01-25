@@ -1,4 +1,4 @@
-use crate::point::{Point, Vec2DWorld, Vec2DScreen};
+use crate::point::{Vec2D, WorldUnit, ScreenUnit};
 use crate::color::Color;
 use crate::path_command::PathCommand::{self, *};
 use crate::geom::Ellipse;
@@ -13,28 +13,28 @@ use crate::transform::Transform;
 pub enum DrawCommand {
     /// A string of points and curves without filling
     Path {
-        commands: Vec<PathCommand<Vec2DWorld>>,
+        commands: Vec<PathCommand<WorldUnit>>,
         style: Style,
     },
 
     /// An ellipse without filling
     Ellipse {
-        ellipse: Ellipse<Vec2DWorld>,
+        ellipse: Ellipse<WorldUnit>,
         style: Style,
     },
 
     /// A path in screen coordinates without filling. Used to render handles and
     /// other visual aids
     ScreenPath {
-        commands: Vec<PathCommand<Vec2DScreen>>,
+        commands: Vec<PathCommand<ScreenUnit>>,
         style: Style,
     },
 
     /// A circle in screen coordinates without filling. Used to render handles
     /// and visual aids
     ScreenCircle {
-        center: Vec2DScreen,
-        radius: f64,
+        center: Vec2D<ScreenUnit>,
+        radius: ScreenUnit,
         style: Style,
     },
 }
@@ -61,7 +61,7 @@ impl DrawCommand {
 
 /// Returns a circle that can be used as visual helper for a tool that is being
 /// built
-pub fn circle_helper(center: Vec2DScreen, radius: f64) -> DrawCommand {
+pub fn circle_helper(center: Vec2D<ScreenUnit>, radius: ScreenUnit) -> DrawCommand {
     DrawCommand::ScreenCircle {
         center,
         radius,
@@ -69,7 +69,7 @@ pub fn circle_helper(center: Vec2DScreen, radius: f64) -> DrawCommand {
     }
 }
 
-fn red_circle_helper(center: Vec2DScreen, radius: f64) -> DrawCommand {
+fn red_circle_helper(center: Vec2D<ScreenUnit>, radius: ScreenUnit) -> DrawCommand {
     DrawCommand::ScreenCircle {
         center,
         radius,
@@ -77,7 +77,7 @@ fn red_circle_helper(center: Vec2DScreen, radius: f64) -> DrawCommand {
     }
 }
 
-pub fn cancel_helper(prev: Vec2DWorld, new: Vec2DWorld, t: Transform, snap: f64) -> DrawCommand {
+pub fn cancel_helper(prev: Vec2D<WorldUnit>, new: Vec2D<WorldUnit>, t: Transform, snap: ScreenUnit) -> DrawCommand {
     if t.to_screen_coordinates(new).distance(t.to_screen_coordinates(prev)) < snap {
         red_circle_helper(t.to_screen_coordinates(prev), snap)
     } else {
@@ -85,7 +85,7 @@ pub fn cancel_helper(prev: Vec2DWorld, new: Vec2DWorld, t: Transform, snap: f64)
     }
 }
 
-pub fn path_helper(points: Vec<Vec2DScreen>) -> DrawCommand {
+pub fn path_helper(points: Vec<Vec2D<ScreenUnit>>) -> DrawCommand {
     DrawCommand::ScreenPath {
         commands: points.into_iter().enumerate().map(|(i, p)| {
             if i == 0 {
