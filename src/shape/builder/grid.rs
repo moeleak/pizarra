@@ -1,12 +1,13 @@
 use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper};
+use crate::draw_commands::{DrawCommand, circle_helper};
 use crate::path_command::PathCommand::{self, *};
 use crate::point::{Vec2D, Unit, WorldUnit, ScreenUnit};
 use crate::transform::Transform;
-use crate::style::Style;
+use crate::style::{Style, Stroke};
 use crate::matrix::Matrix;
 use crate::shape::stored::path::Path;
 use crate::shape::ShapeStored;
+use crate::color::Color;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -24,7 +25,7 @@ enum State {
 /// at first but it is flexible and easy to learn.
 ///
 /// 1. First place a point, this will be a corner of the grid.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Grid {
     style: Style<WorldUnit>,
     state: State,
@@ -67,10 +68,14 @@ impl ShapeBuilder for Grid {
             State::Initial(_) => ShapeFinished::Cancelled,
 
             State::DefineCell(p1, p2) => {
-                let p1s = t.to_screen_coordinates(p1);
-                let p2s = t.to_screen_coordinates(p2);
+                let corners = corners_from_two_points(p1, p2, t);
+                let c4 = t.to_screen_coordinates(corners[3]);
+                let c1 = t.to_screen_coordinates(corners[0]);
+                let c2 = t.to_screen_coordinates(corners[1]);
 
-                if p1s.distance(p2s) < snap {
+                let distance_to_l = c4.distance(c1).min(c2.distance(c1));
+
+                if distance_to_l < snap {
                     ShapeFinished::Cancelled
                 } else {
                     self.state = State::DefineGrid {
@@ -133,16 +138,41 @@ impl ShapeBuilder for Grid {
                 circle_helper(t.to_screen_coordinates(p), snap),
             ],
 
-            State::DefineCell(p1, p2) => vec![
-                cancel_helper(p1, p2, t, snap),
+            State::DefineCell(p1, p2) => {
+                let corners = corners_from_two_points(p1, p2, t);
+                let c4 = t.to_screen_coordinates(corners[3]);
+                let c1 = t.to_screen_coordinates(corners[0]);
+                let c2 = t.to_screen_coordinates(corners[1]);
 
-                DrawCommand::Path {
-                    commands: corners_to_path_commands(
-                        corners_from_two_points(p1, p2, t)
-                    ),
-                    style: self.style,
-                },
-            ],
+                let distance_to_l = c4.distance(c1).min(c2.distance(c1));
+
+                vec![
+                    DrawCommand::Path {
+                        commands: corners_to_path_commands(corners),
+                        style: self.style,
+                    },
+
+                    // the cancel helper
+                    DrawCommand::ScreenPath {
+                        commands: vec![
+                            MoveTo(t.to_screen_coordinates(corners[3])),
+                            LineTo(t.to_screen_coordinates(corners[0])),
+                            LineTo(t.to_screen_coordinates(corners[1])),
+                        ],
+                        style: Style {
+                            fill: None,
+                            stroke: Some(Stroke {
+                                size: snap * 2.0.into(),
+                                color: if distance_to_l < snap {
+                                    Color::red().half_transparent()
+                                } else {
+                                    Color::white().half_transparent()
+                                },
+                            }),
+                        },
+                    },
+                ]
+            }
 
             State::DefineGrid { cell: (p1, p2), free } => {
                 let cell = (
@@ -237,8 +267,12 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::point::{Vec2D, Unittless};
+    use crate::style::Stroke;
+    use crate::color::Color;
 
     use super::*;
+
+    const SNAP: ScreenUnit = ScreenUnit::from_float(10.0);
 
     #[test]
     fn can_make_a_grid() {
@@ -312,6 +346,93 @@ mod tests {
         }));
 
         assert_eq!(grid.draw_commands(t, snap), expected_rows);
+    }
+
+    /// even with the circle helper at the initial point it is possible to
+    /// create a grid that fills the memory with lines by creating a very thin
+    /// and long rectangle.
+    ///
+    /// The idea here is that the cancel helper will be an L with the corner at
+    /// the initial point and will cancel if the release event happens within
+    /// it.
+    #[test]
+    fn grid_cancel_helper_is_a_line_and_cancels() {
+        let t = Default::default();
+        let mut grid = Grid::start((0.0, 0.0).into(), Default::default());
+
+        grid.handle_mouse_moved((50.0, 0.0).into(), t, SNAP);
+
+        assert_eq!(grid.draw_commands(t, SNAP), vec![
+            DrawCommand::Path {
+                commands: vec![
+                    MoveTo((0.0, 0.0).into()),
+                    LineTo((50.0, 0.0).into()),
+                    LineTo((50.0, 0.0).into()),
+                    LineTo((0.0, 0.0).into()),
+                    LineTo((0.0, 0.0).into()),
+                ],
+                style: Default::default(),
+            },
+
+            DrawCommand::ScreenPath {
+                commands: vec![
+                    MoveTo((0.0, 0.0).into()),
+                    LineTo((0.0, 0.0).into()),
+                    LineTo((50.0, 0.0).into()),
+                ],
+                style: Style {
+                    stroke: Some(Stroke {
+                        size: (SNAP.val() * 2.0).into(),
+                        color: Color::red().half_transparent(),
+                    }),
+                    fill: None,
+                },
+            },
+        ]);
+
+        Some(grid).map(|mut grid| {
+            match grid.handle_button_released((50.0, 0.0).into(), t, SNAP) {
+                ShapeFinished::Cancelled => {}
+                _ => panic!()
+            }
+        }).unwrap();
+
+        grid.handle_mouse_moved((0.0, 50.0).into(), t, SNAP);
+
+        assert_eq!(grid.draw_commands(t, SNAP), vec![
+            DrawCommand::Path {
+                commands: vec![
+                    MoveTo((0.0, 0.0).into()),
+                    LineTo((0.0, 0.0).into()),
+                    LineTo((0.0, 50.0).into()),
+                    LineTo((0.0, 50.0).into()),
+                    LineTo((0.0, 0.0).into()),
+                ],
+                style: Default::default(),
+            },
+
+            DrawCommand::ScreenPath {
+                commands: vec![
+                    MoveTo((0.0, 50.0).into()),
+                    LineTo((0.0, 0.0).into()),
+                    LineTo((0.0, 0.0).into()),
+                ],
+                style: Style {
+                    stroke: Some(Stroke {
+                        size: (SNAP.val() * 2.0).into(),
+                        color: Color::red().half_transparent(),
+                    }),
+                    fill: None,
+                },
+            },
+        ]);
+
+        Some(grid).map(|mut grid| {
+            match grid.handle_button_released((50.0, 0.0).into(), t, SNAP) {
+                ShapeFinished::Cancelled => {}
+                _ => panic!()
+            }
+        }).unwrap();
     }
 
     #[test]

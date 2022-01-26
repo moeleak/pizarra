@@ -124,4 +124,9 @@ mod tests {
             _ => panic!(),
         }
     }
+
+    #[test]
+    fn very_tall_and_skinny_rectangle_doesnt_paint_helper_red() {
+        todo!()
+    }
 }

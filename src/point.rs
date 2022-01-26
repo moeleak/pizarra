@@ -22,6 +22,10 @@ macro_rules! impls {
             pub const fn from_float(f: f64) -> Self {
                 Self(f)
             }
+
+            pub fn min(self, other: Self) -> Self {
+                Self (self.0.min(other.0))
+            }
         }
 
         impl From<f64> for $x {
