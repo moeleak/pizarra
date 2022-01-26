@@ -134,7 +134,7 @@ impl Path {
 
         let color: Option<Color> = attrs.get("stroke").map(|s| parse_color(s)).transpose()?.flatten();
         let fill: Option<Color> = attrs.get("fill").map(|s| parse_color(s)).transpose()?.flatten();
-        let thickness: WorldUnit = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or(config.thickness.val().into());
+        let thickness: WorldUnit = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or_else(|| config.thickness.val().into());
         let alpha = attrs.get("stroke-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
         let fill_alpha = attrs.get("fill-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
 
