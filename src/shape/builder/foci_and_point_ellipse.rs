@@ -165,8 +165,16 @@ mod tests {
         builder.handle_mouse_moved(a, t, SNAP);
         builder.handle_button_released(a, t, SNAP);
 
-        // a circle is drawn around the first circle
+        // circles are drawn around each foci
         assert_eq!(builder.draw_commands(t, SNAP), vec![
+            DrawCommand::ScreenCircle {
+                style: Style {
+                    stroke: None,
+                    fill: Some(Color::red().half_transparent()),
+                },
+                center: a,
+                radius: SNAP,
+            },
             DrawCommand::ScreenCircle {
                 style: Style {
                     stroke: None,
