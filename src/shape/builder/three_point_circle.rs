@@ -16,11 +16,11 @@ enum State {
 #[derive(Debug)]
 pub struct CircleThroughThreePointsBuilder {
     state: State,
-    style: Style,
+    style: Style<WorldUnit>,
 }
 
 impl CircleThroughThreePointsBuilder {
-    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> CircleThroughThreePointsBuilder {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> CircleThroughThreePointsBuilder {
         CircleThroughThreePointsBuilder {
             state: State::One(initial),
             style,
@@ -48,7 +48,6 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
     fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
         self.handle_mouse_moved(pos, t, snap);
 
-        let pos_new = t.to_world_coordinates(pos);
         match self.state {
             State::One(p1) => {
                 self.state = State::Two(p1, t.to_world_coordinates(pos));
@@ -56,7 +55,7 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                 ShapeFinished::No
             }
             State::Two(p1, p2) => {
-                if p1.distance(pos_new) < snap {
+                if t.to_screen_coordinates(p1).distance(pos) < snap {
                     return ShapeFinished::Cancelled;
                 }
                 self.state = State::Three(p1, p2, t.to_world_coordinates(pos));

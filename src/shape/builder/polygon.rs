@@ -40,11 +40,11 @@ enum BuilderState {
 pub struct PolygonBuilder {
     points: Vec<PathCommand<WorldUnit>>,
     tip: BuilderState,
-    style: Style,
+    style: Style<WorldUnit>,
 }
 
 impl PolygonBuilder {
-    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> PolygonBuilder {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> PolygonBuilder {
         let mut init_vec = Vec::with_capacity(8);
 
         init_vec.push(MoveTo(initial));
@@ -307,7 +307,7 @@ mod tests {
 
     use super::*;
 
-    const SNAP: ScreenUnit = 10.0;
+    const SNAP: ScreenUnit = ScreenUnit::from_float(10.0);
 
     /// This tests the polygon's normal behavior of clicking here and there
     /// until some last click falls very close (in screen units) from one of the
@@ -602,7 +602,7 @@ mod tests {
                     MoveTo(Vec2D::new_screen( 0.0, 0.0 )), LineTo(Vec2D::new_screen( 0.0, 0.0 )),
                 ], style: Style::path_helper(), },
             DrawCommand::ScreenCircle {
-                center: Vec2D::new_screen( 0.0, 0.0 ), radius: 10.0,
+                center: Vec2D::new_screen( 0.0, 0.0 ), radius: 10.0.into(),
                 style: Style::circle_helper(),
             },
             DrawCommand::ScreenPath {
@@ -613,7 +613,7 @@ mod tests {
                 commands: vec![
                     MoveTo(Vec2D::new_screen( 0.0, -50.0 )), LineTo(Vec2D::new_screen( 0.0, -50.0 ))], style: Style::path_helper(), },
             DrawCommand::ScreenCircle {
-                center: Vec2D::new_screen( 0.0, -50.0 ), radius: 10.0,
+                center: Vec2D::new_screen( 0.0, -50.0 ), radius: 10.0.into(),
                 style: Style::circle_helper(),
             },
             DrawCommand::ScreenPath {
@@ -627,7 +627,7 @@ mod tests {
                 ], style: Style::path_helper(),
             },
             DrawCommand::ScreenCircle {
-                center: Vec2D::new_screen( 50.0, 0.0 ), radius: 10.0,
+                center: Vec2D::new_screen( 50.0, 0.0 ), radius: 10.0.into(),
                 style: Style::circle_helper(),
             },
         ]);
@@ -693,7 +693,7 @@ mod tests {
                 ],
             },
             DrawCommand::ScreenCircle {
-                center: Vec2D::new_screen( 0.0, -80.0 ), radius: 10.0,
+                center: Vec2D::new_screen( 0.0, -80.0 ), radius: 10.0.into(),
                 style: Style::circle_helper(),
             },
             DrawCommand::ScreenPath {
@@ -709,7 +709,7 @@ mod tests {
                 ],
             },
             DrawCommand::ScreenCircle {
-                center: Vec2D::new_screen( 80.0, 0.0 ), radius: 10.0,
+                center: Vec2D::new_screen( 80.0, 0.0 ), radius: 10.0.into(),
                 style: Style::circle_helper(),
             },
         ]);

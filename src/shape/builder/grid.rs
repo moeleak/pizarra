@@ -26,12 +26,12 @@ enum State {
 /// 1. First place a point, this will be a corner of the grid.
 #[derive(Debug)]
 pub struct Grid {
-    style: Style,
+    style: Style<WorldUnit>,
     state: State,
 }
 
 impl Grid {
-    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> Grid {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> Grid {
         Grid {
             style,
             state: State::Initial(initial),
@@ -186,11 +186,11 @@ pub(crate) fn grid_from_cell_and_point<T: Unit>((p1, p2): (Vec2D<T>, Vec2D<T>), 
     let diagonal = p2 - p1;
     let freep = free - p1;
 
-    let width = diagonal.x();
-    let height = diagonal.y();
+    let width = diagonal.x.val();
+    let height = diagonal.y.val();
 
-    let x_cells = freep.x() / width;
-    let y_cells = freep.y() / height;
+    let x_cells = (freep.x / width).val();
+    let y_cells = (freep.y / height).val();
 
     // integer amount of cells that will be created
     let num_x_cells = x_cells.abs().ceil() as usize;
@@ -204,7 +204,7 @@ pub(crate) fn grid_from_cell_and_point<T: Unit>((p1, p2): (Vec2D<T>, Vec2D<T>), 
 
     for yi in y_separators {
         for &xi in x_separators.iter() {
-            grid.push(p1 + Vec2D::new(xi as f64 * width, yi as f64 * height));
+            grid.push(p1 + Vec2D::new((xi as f64 * width).into(), (yi as f64 * height).into()));
         }
     }
 
@@ -218,9 +218,9 @@ fn corners_from_two_points(p1: Vec2D<WorldUnit>, p2: Vec2D<WorldUnit>, t: Transf
 
     [
         p1,
-        t.to_world_coordinates(p1s + Vec2D::new_screen(diagonal.x, 0.0)),
+        t.to_world_coordinates(p1s + Vec2D::new(diagonal.x, 0.0.into())),
         p2,
-        t.to_world_coordinates(p1s + Vec2D::new_screen(0.0, diagonal.y)),
+        t.to_world_coordinates(p1s + Vec2D::new(0.0.into(), diagonal.y)),
     ]
 }
 
@@ -236,16 +236,16 @@ fn corners_to_path_commands(corners: [Vec2D<WorldUnit>; 4]) -> Vec<PathCommand<W
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use crate::point::Vec2D;
+    use crate::point::{Vec2D, Unittless};
 
     use super::*;
 
     #[test]
     fn can_make_a_grid() {
         // the points for a 2x2 grid
-        let a: Vec2D = (-2.9,1.66).into();
-        let b: Vec2D = (-1.44,0.82).into();
-        let c: Vec2D = (-1.0, 0.0).into();
+        let a: Vec2D<Unittless> = (-2.9,1.66).into();
+        let b: Vec2D<Unittless> = (-1.44,0.82).into();
+        let c: Vec2D<Unittless> = (-1.0, 0.0).into();
 
         let grid = grid_from_cell_and_point((a, b), c);
 
@@ -253,16 +253,16 @@ mod tests {
         let ys = [1.66, 0.82, -0.020000000000000018];
 
         assert_eq!(grid, Matrix::from_parts(ys.into_iter().map(|y| {
-            xs.iter().map(move |&x| Vec2D::new(x, y))
+            xs.iter().map(move |&x| Vec2D::new_unitless(x, y))
         }).flatten().collect(), 3));
     }
 
     #[test]
     fn can_make_a_rectangular_grid() {
         // the points for a 2x2 grid
-        let a = Vec2D::new(-3.0, 3.0);
-        let b = Vec2D::new(-1.5, 2.0);
-        let c = Vec2D::new(0.85, 1.39);
+        let a = Vec2D::new_unitless(-3.0, 3.0);
+        let b = Vec2D::new_unitless(-1.5, 2.0);
+        let c = Vec2D::new_unitless(0.85, 1.39);
 
         let grid = grid_from_cell_and_point((a, b), c);
 
@@ -270,7 +270,7 @@ mod tests {
         let ys = [3.0, 2.0, 1.0];
 
         assert_eq!(grid, Matrix::from_parts(ys.into_iter().map(|y| {
-            xs.iter().map(move |x| Vec2D::new(*x, y))
+            xs.iter().map(move |x| Vec2D::new_unitless(*x, y))
         }).flatten().collect(), 4));
     }
 
@@ -284,7 +284,7 @@ mod tests {
         let rows = [3.0, 2.0, 1.0];
 
         let t = Transform::default();
-        let snap = 1.0;
+        let snap = 1.0.into();
 
         let mut grid = Grid::start(t.to_world_coordinates(a), Default::default());
 

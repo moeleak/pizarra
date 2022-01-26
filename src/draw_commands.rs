@@ -14,20 +14,20 @@ pub enum DrawCommand {
     /// A string of points and curves without filling
     Path {
         commands: Vec<PathCommand<WorldUnit>>,
-        style: Style,
+        style: Style<WorldUnit>,
     },
 
     /// An ellipse without filling
     Ellipse {
         ellipse: Ellipse<WorldUnit>,
-        style: Style,
+        style: Style<WorldUnit>,
     },
 
     /// A path in screen coordinates without filling. Used to render handles and
     /// other visual aids
     ScreenPath {
         commands: Vec<PathCommand<ScreenUnit>>,
-        style: Style,
+        style: Style<ScreenUnit>,
     },
 
     /// A circle in screen coordinates without filling. Used to render handles
@@ -35,7 +35,7 @@ pub enum DrawCommand {
     ScreenCircle {
         center: Vec2D<ScreenUnit>,
         radius: ScreenUnit,
-        style: Style,
+        style: Style<ScreenUnit>,
     },
 }
 

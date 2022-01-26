@@ -19,11 +19,11 @@ enum State {
 #[derive(Debug)]
 pub struct FociAndPointEllipse {
     state: State,
-    style: Style,
+    style: Style<WorldUnit>,
 }
 
 impl FociAndPointEllipse {
-    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> FociAndPointEllipse {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> FociAndPointEllipse {
         FociAndPointEllipse {
             state: State::One(initial),
             style,
@@ -54,8 +54,6 @@ impl ShapeBuilder for FociAndPointEllipse {
     fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _: Transform, _snap: ScreenUnit) { }
 
     fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
-        let wpos = t.to_world_coordinates(pos);
-
         match self.state {
             State::One(f1) => {
                 self.state = State::Foci([f1, t.to_world_coordinates(pos)]);
@@ -63,9 +61,10 @@ impl ShapeBuilder for FociAndPointEllipse {
                 ShapeFinished::No
             }
             State::Foci(foci) => {
-                if foci[0].distance(wpos) < snap {
+                if t.to_screen_coordinates(foci[0]).distance(pos) < snap {
                     return ShapeFinished::Cancelled;
                 }
+
                 self.state = State::FociAndPoint {
                     foci,
                     point: t.to_world_coordinates(pos),
@@ -130,7 +129,7 @@ mod tests {
 
     use super::*;
 
-    const SNAP: ScreenUnit = 1.0;
+    const SNAP: ScreenUnit = ScreenUnit::from_float(1.0);
 
     #[test]
     fn three_point_ellipse_builder() {
@@ -213,8 +212,8 @@ mod tests {
             style: Default::default(),
             ellipse: geom::Ellipse {
                 center: Vec2D::new_world(-3.0257300000000003, 1.26254),
-                semimajor: 5.838320272867801,
-                semiminor: 4.575529950080007,
+                semimajor: 5.838320272867801.into(),
+                semiminor: 4.575529950080007.into(),
                 angle: Angle::from_radians(-0.7769764190469384),
             },
         });
@@ -228,8 +227,8 @@ mod tests {
                     style: Default::default(),
                     ellipse: geom::Ellipse {
                         center: Vec2D::new_world(-3.0257300000000003, 1.26254),
-                        semimajor: 7.793799303722533,
-                        semiminor: 6.898753387548061,
+                        semimajor: 7.793799303722533.into(),
+                        semiminor: 6.898753387548061.into(),
                         angle: Angle::from_radians(-0.7769764190469384),
                     },
                 });

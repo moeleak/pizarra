@@ -52,10 +52,10 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Config {
         Config {
-            thickness: 2.0,
-            export_padding: 20.0,
-            erase_radius: 10.0,
-            point_snap_radius: 10.0,
+            thickness: 2.0.into(),
+            export_padding: 20.0.into(),
+            erase_radius: 10.0.into(),
+            point_snap_radius: 10.0.into(),
             zoom_factor: 2.0,
             background_color: Color::black(),
             stroke_color: Color::white(),
@@ -64,19 +64,19 @@ impl Default for Config {
     }
 }
 
-fn default_thickness() -> f64 {
+fn default_thickness() -> ScreenUnit {
     Config::default().thickness
 }
 
-fn default_export_padding() -> f64 {
+fn default_export_padding() -> WorldUnit {
     Config::default().export_padding
 }
 
-fn default_erase_radius() -> f64 {
+fn default_erase_radius() -> ScreenUnit {
     Config::default().erase_radius
 }
 
-fn default_point_snap_radius() -> f64 {
+fn default_point_snap_radius() -> ScreenUnit {
     Config::default().point_snap_radius
 }
 

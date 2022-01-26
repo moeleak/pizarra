@@ -46,7 +46,7 @@ pub enum ShapeTool {
 }
 
 impl ShapeTool {
-    pub fn start(&self, initial: Vec2D<WorldUnit>, style: Style) -> Box<dyn ShapeBuilder> {
+    pub fn start(&self, initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> Box<dyn ShapeBuilder> {
         match *self {
             ShapeTool::Path => Box::new(FreeHandLine::start(initial, style)),
             ShapeTool::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(initial, style)),
@@ -89,7 +89,7 @@ pub trait ShapeStored: fmt::Debug {
     fn intersects_circle(&self, center: Vec2D<WorldUnit>, radius: WorldUnit) -> bool;
 
     /// returns this shape's style
-    fn style(&self) -> Style;
+    fn style(&self) -> Style<WorldUnit>;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -144,7 +144,7 @@ impl Shape {
         self.z_index
     }
 
-    pub fn style(&self) -> Style {
+    pub fn style(&self) -> Style<WorldUnit> {
         self.shape_impl.style()
     }
 

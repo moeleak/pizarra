@@ -10,11 +10,11 @@ use crate::transform::Transform;
 pub struct CenterAndRadiusCircle {
     center: Vec2D<WorldUnit>,
     point: Vec2D<WorldUnit>,
-    style: Style,
+    style: Style<WorldUnit>,
 }
 
 impl CenterAndRadiusCircle {
-    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> CenterAndRadiusCircle {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> CenterAndRadiusCircle {
         CenterAndRadiusCircle {
             center: initial,
             point: initial,
@@ -33,11 +33,11 @@ impl ShapeBuilder for CenterAndRadiusCircle {
     fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
         self.handle_mouse_moved(pos, t, snap);
 
-        let radius = self.point.distance(self.center);
-
-        if radius < snap {
+        if t.to_screen_coordinates(self.center).distance(pos) < snap {
             return ShapeFinished::Cancelled;
         }
+
+        let radius = self.point.distance(self.center);
 
         ShapeFinished::Yes(vec![Box::new(
             Ellipse::from_parts(

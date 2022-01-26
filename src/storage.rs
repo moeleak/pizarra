@@ -89,8 +89,8 @@ impl CenterAndRadiusSelection {
 impl SelectionFunction<Shape> for CenterAndRadiusSelection {
     fn should_unpack_parent(&self, envelope: &<Shape as RTreeObject>::Envelope) -> bool {
         let bbox = AABB::from_corners(
-            [self.center.x - self.radius, self.center.y - self.radius],
-            [self.center.x + self.radius, self.center.y + self.radius],
+            self.center - Vec2D::new(self.radius, self.radius),
+            self.center + Vec2D::new(self.radius, self.radius),
         );
 
         envelope.intersects(&bbox)
@@ -188,7 +188,7 @@ impl Storage {
     /// returns the draw commands necessary to paint the portion of the screen
     /// indicated by bbox.
     fn query_commands(&self, bbox: [Vec2D<WorldUnit>; 2]) -> Vec<DrawCommand> {
-        let bbox = AABB::from_corners(bbox[0].to_a(), bbox[1].to_a());
+        let bbox = AABB::from_corners(bbox[0], bbox[1]);
         let mut commands: Vec<_> = self
             .shapes
             .locate_in_envelope_intersecting(&bbox)
@@ -221,11 +221,11 @@ impl Storage {
             let upper = Vec2D::from(cur.upper());
 
             [
-                Vec2D::new_world(
+                Vec2D::new(
                     if lower.x < acc[0].x { lower.x } else { acc[0].x },
                     if lower.y < acc[0].y { lower.y } else { acc[0].y },
                 ),
-                Vec2D::new_world(
+                Vec2D::new(
                     if upper.x > acc[1].x { upper.x } else { acc[1].x },
                     if upper.y > acc[1].y { upper.y } else { acc[1].y },
                 ),
@@ -269,7 +269,7 @@ mod tests {
     fn add_shapes_at_zoom() {
         let mut storage = Storage::new();
         let shapes: Vec<Box<dyn ShapeStored>> = vec![
-            Box::new(Ellipse::from_parts(Vec2D::new_world(0.0, 0.0), 1.0, 1.0, Angle::from_radians(0.0), Default::default())),
+            Box::new(Ellipse::from_parts(Vec2D::new_world(0.0, 0.0), 1.0.into(), 1.0.into(), Angle::from_radians(0.0), Default::default())),
             Box::new(Path::from_parts(vec![
                 PathCommand::MoveTo(Vec2D::new_world(0.0, 0.0)),
                 PathCommand::LineTo(Vec2D::new_world(1.0, 1.0)),
@@ -296,7 +296,7 @@ mod tests {
             PathCommand::LineTo(Vec2D::new_world(0.0, 1.0)),
         ], Style {
             stroke: Some(Stroke {
-                size: 0.0,
+                size: 0.0.into(),
                 color: Default::default(),
             }),
             fill: None,
@@ -304,10 +304,10 @@ mod tests {
 
         storage.add(Box::new(line));
 
-        assert_eq!(storage.remove_circle(Vec2D::new_world(0.5, -0.5), 0.5).collect::<Vec<_>>().len(), 0);
-        assert_eq!(storage.remove_circle(Vec2D::new_world(0.5, 0.5), 0.5).collect::<Vec<_>>().len(), 0);
+        assert_eq!(storage.remove_circle(Vec2D::new_world(0.5, -0.5), 0.5.into()).collect::<Vec<_>>().len(), 0);
+        assert_eq!(storage.remove_circle(Vec2D::new_world(0.5, 0.5), 0.5.into()).collect::<Vec<_>>().len(), 0);
 
-        assert!(storage.remove_circle(Vec2D::new_world(-0.25, -1.25), 0.5).next().is_some());
+        assert!(storage.remove_circle(Vec2D::new_world(-0.25, -1.25), 0.5.into()).next().is_some());
     }
 
     #[test]
@@ -423,7 +423,7 @@ mod tests {
             ], Style {
                 stroke: Some(Stroke {
                     color: Color::red(),
-                    size: 1.0,
+                    size: 1.0.into(),
                 }),
                 fill: None,
             })),

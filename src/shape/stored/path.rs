@@ -8,11 +8,11 @@ use crate::style::Style;
 #[derive(Debug)]
 pub struct Path {
     commands: Vec<PathCommand<WorldUnit>>,
-    style: Style,
+    style: Style<WorldUnit>,
 }
 
 impl Path {
-    pub fn from_parts(commands: Vec<PathCommand<WorldUnit>>, style: Style) -> Path {
+    pub fn from_parts(commands: Vec<PathCommand<WorldUnit>>, style: Style<WorldUnit>) -> Path {
         Path {
             commands, style,
         }
@@ -34,7 +34,7 @@ impl ShapeStored for Path {
         let (topleftpad, bottomrightpad) = if let Some(stroke) = self.style.stroke {
             let size = stroke.size;
 
-            (Vec2D::new_world(-size, -size), Vec2D::new_world(size, size))
+            (Vec2D::new(-size, -size), Vec2D::new(size, size))
         } else {
             Default::default()
         };
@@ -49,7 +49,7 @@ impl ShapeStored for Path {
         ShapeType::Path
     }
 
-    fn intersects_circle(&self, center: Vec2D<WorldUnit>, radius: f64) -> bool {
+    fn intersects_circle(&self, center: Vec2D<WorldUnit>, radius: WorldUnit) -> bool {
         let mut last_point = None;
         let radius = if let Some(stroke) = self.style.stroke {
             radius + stroke.size / 2.0
@@ -68,7 +68,7 @@ impl ShapeStored for Path {
         false
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Style<WorldUnit> {
         self.style
     }
 }
@@ -116,7 +116,7 @@ mod tests {
             MoveTo(Vec2D::new_world(0.0, 0.0)),
         ], Default::default());
 
-        assert!(poly.intersects_circle(Vec2D::new_world(0.0, 0.0), 10.0));
+        assert!(poly.intersects_circle(Vec2D::new_world(0.0, 0.0), 10.0.into()));
     }
 
     #[test]
@@ -140,7 +140,7 @@ mod tests {
         ];
 
         for (center, result) in cases {
-            assert_eq!(path.intersects_circle(center, 15.0), result);
+            assert_eq!(path.intersects_circle(center, 15.0.into()), result);
         }
     }
 
@@ -161,7 +161,7 @@ mod tests {
         ];
 
         for (center, result) in cases {
-            assert_eq!(path.intersects_circle(center, 15.0), result);
+            assert_eq!(path.intersects_circle(center, 15.0.into()), result);
         }
     }
 
@@ -177,11 +177,11 @@ mod tests {
             }),
         ], Default::default());
 
-        let stroke = Style::default().stroke.unwrap().size;
+        let stroke: WorldUnit = Style::default().stroke.unwrap().size;
 
         assert_eq!(path.bbox(), [
-            Vec2D::new_world(0.0 - stroke, 0.0 - stroke),
-            Vec2D::new_world(60.0 + stroke, 60.0 + stroke),
+            Vec2D::new_world(0.0, 0.0) - Vec2D::new(stroke, stroke),
+            Vec2D::new_world(60.0, 60.0) + Vec2D::new(stroke, stroke),
         ]);
     }
 
@@ -198,20 +198,20 @@ mod tests {
         ], Style {
             stroke: Some(Stroke {
                 color: Default::default(),
-                size: 2.1166,
+                size: 2.1166.into(),
             }),
             fill: None,
         });
 
         // these must touch
-        assert!(path.intersects_circle(Vec2D::new_world(29.841375, 116.64932), 1.3229166));
-        assert!(path.intersects_circle(Vec2D::new_world(33.242252, 110.06812), 1.3229166));
-        assert!(path.intersects_circle(Vec2D::new_world(37.421051, 120.87376), 1.3229166));
+        assert!(path.intersects_circle(Vec2D::new_world(29.841375, 116.64932), 1.3229166.into()));
+        assert!(path.intersects_circle(Vec2D::new_world(33.242252, 110.06812), 1.3229166.into()));
+        assert!(path.intersects_circle(Vec2D::new_world(37.421051, 120.87376), 1.3229166.into()));
 
         // these must touchn't
-        assert!(!path.intersects_circle(Vec2D::new_world(39.535831, 112.48697), 1.3229166));
-        assert!(!path.intersects_circle(Vec2D::new_world(34.404907, 115.59615), 1.3229166));
-        assert!(!path.intersects_circle(Vec2D::new_world(27.536837, 110.98792), 1.3229166));
+        assert!(!path.intersects_circle(Vec2D::new_world(39.535831, 112.48697), 1.3229166.into()));
+        assert!(!path.intersects_circle(Vec2D::new_world(34.404907, 115.59615), 1.3229166.into()));
+        assert!(!path.intersects_circle(Vec2D::new_world(27.536837, 110.98792), 1.3229166.into()));
     }
 
     #[test]

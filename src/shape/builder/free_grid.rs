@@ -42,12 +42,12 @@ enum State {
 /// 1. First place a point, this will be a corner of the grid.
 #[derive(Debug)]
 pub struct FreeGrid {
-    style: Style,
+    style: Style<WorldUnit>,
     state: State,
 }
 
 impl FreeGrid {
-    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> FreeGrid {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> FreeGrid {
         FreeGrid {
             style,
             state: State::Initial(initial),

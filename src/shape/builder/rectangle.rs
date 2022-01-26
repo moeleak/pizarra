@@ -8,11 +8,11 @@ use crate::transform::Transform;
 #[derive(Debug)]
 pub struct AxisAlignedRectangleBuilder {
     corners: [Vec2D<WorldUnit>; 4],
-    style: Style,
+    style: Style<WorldUnit>,
 }
 
 impl AxisAlignedRectangleBuilder {
-    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> AxisAlignedRectangleBuilder {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> AxisAlignedRectangleBuilder {
         AxisAlignedRectangleBuilder {
             corners: [initial; 4],
             style,
@@ -41,9 +41,9 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
 
         self.corners = [
             first_point,
-            t.to_world_coordinates(Vec2D::new_screen(pos.x, first_point_screen.y)),
+            t.to_world_coordinates(Vec2D::new(pos.x, first_point_screen.y)),
             t.to_world_coordinates(pos),
-            t.to_world_coordinates(Vec2D::new_screen(first_point_screen.x, pos.y)),
+            t.to_world_coordinates(Vec2D::new(first_point_screen.x, pos.y)),
         ];
     }
 
@@ -83,7 +83,7 @@ mod tests {
 
     use super::*;
 
-    const SNAP: ScreenUnit = 1.0;
+    const SNAP: ScreenUnit = ScreenUnit::from_float(1.0);
 
     #[test]
     fn finished_shape_has_all_sides() {

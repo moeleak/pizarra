@@ -11,7 +11,7 @@ use lazy_static::lazy_static;
 use crate::storage::Storage;
 use crate::shape::{ShapeStored, stored::{path::Path, ellipse::Ellipse}};
 use crate::color::Color;
-use crate::point::{Vec2D, WorldUnit};
+use crate::point::{Vec2D, Unit, WorldUnit};
 use crate::geom::Angle;
 use crate::config::Config;
 use crate::style::{Style, Stroke};
@@ -81,8 +81,8 @@ impl FromStr for Vec2D<WorldUnit> {
     fn from_str(s: &str) -> Result<Self> {
         if let Some(captures) = POINT_REGEX.captures(s) {
             Ok(Vec2D::new(
-                captures["x"].parse::<f64>()?,
-                captures["y"].parse::<f64>()?,
+                captures["x"].parse::<WorldUnit>()?,
+                captures["y"].parse::<WorldUnit>()?,
             ))
         } else {
             Err(Error::PointDoesntMatchRegex)
@@ -134,7 +134,7 @@ impl Path {
 
         let color: Option<Color> = attrs.get("stroke").map(|s| parse_color(s)).transpose()?.flatten();
         let fill: Option<Color> = attrs.get("fill").map(|s| parse_color(s)).transpose()?.flatten();
-        let thickness = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or(config.thickness);
+        let thickness: WorldUnit = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or(config.thickness.val().into());
         let alpha = attrs.get("stroke-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
         let fill_alpha = attrs.get("fill-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
 
@@ -181,15 +181,15 @@ impl Deserialize for Ellipse {
 
         let color: Option<Color> = attrs.get("stroke").map(|s| parse_color(s)).transpose()?.flatten();
         let fill: Option<Color> = attrs.get("fill").map(|s| parse_color(s)).transpose()?.flatten();
-        let thickness = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or(config.thickness);
+        let thickness: WorldUnit = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or_else(|| config.thickness.val().into());
         let alpha = attrs.get("stroke-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
         let fill_alpha = attrs.get("fill-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
 
         let angle: Angle = angle.parse()?;
 
         let center = Vec2D::new_world(cx.parse()?, cy.parse()?);
-        let rx: f64 = rx.parse()?;
-        let ry: f64 = ry.parse()?;
+        let rx = rx.parse()?;
+        let ry = ry.parse()?;
 
         Ok(Box::new(Ellipse::from_parts(
             center,
@@ -303,7 +303,7 @@ mod tests {
                 PathCommand::LineTo(Vec2D::new_world(152.496094, 51.714844)),
                 PathCommand::LineTo(Vec2D::new_world(152.875, 53.191406)),
             ]);
-            assert_eq!(style.stroke.unwrap().size, 3.0);
+            assert_eq!(style.stroke.unwrap().size, 3.0.into());
         } else {
             panic!();
         }
@@ -313,7 +313,7 @@ mod tests {
     fn test_parse_point() {
         let p = " 152.496094 51.714844 ";
 
-        assert_eq!(p.parse::<Vec2DWorld>().unwrap(), Vec2D::new_world(152.496094, 51.714844));
+        assert_eq!(p.parse::<Vec2D<WorldUnit>>().unwrap(), Vec2D::new_world(152.496094, 51.714844));
     }
 
     #[test]
@@ -339,11 +339,11 @@ mod tests {
         match deserialized.draw_commands() {
             DrawCommand::Ellipse { ellipse: e, style } => {
                 assert_eq!(e.center, Vec2D::new_world(20.4, -30.5));
-                assert_eq!(e.semimajor, 5.6);
-                assert_eq!(e.semiminor, 3.5);
+                assert_eq!(e.semimajor, 5.6.into());
+                assert_eq!(e.semiminor, 3.5.into());
                 assert_eq!(e.angle.degrees(), 34.5);
                 assert_eq!(style.stroke.unwrap().color, Color::from_int_rgb(0xca, 0xba, 0xda).with_float_alpha(0.8));
-                assert_eq!(style.stroke.unwrap().size, 3.5);
+                assert_eq!(style.stroke.unwrap().size, 3.5.into());
             },
             _ => panic!()
         }

@@ -12,7 +12,7 @@ use crate::style::Style;
 ///
 /// This means that the command at the last position before the operation must
 /// be replaced with the one provided first by this function.
-fn add_smooth<T: Unit>(sec: Option<PathCommand<T>>, last: PathCommand<T>, pos: Vec2D<T>) -> (PathCommand<T>, Option<PathCommand<T>>) {
+fn add_smooth<T: Unit + 'static>(sec: Option<PathCommand<T>>, last: PathCommand<T>, pos: Vec2D<T>) -> (PathCommand<T>, Option<PathCommand<T>>) {
     match last {
         PathCommand::MoveTo(p) | PathCommand::LineTo(p) => {
             // Second point, put pt1 and pt2 at 1/3 and 2/3 of the
@@ -65,7 +65,7 @@ fn add_smooth<T: Unit>(sec: Option<PathCommand<T>>, last: PathCommand<T>, pos: V
     }
 }
 
-fn add_point<T: Unit>(commands: &mut Vec<PathCommand<T>>, pos: Vec2D<T>) {
+fn add_point<T: Unit + 'static>(commands: &mut Vec<PathCommand<T>>, pos: Vec2D<T>) {
     let sub = commands
         .len()
         .checked_sub(2)
@@ -86,11 +86,11 @@ fn add_point<T: Unit>(commands: &mut Vec<PathCommand<T>>, pos: Vec2D<T>) {
 #[derive(Debug, PartialEq)]
 pub struct FreeHandLine {
     commands: Vec<PathCommand<WorldUnit>>,
-    style: Style,
+    style: Style<WorldUnit>,
 }
 
 impl FreeHandLine {
-    pub fn start(initial: Vec2D<WorldUnit>, style: Style) -> FreeHandLine {
+    pub fn start(initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> FreeHandLine {
         let mut commands = Vec::with_capacity(1000);
 
         commands.push(PathCommand::MoveTo(initial));
@@ -101,7 +101,7 @@ impl FreeHandLine {
         }
     }
 
-    pub fn with_params(commands: Vec<PathCommand<WorldUnit>>, style: Style) -> FreeHandLine {
+    pub fn with_params(commands: Vec<PathCommand<WorldUnit>>, style: Style<WorldUnit>) -> FreeHandLine {
         FreeHandLine {
             commands, style,
         }

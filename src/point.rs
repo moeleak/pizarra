@@ -1,19 +1,29 @@
 use std::fmt;
 use std::ops::{Mul, Add, Sub, Div, Neg, Rem};
 use std::f64::consts::FRAC_PI_2;
-use num_traits::float::Float;
+use std::str::FromStr;
+use std::num::ParseFloatError;
+
+use num_traits::{float::Float, sign::Signed, bounds::Bounded};
+use serde::{Serialize, Deserialize};
 
 use crate::geom::Angle;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Zero, One, Num, ToPrimitive, NumCast, Float)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Zero, One, Num, ToPrimitive, NumCast, Float, Serialize, Deserialize)]
 pub struct ScreenUnit(f64);
-#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Zero, One, Num, ToPrimitive, NumCast, Float)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Zero, One, Num, ToPrimitive, NumCast, Float, Serialize, Deserialize)]
 pub struct WorldUnit(f64);
-#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Zero, One, Num, ToPrimitive, NumCast, Float)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Zero, One, Num, ToPrimitive, NumCast, Float, Serialize, Deserialize)]
 pub struct Unittless(f64);
 
 macro_rules! impls {
     ( $x:ident ) => {
+        impl $x {
+            pub const fn from_float(f: f64) -> Self {
+                Self(f)
+            }
+        }
+
         impl From<f64> for $x {
             fn from(a: f64) -> Self {
                 Self(a)
@@ -76,9 +86,57 @@ macro_rules! impls {
             }
         }
 
+        impl Signed for $x {
+            fn abs(&self) -> Self {
+                if self.0.is_nan() {
+                    Self (f64::NAN)
+                } else {
+                    Self (self.0.abs())
+                }
+            }
+
+            fn abs_sub(&self, other: &Self) -> Self {
+                if self.0 <= other.0 {
+                    Self (0.0)
+                } else {
+                    Self (self.0 - other.0)
+                }
+            }
+
+            fn signum(&self) -> Self {
+                Self (self.0.signum())
+            }
+
+            fn is_positive(&self) -> bool {
+                self.0.is_sign_positive()
+            }
+
+            fn is_negative(&self) -> bool {
+                self.0.is_sign_negative()
+            }
+        }
+
+        impl Bounded for $x {
+            fn min_value() -> Self {
+                Self (f64::MAX)
+            }
+
+            fn max_value() -> Self {
+                Self (f64::MIN)
+            }
+        }
+
         impl fmt::Display for $x {
             fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(formatter, "{}", self.0)
+            }
+        }
+
+        impl FromStr for $x {
+            type Err = ParseFloatError;
+
+            fn from_str(s: &str) -> Result<$x, Self::Err> {
+                Ok(Self (s.parse()?))
             }
         }
     };

@@ -202,7 +202,7 @@ impl Transform {
     }
 
     pub fn to_world_units(&self, length: ScreenUnit) -> WorldUnit {
-        let vec: Vec2D<WorldUnit> = self.invert().transform_distance(length, 0.0).into();
+        let vec: Vec2D<WorldUnit> = self.invert().transform_distance(length.val(), 0.0).into();
 
         vec.magnitude()
     }
@@ -305,19 +305,19 @@ mod tests {
         let dimensions = Vec2D::new_screen(200.0, 100.0);
         let mut t = Transform::default_for_viewport(dimensions);
 
-        assert_eq!(t.to_world_units(1.0), 1.0.into());
+        assert_eq!(t.to_world_units(1.0.into()), 1.0.into());
 
         t = t.zoom(2.0, dimensions);
 
-        assert_eq!(t.to_world_units(1.0), 0.5.into());
+        assert_eq!(t.to_world_units(1.0.into()), 0.5.into());
 
         t = t.zoom(0.5, dimensions);
 
-        assert_eq!(t.to_world_units(1.0), 1.0.into());
+        assert_eq!(t.to_world_units(1.0.into()), 1.0.into());
 
         t = t.zoom(0.5, dimensions);
 
-        assert_eq!(t.to_world_units(1.0), 2.0.into());
+        assert_eq!(t.to_world_units(1.0.into()), 2.0.into());
     }
 
     #[test]

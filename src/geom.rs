@@ -125,26 +125,6 @@ fn bezier_intersects_circle_inner<T: Unit>(from: Vec2D<T>, p1: Vec2D<T>, p2: Vec
     false
 }
 
-pub(crate) fn middle_point<T: Unit>(p1: Vec2D<T>, p2: Vec2D<T>) -> Vec2D<T> {
-    (p1 + p2) / 2.0
-}
-
-/// given the four corners that define an ellipse returns the length of the
-/// semimajor axis, a vector that defines it and the length of the semiminor
-/// axis
-pub(crate) fn parts_of_ellipse_from_corners<T: Unit>(corners: [Vec2D<T>; 4]) -> (T, Vec2D<T>, T) {
-    let ellipse_side_1 = corners[0] - corners[1];
-    let ellipse_side_2 = corners[1] - corners[2];
-    let ellipse_len_1 = ellipse_side_1.magnitude();
-    let ellipse_len_2 = ellipse_side_2.magnitude();
-
-    if ellipse_len_1 > ellipse_len_2 {
-        (ellipse_len_1, ellipse_side_1, ellipse_len_2)
-    } else {
-        (ellipse_len_2, ellipse_side_2, ellipse_len_1)
-    }
-}
-
 /// given the foci and a point of the ellipse return its center, semimajor axis,
 /// semiminor axis and angle
 pub(crate) fn ellipse_from_foci_and_point<T: Unit>(foci: [Vec2D<T>; 2], point: Vec2D<T>) -> (Vec2D<T>, T, T, Angle) {
@@ -169,29 +149,6 @@ pub(crate) fn ellipse_from_foci_and_sum<T: Unit>(foci: [Vec2D<T>; 2], sum: T) ->
     let semiminor = if semiminor == 0.0.into() { 1.0.into() } else { semiminor };
 
     (center, semimajor, semiminor, angle)
-}
-
-pub(crate) fn foci_and_sum_from_center_and_radi<T: Unit>(center: Vec2D<T>, semimajor: f64, semiminor: f64, angle: Angle) -> ([Vec2D<T>; 2], f64) {
-    // this is the magnitude of a vector that goes from the center of the
-    // ellipse to either of the focis
-    let x = (semimajor.powi(2) - semiminor.powi(2)).sqrt();
-
-    // this is a vector parallel to the line that connects the two focis of
-    // the ellipse
-    let v = Vec2D::new(
-        angle.radians().cos().into(),
-        angle.radians().sin().into(),
-    );
-
-    // now we can compute the centers of the ellipse
-    let center1 = center + v * x;
-    let center2 = center - v * x;
-
-    // this variable represents the (constant) sum of the distance from any
-    // point of the ellipse to both of its centers
-    let sum = semimajor * 2.0;
-
-    ([center1, center2], sum)
 }
 
 #[allow(clippy::many_single_char_names)]
@@ -445,20 +402,6 @@ mod tests {
     }
 
     #[test]
-    fn the_expected_ellipse_is_built_back() {
-        let center: Vec2D<WorldUnit> = (-11.5, -5.98).into();
-        let semimajor = (14.29 + 17.67) / 2.0;
-        let semiminor = 11.28;
-        let angle = Angle::from_degrees(39.94);
-
-        let ([f1, f2], sum) = foci_and_sum_from_center_and_radi(center, semimajor, semiminor, angle);
-
-        assert!(f2.distance((-20.22222, -13.24752).into()) < 0.1.into());
-        assert!(f1.distance((-2.88, 1.28).into()) < 0.1.into());
-        assert!((sum - (14.29 + 17.67)).abs() < 0.1);
-    }
-
-    #[test]
     fn bezier_curve_properly_intersects_circles() {
         let from = Some(Vec2D::new_world(33.0, 135.0));
         let pt1 = Vec2D::new_world(50.0, 200.0);
@@ -476,14 +419,6 @@ mod tests {
         for (center, result) in cases {
             assert_eq!(bezier_intersects_circle(from, pt1, pt2, to, center, 15.0.into()), result);
         }
-    }
-
-    #[test]
-    fn middle_point_behaves() {
-        let a = Vec2D::new_world(-5.61146,3.80508);
-        let b = Vec2D::new_world(-0.44,-1.28);
-
-        assert_eq!(middle_point(a, b), (-3.0257300000000003, 1.26254).into());
     }
 
     #[test]

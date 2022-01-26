@@ -30,7 +30,7 @@ impl DrawCommand {
                     .attr("style", &format!(
                         "fill:{fill};stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
                         fill = style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
-                        stroke = style.stroke.map(|s| s.size).unwrap_or(0.0),
+                        stroke = style.stroke.map(|s| s.size).unwrap_or_else(|| 0.0.into()),
                         color = style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
                         alpha = style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
                     ))
@@ -56,7 +56,7 @@ impl DrawCommand {
                             stroke:{color};\
                             stroke-opacity:{alpha};\
                             stroke-miterlimit:10;",
-                        stroke = style.stroke.map(|s| s.size).unwrap_or(0.0),
+                        stroke = style.stroke.map(|s| s.size).unwrap_or_else(|| 0.0.into()),
                         color = style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
                         alpha = style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
                         fill = style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
@@ -71,14 +71,14 @@ impl DrawCommand {
 }
 
 pub struct Settings {
-    pub export_padding: ScreenUnit,
+    pub export_padding: WorldUnit,
     pub bgcolor: Color,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            export_padding: 20.0,
+            export_padding: 20.0.into(),
             bgcolor: Color::black(),
         }
     }
@@ -94,7 +94,7 @@ impl Storage {
         let export_padding = settings.export_padding;
 
         let bbox = self.get_bounds().unwrap_or([Vec2D::new_world(0.0, 0.0), Vec2D::new_world(0.0, 0.0)]);
-        let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2D::new_world(export_padding*2.0, export_padding*2.0);
+        let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2D::new(export_padding * 2.0.into(), export_padding * 2.0.into());
         let width = svg_dimensions.x.to_string();
         let height = svg_dimensions.y.to_string();
         let min = bbox[0].min(bbox[1]);
@@ -160,7 +160,7 @@ mod tests {
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Path));
         app.set_color(Color::red());
-        app.set_stroke(3.5);
+        app.set_stroke(3.5.into());
 
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2D::new_screen(20.0, 20.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2D::new_screen(21.0, 20.0));
@@ -176,10 +176,10 @@ mod tests {
 
         app.set_tool(SelectedTool::Shape(ShapeTool::ThreePointEllipse));
         app.set_color(Color::red());
-        app.set_stroke(3.5);
+        app.set_stroke(3.5.into());
 
         app.set_config(Config {
-            point_snap_radius: 1.0,
+            point_snap_radius: 1.0.into(),
             ..Default::default()
         });
 
@@ -212,7 +212,7 @@ mod tests {
         ], Style {
             stroke: Some(Stroke {
                 color: Color::green().with_alpha(127),
-                size: 3.0,
+                size: 3.0.into(),
             }),
             fill: None,
         })));
@@ -240,8 +240,8 @@ mod tests {
         })));
         storage.add(Box::new(Ellipse::from_parts(
             Vec2D::new_world(0.0, 0.0),
-            10.0,
-            15.0,
+            10.0.into(),
+            15.0.into(),
             Angle::from_radians(0.0),
             Style {
                 fill: None,
