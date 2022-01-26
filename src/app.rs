@@ -527,7 +527,7 @@ impl Pizarra {
             current@BoardState::UsingTool => match button {
                 MouseButton::Left => match self.handle_tool_button_released(point, tool_override) {
                     Action::Unfinished => (current, ShouldRedraw::Shape),
-                    Action::Empty => (BoardState::Idle, ShouldRedraw::No),
+                    Action::Empty => (BoardState::Idle, ShouldRedraw::Shape),
                     x => {
                         self.conclude_action(x);
                         (BoardState::Idle, ShouldRedraw::All)
@@ -1409,9 +1409,21 @@ mod tests {
         assert_eq!(app.storage.shape_count(), 0);
     }
 
+    /// it turned out that cancelled shapes seem to say on the screen after the
+    /// mouse release and are deleted in the next mouse move. It is most
+    /// noticeable with mouse and touchpad
     #[test]
-    #[ignore]
     fn on_cancelled_shape_remaining_is_deleted_on_mousebutton_release() {
-        todo!()
+        let mut app = Pizarra::new_for_testing();
+
+        app.set_tool(SelectedTool::Shape(ShapeTool::Rectangle));
+
+        app.handle_mouse_button_pressed(MouseButton::Left, (0.0, 0.0).into());
+        app.handle_mouse_move((1.0, 1.0).into());
+
+        match app.handle_mouse_button_released(MouseButton::Left, (1.0, 1.0).into()) {
+            ShouldRedraw::Shape => {}
+            _ => panic!()
+        }
     }
 }
