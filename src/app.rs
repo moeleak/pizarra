@@ -1410,11 +1410,8 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn on_cancelled_shape_remaining_is_deleted_on_mousebutton_release() {
-        let mut app = Pizarra::new_for_testing();
-
-        app.set_tool(SelectedTool::Shape(ShapeTool::Rectangle));
-
         todo!()
     }
 }
