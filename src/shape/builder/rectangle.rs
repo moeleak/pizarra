@@ -1,5 +1,5 @@
 use crate::draw_commands::{DrawCommand, cancel_helper};
-use crate::path_command::PathCommand;
+use crate::path_command::PathCommand::{self, *};
 use crate::point::{Vec2D, WorldUnit, ScreenUnit};
 use crate::shape::{stored::path::Path, ShapeBuilder, ShapeFinished};
 use crate::style::Style;
@@ -28,8 +28,8 @@ fn draw_commands(corners: [Vec2D<WorldUnit>; 4]) -> Vec<PathCommand<WorldUnit>> 
     let mut commands = Vec::with_capacity(5);
     let mut points_iter = corners.iter().cycle().take(5);
 
-    commands.push(PathCommand::MoveTo(*points_iter.next().unwrap()));
-    commands.extend(points_iter.map(|p| PathCommand::LineTo(*p)));
+    commands.push(MoveTo(*points_iter.next().unwrap()));
+    commands.extend(points_iter.map(|p| LineTo(*p)));
 
     commands
 }
@@ -72,7 +72,7 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
                 style: self.style,
             },
 
-            cancel_helper(corners[0], corners[1], t, snap),
+            cancel_helper(corners[0], corners[2], t, snap),
         ]
     }
 }
@@ -99,11 +99,11 @@ mod tests {
         assert_eq!(rect.draw_commands(t, SNAP)[0], DrawCommand::Path {
             style: Default::default(),
             commands: vec![
-                PathCommand::MoveTo(Vec2D::new_world(4.0, 5.0)),
-                PathCommand::LineTo(Vec2D::new_world(10.0, 5.0)),
-                PathCommand::LineTo(Vec2D::new_world(10.0, 10.0)),
-                PathCommand::LineTo(Vec2D::new_world(4.0, 10.0)),
-                PathCommand::LineTo(Vec2D::new_world(4.0, 5.0)),
+                MoveTo(Vec2D::new_world(4.0, 5.0)),
+                LineTo(Vec2D::new_world(10.0, 5.0)),
+                LineTo(Vec2D::new_world(10.0, 10.0)),
+                LineTo(Vec2D::new_world(4.0, 10.0)),
+                LineTo(Vec2D::new_world(4.0, 5.0)),
             ],
         });
 
@@ -113,11 +113,11 @@ mod tests {
                 assert_eq!(s[0].draw_commands(), DrawCommand::Path {
                     style: Default::default(),
                     commands: vec![
-                        PathCommand::MoveTo(Vec2D::new_world(4.0, 5.0)),
-                        PathCommand::LineTo(Vec2D::new_world(10.0, 5.0)),
-                        PathCommand::LineTo(Vec2D::new_world(10.0, 10.0)),
-                        PathCommand::LineTo(Vec2D::new_world(4.0, 10.0)),
-                        PathCommand::LineTo(Vec2D::new_world(4.0, 5.0)),
+                        MoveTo(Vec2D::new_world(4.0, 5.0)),
+                        LineTo(Vec2D::new_world(10.0, 5.0)),
+                        LineTo(Vec2D::new_world(10.0, 10.0)),
+                        LineTo(Vec2D::new_world(4.0, 10.0)),
+                        LineTo(Vec2D::new_world(4.0, 5.0)),
                     ],
                 });
             }
@@ -127,6 +127,27 @@ mod tests {
 
     #[test]
     fn very_tall_and_skinny_rectangle_doesnt_paint_helper_red() {
-        todo!()
+        let t = Default::default();
+        let mut rect = AxisAlignedRectangleBuilder::start((0.0, 0.0).into(), Default::default());
+
+        rect.handle_mouse_moved((0.0, 50.0).into(), t, SNAP);
+
+        assert_eq!(rect.draw_commands(t, SNAP), vec![
+            DrawCommand::Path {
+                commands: vec![
+                    MoveTo((0.0, 0.0).into()),
+                    LineTo((0.0, 0.0).into()),
+                    LineTo((0.0, 50.0).into()),
+                    LineTo((0.0, 50.0).into()),
+                    LineTo((0.0, 0.0).into()),
+                ],
+                style: Default::default(),
+            },
+            DrawCommand::ScreenCircle {
+                center: (0.0, 0.0).into(),
+                radius: SNAP,
+                style: Style::circle_helper(),
+            },
+        ]);
     }
 }
