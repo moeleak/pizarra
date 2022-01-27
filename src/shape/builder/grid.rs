@@ -1,13 +1,12 @@
 use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::draw_commands::{DrawCommand, circle_helper};
+use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper};
 use crate::path_command::PathCommand::{self, *};
 use crate::point::{Vec2D, Unit, WorldUnit, ScreenUnit};
 use crate::transform::Transform;
-use crate::style::{Style, Stroke};
+use crate::style::Style;
 use crate::matrix::Matrix;
 use crate::shape::stored::path::Path;
 use crate::shape::ShapeStored;
-use crate::color::Color;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -140,11 +139,6 @@ impl ShapeBuilder for Grid {
 
             State::DefineCell(p1, p2) => {
                 let corners = corners_from_two_points(p1, p2, t);
-                let c4 = t.to_screen_coordinates(corners[3]);
-                let c1 = t.to_screen_coordinates(corners[0]);
-                let c2 = t.to_screen_coordinates(corners[1]);
-
-                let distance_to_l = c4.distance(c1).min(c2.distance(c1));
 
                 vec![
                     DrawCommand::Path {
@@ -152,25 +146,8 @@ impl ShapeBuilder for Grid {
                         style: self.style,
                     },
 
-                    // the cancel helper
-                    DrawCommand::ScreenPath {
-                        commands: vec![
-                            MoveTo(t.to_screen_coordinates(corners[3])),
-                            LineTo(t.to_screen_coordinates(corners[0])),
-                            LineTo(t.to_screen_coordinates(corners[1])),
-                        ],
-                        style: Style {
-                            fill: None,
-                            stroke: Some(Stroke {
-                                size: snap * 2.0.into(),
-                                color: if distance_to_l < snap {
-                                    Color::red().half_transparent()
-                                } else {
-                                    Color::white().half_transparent()
-                                },
-                            }),
-                        },
-                    },
+                    cancel_helper(corners[1], p2, t, snap),
+                    cancel_helper(corners[3], p2, t, snap),
                 ]
             }
 

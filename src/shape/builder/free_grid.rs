@@ -4,7 +4,7 @@ use crate::path_command::PathCommand::*;
 use crate::point::{Vec2D, WorldUnit, ScreenUnit};
 use crate::transform::Transform;
 use crate::style::Style;
-use crate::geom::rombus_to_rectangle;
+use crate::geom::{rombus_to_rectangle, project};
 use crate::shape::builder::grid::grid_from_cell_and_point;
 use crate::shape::ShapeStored;
 use crate::shape::stored::path::Path;
@@ -111,8 +111,10 @@ impl ShapeBuilder for FreeGrid {
 
                 let sstart = t.to_screen_coordinates(start);
                 let sp1 = t.to_screen_coordinates(p1);
+                let proj = t.to_screen_coordinates(project(free, [start, p1]));
+                let proj2 = t.to_screen_coordinates(project(start, [p1, free]));
 
-                if sstart.distance(pos) < snap || sp1.distance(pos) < snap {
+                if sstart.distance(pos) < snap || sp1.distance(pos) < snap || proj.distance(pos) < snap || proj2.distance(sstart) < snap {
                     ShapeFinished::Cancelled
                 } else {
                     ShapeFinished::No
@@ -195,6 +197,12 @@ impl ShapeBuilder for FreeGrid {
 
                 cancel_helper(start, free, t, snap),
                 cancel_helper(p1, free, t, snap),
+                // the projection of the mouse on the line defined by the first
+                // two points
+                cancel_helper(project(free, [start, p1]), free, t, snap),
+                // the projection of the first point on the line defined by the
+                // last two
+                cancel_helper(project(start, [p1, free]), start, t, snap),
             ],
 
             State::DefineGrid { start, p1: _, p2, t, free } => {
@@ -372,5 +380,14 @@ mod tests  {
                 _ => panic!()
             }
         }).unwrap();
+    }
+
+    /// Let's suppose you have defined the first two points of a free grid. When
+    /// choosing the third one, if it is too close to the line defined by the
+    /// first two it can happen that in the next stage (the expansion of the
+    /// grid) it will create too many lines and make pizarra hang or crash.
+    #[test]
+    fn cannot_make_the_grid_too_tight() {
+        todo!()
     }
 }
