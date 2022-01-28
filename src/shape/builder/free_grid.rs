@@ -332,6 +332,20 @@ mod tests  {
                 radius: SNAP,
                 style: Style::circle_helper(),
             },
+
+            // third circle
+            DrawCommand::ScreenCircle {
+                center: (1.0, 0.0).into(),
+                radius: SNAP,
+                style: Style::red_circle_helper(),
+            },
+
+            // fourth circle
+            DrawCommand::ScreenCircle {
+                center: (0.0552486187845318, 1.0497237569060773).into(),
+                radius: SNAP,
+                style: Style::red_circle_helper(),
+            },
         ]);
 
         // releasing here would cancel
@@ -370,6 +384,18 @@ mod tests  {
                 radius: SNAP,
                 style: Style::red_circle_helper(),
             },
+
+            DrawCommand::ScreenCircle {
+                center: (21.0, 0.0).into(),
+                radius: SNAP,
+                style: Style::red_circle_helper(),
+            },
+
+            DrawCommand::ScreenCircle {
+                center: (10.0, -10.0).into(),
+                radius: SNAP,
+                style: Style::circle_helper(),
+            },
         ]);
 
         // releasing here would cancel
@@ -380,14 +406,5 @@ mod tests  {
                 _ => panic!()
             }
         }).unwrap();
-    }
-
-    /// Let's suppose you have defined the first two points of a free grid. When
-    /// choosing the third one, if it is too close to the line defined by the
-    /// first two it can happen that in the next stage (the expansion of the
-    /// grid) it will create too many lines and make pizarra hang or crash.
-    #[test]
-    fn cannot_make_the_grid_too_tight() {
-        todo!()
     }
 }
