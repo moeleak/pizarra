@@ -244,8 +244,6 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::point::{Vec2D, Unittless};
-    use crate::style::Stroke;
-    use crate::color::Color;
 
     use super::*;
 
@@ -333,7 +331,7 @@ mod tests {
     /// the initial point and will cancel if the release event happens within
     /// it.
     #[test]
-    fn grid_cancel_helper_is_a_line_and_cancels() {
+    fn grid_cancel_helpers_are_two_circles() {
         let t = Default::default();
         let mut grid = Grid::start((0.0, 0.0).into(), Default::default());
 
@@ -351,19 +349,16 @@ mod tests {
                 style: Default::default(),
             },
 
-            DrawCommand::ScreenPath {
-                commands: vec![
-                    MoveTo((0.0, 0.0).into()),
-                    LineTo((0.0, 0.0).into()),
-                    LineTo((50.0, 0.0).into()),
-                ],
-                style: Style {
-                    stroke: Some(Stroke {
-                        size: (SNAP.val() * 2.0).into(),
-                        color: Color::red().half_transparent(),
-                    }),
-                    fill: None,
-                },
+            DrawCommand::ScreenCircle {
+                center: (50.0, 0.0).into(),
+                radius: SNAP,
+                style: Style::red_circle_helper(),
+            },
+
+            DrawCommand::ScreenCircle {
+                center: (0.0, 0.0).into(),
+                radius: SNAP,
+                style: Style::circle_helper(),
             },
         ]);
 
@@ -388,19 +383,16 @@ mod tests {
                 style: Default::default(),
             },
 
-            DrawCommand::ScreenPath {
-                commands: vec![
-                    MoveTo((0.0, 50.0).into()),
-                    LineTo((0.0, 0.0).into()),
-                    LineTo((0.0, 0.0).into()),
-                ],
-                style: Style {
-                    stroke: Some(Stroke {
-                        size: (SNAP.val() * 2.0).into(),
-                        color: Color::red().half_transparent(),
-                    }),
-                    fill: None,
-                },
+            DrawCommand::ScreenCircle {
+                center: (0.0, 0.0).into(),
+                radius: SNAP,
+                style: Style::circle_helper(),
+            },
+
+            DrawCommand::ScreenCircle {
+                center: (0.0, 50.0).into(),
+                radius: SNAP,
+                style: Style::red_circle_helper(),
             },
         ]);
 
@@ -410,13 +402,5 @@ mod tests {
                 _ => panic!()
             }
         }).unwrap();
-    }
-
-    #[test]
-    #[ignore]
-    fn can_draw_a_grid() {
-        todo!("the thing is, this is hard to test because of the trait object,
-        but it would be nice to have it converted to an enum and then this can
-        be properly tested")
     }
 }
