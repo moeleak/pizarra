@@ -379,4 +379,15 @@ mod tests {
         assert_eq!(command.color(), None);
         assert_eq!(command.fill(), None);
     }
+
+    #[test]
+    fn old_format_can_be_opened() {
+        todo!();
+    }
+
+    #[test]
+    fn new_format_can_be_read() {
+        todo!("background color can be read");
+        todo!("pizarra format version is read or assumed old version");
+    }
 }

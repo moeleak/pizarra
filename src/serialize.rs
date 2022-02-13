@@ -251,4 +251,11 @@ mod tests {
 
         assert_eq!(storage.to_svg(Default::default()), include_str!("../res/serialize_stroke_fill_none.svg"));
     }
+
+    #[test]
+    fn new_format() {
+        todo!("store background in a layer, shapes in a different one");
+        todo!("background color is stored");
+        todo!("pizarra version is written");
+    }
 }
