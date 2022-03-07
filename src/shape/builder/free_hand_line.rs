@@ -69,8 +69,7 @@ fn add_point<T: Unit + 'static>(commands: &mut Vec<PathCommand<T>>, pos: Vec2D<T
     let sub = commands
         .len()
         .checked_sub(2)
-        .map(|index| commands.get(index))
-        .flatten()
+        .and_then(|index| commands.get(index))
         .copied();
     let last = commands.pop().unwrap();
 

@@ -29,7 +29,7 @@ impl ShapeStored for Path {
 
     // The bounding box of the path needs to consider the beizer handles
     fn bbox(&self) -> [Vec2D<WorldUnit>; 2] {
-        let points = self.commands.iter().map(|c| c.points()).flatten();
+        let points = self.commands.iter().flat_map(|c| c.points());
         let [topleft, bottomright] = bbox_from_points(points);
         let (topleftpad, bottomrightpad) = if let Some(stroke) = self.style.stroke {
             let size = stroke.size;

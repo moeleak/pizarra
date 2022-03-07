@@ -91,13 +91,13 @@ impl PolygonBuilder {
             return Some(Some(ans));
         }
 
-        self.points.last().map(|last| {
+        self.points.last().and_then(|last| {
             if t.to_screen_coordinates(last.to()).distance(point) <= radius {
                 Some(None)
             } else {
                 None
             }
-        }).flatten()
+        })
     }
 }
 
@@ -248,7 +248,7 @@ impl ShapeBuilder for PolygonBuilder {
 
         // for every point of the polygon add a helper circle and bezier handler
         // lines
-        commands.extend(path_commands.iter().zip(path_commands.iter().skip(1)).enumerate().map(|(i, (p, next))| {
+        commands.extend(path_commands.iter().zip(path_commands.iter().skip(1)).enumerate().flat_map(|(i, (p, next))| {
             let mut commands = Vec::with_capacity(3);
 
             // if the first command (except for the MoveTo) is a CurveTo then
@@ -295,7 +295,7 @@ impl ShapeBuilder for PolygonBuilder {
             });
 
             commands
-        }).flatten());
+        }));
 
         commands
     }
