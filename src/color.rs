@@ -162,13 +162,13 @@ lazy_static! {
         (?P<b>[\dA-Fa-f]{2})
         (?P<a>[\dA-Fa-f]{2})?
     ").unwrap();
-    static ref COLOR_REGEX: Regex = Regex::new(r"(?x)rgb\(
-        (?P<r>\d+(\.\d+)?)
-        %\s*,\s*
-        (?P<g>\d+(\.\d+))?
-        %\s*,\s*
-        (?P<b>\d+(\.\d+))?
-    %\s*\)").unwrap();
+    static ref PERCENTAGE_COLOR_REGEX: Regex = Regex::new(r"(?x)rgb\(
+        (?P<r>\d+(\.\d+)?)%
+        \s*,\s*
+        (?P<g>\d+(\.\d+)?)%
+        \s*,\s*
+        (?P<b>\d+(\.\d+)?)%
+    \s*\)").unwrap();
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -337,7 +337,7 @@ impl FromStr for Color {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(c) = CSS_COLORS.get(&s.to_lowercase()) {
             Ok(*c)
-        } else if let Some(captures) = COLOR_REGEX.captures(s) {
+        } else if let Some(captures) = PERCENTAGE_COLOR_REGEX.captures(s) {
             Ok(Color::from_float_rgb(
                 captures["r"].parse::<f64>()?/ 100.0,
                 captures["g"].parse::<f64>()?/100.0,
@@ -411,5 +411,12 @@ mod tests {
         let color = Color::from_int_rgba(0xce, 0xba, 0xda, 0x80);
 
         assert_eq!(color.to_string().parse::<Color>().unwrap(), color);
+    }
+
+    #[test]
+    fn can_parse_percentage_color_with_zeros() {
+        let color: Color = "rgb(0%,0%,0%)".parse().unwrap();
+
+        assert_eq!(color, Color::from_int_rgb(0, 0, 0));
     }
 }
