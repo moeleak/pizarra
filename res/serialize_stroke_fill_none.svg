@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="60" height="70" viewBox="-30 -35 60 70" version="1.1">
-  <g id="storage">
-    <rect x="-30" y="-35" width="60" height="70" style="fill:#303633;fill-opacity:1;stroke:none;" />
-    <path style="fill:none;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;stroke:none;stroke-opacity:1;stroke-miterlimit:10;" d="M 0 0 L 10 10 " />
-    <ellipse cx="0" cy="0" rx="10" ry="15" transform="rotate(0 0 0)" style="fill:none;stroke-width:0;stroke:none;stroke-opacity:1;stroke-miterlimit:10;" />
-  </g>
-</svg>

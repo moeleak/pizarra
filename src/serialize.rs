@@ -219,7 +219,7 @@ mod tests {
             },
         )));
 
-        assert_str_eq!(app.to_svg(), include_str!("../res/serialize_stroke_fill_none.svg"));
+        assert_str_eq!(app.to_svg(), include_str!("../res/serialize/stroke_fill_none.svg"));
     }
 
     #[test]
