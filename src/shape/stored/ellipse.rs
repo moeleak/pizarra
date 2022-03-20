@@ -1,4 +1,7 @@
 use std::f64::consts::PI;
+
+use xml::writer::{EventWriter, XmlEvent};
+
 use crate::point::{Vec2D, Unit, WorldUnit};
 use crate::draw_commands::DrawCommand;
 use crate::geom::{
@@ -86,6 +89,33 @@ impl ShapeStored for Ellipse {
 
     fn style(&self) -> Style<WorldUnit> {
         self.style
+    }
+
+    fn serialize(&self, writer: &mut EventWriter<&mut Vec<u8>>) {
+        writer.write(XmlEvent::start_element("ellipse")
+            .attr("cx", &self.ellipse.center.x.to_string())
+            .attr("cy", &self.ellipse.center.y.to_string())
+            .attr("rx", &self.ellipse.semimajor.to_string())
+            .attr("ry", &self.ellipse.semiminor.to_string())
+            .attr("transform", &format!(
+                    "rotate({angle} {x} {y})",
+                    angle = self.ellipse.angle.degrees(),
+                    x = self.ellipse.center.x,
+                    y = self.ellipse.center.y,
+            ))
+            .attr("style", &format!("\
+                    fill:{fill};\
+                    stroke-width:{stroke};\
+                    stroke:{color};\
+                    stroke-opacity:{alpha};\
+                    stroke-miterlimit:10;",
+                stroke = self.style.stroke.map(|s| s.size).unwrap_or_else(|| 0.0.into()),
+                color = self.style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
+                alpha = self.style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
+                fill = self.style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
+            ))
+        ).unwrap();
+        writer.write(XmlEvent::end_element()).unwrap();
     }
 }
 

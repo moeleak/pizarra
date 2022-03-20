@@ -1,4 +1,7 @@
 use std::fmt;
+use std::borrow::Borrow;
+
+use xml::writer::EventWriter;
 
 use crate::point::{Vec2D, ScreenUnit, WorldUnit};
 use crate::transform::Transform;
@@ -90,6 +93,9 @@ pub trait ShapeStored: fmt::Debug {
 
     /// returns this shape's style
     fn style(&self) -> Style<WorldUnit>;
+
+    /// Serialize the shape to svg
+    fn serialize(&self, writer: &mut EventWriter<&mut Vec<u8>>);
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -154,6 +160,10 @@ impl Shape {
 
     pub fn intersects_circle(&self, center: Vec2D<WorldUnit>, radius: WorldUnit) -> bool {
         self.shape_impl.intersects_circle(center, radius)
+    }
+
+    pub fn shape_impl(&self) -> &dyn ShapeStored {
+        self.shape_impl.borrow()
     }
 }
 

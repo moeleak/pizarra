@@ -102,6 +102,7 @@ impl SelectionFunction<Shape> for CenterAndRadiusSelection {
 }
 
 /// This struct handles storage and fast retrieval of shapes.
+#[derive(Debug)]
 pub struct Storage {
     /// used to easily find a shape that will be deleted by id, because the
     /// rstar tree knows how to find bboxes easily but not ids.
@@ -198,6 +199,16 @@ impl Storage {
         commands.sort_unstable_by_key(|(i, _dc)| *i);
 
         commands.into_iter().map(|(_i, dc)| dc).collect()
+    }
+
+    pub fn shapes_by_index(&self) -> impl Iterator<Item=&dyn ShapeStored> {
+        let mut shapes: Vec<_> = self
+            .shapes.iter()
+            .collect();
+
+        shapes.sort_unstable_by_key(|s| s.z_index());
+
+        shapes.into_iter().map(|s| s.shape_impl())
     }
 
     /// gets all the draw commands necessary to paint the portion of the screen

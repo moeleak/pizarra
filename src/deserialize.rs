@@ -8,6 +8,7 @@ use xml::{
 use regex::Regex;
 use lazy_static::lazy_static;
 
+use crate::app::Pizarra;
 use crate::storage::Storage;
 use crate::shape::{ShapeStored, stored::{path::Path, ellipse::Ellipse}};
 use crate::color::Color;
@@ -207,27 +208,40 @@ impl Deserialize for Ellipse {
     }
 }
 
-impl Storage {
-    pub fn from_svg(svg: &str, config: Config) -> Result<Storage> {
+impl Pizarra {
+    pub fn from_svg(svg: &str, config: Config) -> std::result::Result<Pizarra, Result<(Pizarra, Vec<Error>)>> {
         let parser = EventReader::from_str(svg);
+        let mut app = Pizarra::new((1.0, 1.0).into(), config);
         let mut storage = Storage::new();
 
         for e in parser {
             match e {
+                Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "svg" => {
+                    // TODO check if the svg tag contains the pizarra:format attribute
+                    // storage.add(Path::deserialize(xml_attrs_as_hashmap(attributes), config)?);
+                }
+
                 Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
-                    storage.add(Path::deserialize(xml_attrs_as_hashmap(attributes), config)?);
+                    // storage.add(Path::deserialize(xml_attrs_as_hashmap(attributes), config)?);
                 }
+
                 Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
-                    storage.add(Ellipse::deserialize(xml_attrs_as_hashmap(attributes), config)?);
+                    // storage.add(Ellipse::deserialize(xml_attrs_as_hashmap(attributes), config)?);
                 }
+
                 Err(e) => {
-                    return Err(e.into());
+                    // Irrecoverable, according to the docs this is either
+                    // syntax, utf8 or IO:
+                    // https://docs.rs/xml-rs/latest/xml/reader/enum.ErrorKind.html
+                    return Err(Err(e.into()));
                 }
                 _ => {}
             }
         }
 
-        Ok(storage)
+        app.set_storage(storage);
+
+        Ok(app)
     }
 }
 
@@ -241,41 +255,41 @@ mod tests {
     #[test]
     fn test_from_svg() {
         let svg_data = include_str!("../res/simple_file_load.svg");
-        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
+        let app = Pizarra::from_svg(svg_data, Default::default()).unwrap();
 
-        assert_eq!(storage.shape_count(), 1);
+        assert_eq!(app.storage().shape_count(), 1);
     }
 
     #[test]
     fn test_from_custom_svg() {
         let svg_data = include_str!("../res/serialize_test.svg");
-        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
+        let app = Pizarra::from_svg(svg_data, Default::default()).unwrap();
 
-        assert_eq!(storage.shape_count(), 1);
+        assert_eq!(app.storage().shape_count(), 1);
     }
 
     #[test]
     fn test_can_deserialize_circle() {
         let svg_data = include_str!("../res/circle.svg");
-        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
+        let app = Pizarra::from_svg(svg_data, Default::default()).unwrap();
 
-        assert_eq!(storage.shape_count(), 1);
+        assert_eq!(app.storage().shape_count(), 1);
     }
 
     #[test]
     fn test_can_deserialize_ellipse() {
         let svg_data = include_str!("../res/ellipse.svg");
-        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
+        let app = Pizarra::from_svg(svg_data, Default::default()).unwrap();
 
-        assert_eq!(storage.shape_count(), 1);
+        assert_eq!(app.storage().shape_count(), 1);
     }
 
     #[test]
     fn test_point_bug() {
         let svg_data = include_str!("../res/bug_opening.svg");
-        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
+        let app = Pizarra::from_svg(svg_data, Default::default()).unwrap();
 
-        assert_eq!(storage.shape_count(), 4);
+        assert_eq!(app.storage().shape_count(), 4);
     }
 
     #[test]
@@ -353,15 +367,15 @@ mod tests {
     fn can_deserialize_ellipse_serialization_test() {
         let svg_data = include_str!("../res/serialize_ellipse.svg");
 
-        Storage::from_svg(svg_data, Default::default()).unwrap();
+        Pizarra::from_svg(svg_data, Default::default()).unwrap();
     }
 
     #[test]
     fn fill_and_stroke_can_be_none_in_path() {
         let svg_data = include_str!("../res/color_fill_none_path.svg");
-        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
+        let app = Pizarra::from_svg(svg_data, Default::default()).unwrap();
 
-        let commands = storage.draw_commands(storage.get_bounds().unwrap());
+        let commands = app.storage().draw_commands(app.storage().get_bounds().unwrap());
         let command = &commands[0];
 
         assert_eq!(command.color(), None);
@@ -371,9 +385,9 @@ mod tests {
     #[test]
     fn fill_and_stroke_can_be_none_in_ellipse() {
         let svg_data = include_str!("../res/color_fill_none_ellipse.svg");
-        let storage = Storage::from_svg(svg_data, Default::default()).unwrap();
+        let app = Pizarra::from_svg(svg_data, Default::default()).unwrap();
 
-        let commands = storage.draw_commands(storage.get_bounds().unwrap());
+        let commands = app.storage().draw_commands(app.storage().get_bounds().unwrap());
         let command = &commands[0];
 
         assert_eq!(command.color(), None);
@@ -381,13 +395,46 @@ mod tests {
     }
 
     #[test]
-    fn old_format_can_be_opened() {
-        todo!();
+    fn new_format_can_be_read() {
+        let svg_data = include_str!("../res/deserialize/v2_format.svg");
+        let app = Pizarra::from_svg(svg_data, Default::default()).unwrap();
+
+        assert_eq!(app.bgcolor(), Color::from_int_rgb(0xba, 0xda, 0xba));
+    }
+
+    /// It must be possible to tell from files made with pizarra, and from files
+    /// made in some other program. This is important to warn the user about the
+    /// risk of modifying a file that was made with some other software because
+    /// pizarra files are a subset of SVG.
+    ///
+    /// The return value of the from_svg function will have the following shape:
+    ///
+    /// `Result<Pizarra, Result<(Pizarra, Vec<Error>), Error>>`
+    ///
+    /// Where the Ok variant is a file that was created with pizarra and was
+    /// read without problms, and the Err variant can have two cases:
+    ///
+    /// * it either can be partially read, but it likely was made with a
+    ///   different program (and a collection o errors is returned), or
+    /// * it failed miserably at being read. Most likely it is malformed SVG,
+    ///   XML or it doesn't have shapes at all.
+    #[test]
+    fn file_is_identified_as_pizarra_file_or_external() {
+        let correct_file = include_str!("../res/deserialize/correct_v2_file.svg");
+        Pizarra::from_svg(correct_file, Default::default()).unwrap();
+
+        let correct_old = include_str!("../res/deserialize/correct_old.svg");
+        Pizarra::from_svg(correct_old, Default::default()).unwrap();
+
+        let made_external = include_str!("../res/deserialize/made_external.svg");
+        Pizarra::from_svg(made_external, Default::default()).unwrap_err().unwrap();
+
+        let errored_file_1 = include_str!("../res/deserialize/errored_file_1.svg");
+        Pizarra::from_svg(errored_file_1, Default::default()).unwrap_err().unwrap_err();
     }
 
     #[test]
-    fn new_format_can_be_read() {
-        todo!("background color can be read");
-        todo!("pizarra format version is read or assumed old version");
+    fn background_color_can_be_read_from_old_format() {
+        todo!()
     }
 }

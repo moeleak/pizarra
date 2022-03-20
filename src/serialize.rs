@@ -1,12 +1,11 @@
 use std::fmt;
 
-use xml::writer::{EmitterConfig, XmlEvent, EventWriter};
+use xml::writer::{EmitterConfig, XmlEvent};
 
 use crate::point::{Vec2D, WorldUnit};
-use crate::draw_commands::DrawCommand;
 use crate::path_command::PathCommand;
-use crate::storage::Storage;
 use crate::color::Color;
+use crate::app::Pizarra;
 
 impl fmt::Display for PathCommand<WorldUnit> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -14,58 +13,6 @@ impl fmt::Display for PathCommand<WorldUnit> {
             PathCommand::MoveTo(p) => write!(f, "M {} ", p),
             PathCommand::LineTo(p) => write!(f, "L {} ", p),
             PathCommand::CurveTo(c) => write!(f, "C {}, {}, {} ", c.pt1, c.pt2, c.to),
-        }
-    }
-}
-
-impl DrawCommand {
-    fn serialize(self, writer: &mut EventWriter<&mut Vec<u8>>) {
-        match self {
-            DrawCommand::Path {
-                commands, style,
-            } => {
-                let d: String = commands.iter().map(|p| p.to_string()).collect();
-
-                writer.write(XmlEvent::start_element("path")
-                    .attr("style", &format!(
-                        "fill:{fill};stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
-                        fill = style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
-                        stroke = style.stroke.map(|s| s.size).unwrap_or_else(|| 0.0.into()),
-                        color = style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
-                        alpha = style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
-                    ))
-                    .attr("d", &d)).unwrap();
-                writer.write(XmlEvent::end_element()).unwrap();
-            }
-
-            DrawCommand::Ellipse { ellipse: e, style } => {
-                writer.write(XmlEvent::start_element("ellipse")
-                    .attr("cx", &e.center.x.to_string())
-                    .attr("cy", &e.center.y.to_string())
-                    .attr("rx", &e.semimajor.to_string())
-                    .attr("ry", &e.semiminor.to_string())
-                    .attr("transform", &format!(
-                            "rotate({angle} {x} {y})",
-                            angle = e.angle.degrees(),
-                            x = e.center.x,
-                            y = e.center.y,
-                    ))
-                    .attr("style", &format!("\
-                            fill:{fill};\
-                            stroke-width:{stroke};\
-                            stroke:{color};\
-                            stroke-opacity:{alpha};\
-                            stroke-miterlimit:10;",
-                        stroke = style.stroke.map(|s| s.size).unwrap_or_else(|| 0.0.into()),
-                        color = style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
-                        alpha = style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
-                        fill = style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
-                    ))
-                ).unwrap();
-                writer.write(XmlEvent::end_element()).unwrap();
-            }
-
-            DrawCommand::ScreenPath { .. } | DrawCommand::ScreenCircle { .. } => {}
         }
     }
 }
@@ -84,14 +31,14 @@ impl Default for Settings {
     }
 }
 
-impl Storage {
-    pub fn to_svg(&self, settings: Settings) -> String {
+impl Pizarra {
+    pub fn to_svg(&self) -> String {
         let mut output = Vec::new();
         let mut writer = EmitterConfig::new()
             .perform_indent(true)
             .create_writer(&mut output);
 
-        let export_padding = settings.export_padding;
+        let export_padding = self.config().export_padding;
 
         let bbox = self.get_bounds().unwrap_or([Vec2D::new_world(0.0, 0.0), Vec2D::new_world(0.0, 0.0)]);
         let svg_dimensions = (bbox[0] - bbox[1]).abs() + Vec2D::new(export_padding * 2.0.into(), export_padding * 2.0.into());
@@ -101,18 +48,32 @@ impl Storage {
         let min_x = (min.x - export_padding).to_string();
         let min_y = (min.y - export_padding).to_string();
         let view_box = format!("{} {} {} {}", &min_x, &min_y, width, height);
-        let background_style = format!("fill:{fill};fill-opacity:1;stroke:none;", fill = settings.bgcolor.css());
+        let background_style = format!("fill:{fill};fill-opacity:1;stroke:none;", fill = self.bgcolor().css());
 
         writer.write(XmlEvent::start_element("svg")
             .ns("", "http://www.w3.org/2000/svg")
+
+            // Aditional namespaces for custom elements
+            .ns("pizarra", "http://pizarra.categulario.tk/pizarra_svg.html")
+            .ns("inkscape", "http://www.inkscape.org/namespaces/inkscape")
+            .ns("sodipodi", "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd")
+
+            .attr("pizarra:format", "2")
             .attr("width", &width)
             .attr("height", &height)
             .attr("viewBox", &view_box)
             .attr("version", "1.1")).unwrap();
 
-        writer.write(XmlEvent::start_element("g")
-            .attr("id", "storage")).unwrap();
+        // the "background" group
+        writer.write(
+            XmlEvent::start_element("g")
+                .attr("id", "background")
+                .attr("inkscape:groupmode", "layer")
+                .attr("inkscape:label", "Background")
+                .attr("sodipodi:insensitive", "true")
+        ).unwrap();
 
+        // the background rectangle
         writer.write(XmlEvent::start_element("rect")
             .attr("x", &min_x)
             .attr("y", &min_y)
@@ -121,10 +82,19 @@ impl Storage {
             .attr("style", &background_style)).unwrap();
         writer.write(XmlEvent::end_element()).unwrap();
 
-        if let Some(bbox) = self.get_bounds() {
-            for command in self.draw_commands(bbox) {
-                command.serialize(&mut writer);
-            }
+        // end the background group
+        writer.write(XmlEvent::end_element()).unwrap();
+
+        // the "shapes" group
+        writer.write(
+            XmlEvent::start_element("g")
+                .attr("id", "shapes")
+                .attr("inkscape:groupmode", "layer")
+                .attr("inkscape:label", "Shapes")
+        ).unwrap();
+
+        for shape in self.shapes_by_index() {
+            shape.serialize(&mut writer);
         }
 
         writer.write(XmlEvent::end_element()).unwrap(); // g
@@ -138,7 +108,7 @@ impl Storage {
 
 #[cfg(test)]
 mod tests {
-    use pretty_assertions::assert_eq;
+    use pretty_assertions::assert_str_eq;
 
     use crate::color::Color;
     use crate::point::ScreenUnit;
@@ -204,9 +174,9 @@ mod tests {
 
     #[test]
     fn test_serialize_color_with_alpha() {
-        let mut storage = Storage::new();
+        let mut app = Pizarra::new_for_testing();
 
-        storage.add(Box::new(Path::from_parts(vec![
+        app.add_sample_shape(Box::new(Path::from_parts(vec![
             PathCommand::MoveTo(Vec2D::new_world(10.0, 10.0)),
             PathCommand::LineTo(Vec2D::new_world(10.0, 10.0)),
         ], Style {
@@ -217,28 +187,28 @@ mod tests {
             fill: None,
         })));
 
-        assert_eq!(storage.to_svg(Default::default()), include_str!("../res/serialize_alpha.svg"));
+        assert_eq!(app.to_svg(), include_str!("../res/serialize_alpha.svg"));
     }
 
     #[test]
     fn an_empty_drawing_is_serializable() {
-        let storage = Storage::new();
+        let app = Pizarra::new_for_testing();
 
-        assert_eq!(storage.to_svg(Default::default()), include_str!("../res/serialize_empty.svg"));
+        assert_eq!(app.to_svg(), include_str!("../res/serialize_empty.svg"));
     }
 
     #[test]
     fn fill_and_stroke_color_are_properly_serialized() {
-        let mut storage = Storage::new();
+        let mut app = Pizarra::new_for_testing();
 
-        storage.add(Box::new(Path::from_parts(vec![
+        app.add_sample_shape(Box::new(Path::from_parts(vec![
             PathCommand::MoveTo(Vec2D::new_world(0.0, 0.0)),
             PathCommand::LineTo(Vec2D::new_world(10.0, 10.0)),
         ], Style {
             stroke: None,
             fill: None,
         })));
-        storage.add(Box::new(Ellipse::from_parts(
+        app.add_sample_shape(Box::new(Ellipse::from_parts(
             Vec2D::new_world(0.0, 0.0),
             10.0.into(),
             15.0.into(),
@@ -249,13 +219,25 @@ mod tests {
             },
         )));
 
-        assert_eq!(storage.to_svg(Default::default()), include_str!("../res/serialize_stroke_fill_none.svg"));
+        assert_eq!(app.to_svg(), include_str!("../res/serialize_stroke_fill_none.svg"));
     }
 
     #[test]
-    fn new_format() {
-        todo!("store background in a layer, shapes in a different one");
-        todo!("background color is stored");
-        todo!("pizarra version is written");
+    fn serialize_to_new_format() {
+        let mut app = Pizarra::new_for_testing();
+
+        app.add_sample_shape(Box::new(Path::from_parts(vec![
+            PathCommand::MoveTo(Vec2D::new_world(0.0, 0.0)),
+            PathCommand::LineTo(Vec2D::new_world(10.0, 10.0)),
+        ], Default::default())));
+        app.add_sample_shape(Box::new(Ellipse::from_parts(
+            Vec2D::new_world(0.0, 0.0),
+            10.0.into(),
+            15.0.into(),
+            Angle::from_radians(0.0),
+            Default::default(),
+        )));
+
+        assert_str_eq!(app.to_svg(), include_str!("../res/serialize/v2_format.svg"));
     }
 }

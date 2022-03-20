@@ -8,14 +8,11 @@ use crate::color::Color;
 use crate::action::Action;
 use crate::point::{Vec2D, Unit, WorldUnit, ScreenUnit};
 use crate::transform::Transform;
-use crate::deserialize;
 use crate::geom::{Angle, bbox_from_points};
 use crate::key::Key;
 use crate::config::Config;
 use crate::ui::Flags;
-use crate::serialize;
 use crate::style::{Style, Stroke};
-#[cfg(test)]
 use crate::shape::ShapeStored;
 
 #[derive(Copy,Clone,Debug, PartialEq, Eq)]
@@ -86,6 +83,7 @@ pub enum MouseButton {
 ///
 /// This struct keeps the state of a drawing and exposes the methods necessary
 /// to mutate it according to events in the interface.
+#[derive(Debug)]
 pub struct Pizarra {
     /// The settings that where loaded at app start
     config: Config,
@@ -442,6 +440,12 @@ impl Pizarra {
         self.current_shape.as_ref().map(|s| s.draw_commands(self.transform, self.config.point_snap_radius))
     }
 
+    /// Returns all the shapes of the storage ordered by their z-index. Used for
+    /// serializing
+    pub fn shapes_by_index(&self) -> impl Iterator<Item=&dyn ShapeStored> {
+        self.storage.shapes_by_index()
+    }
+
     /// Notify the application that the screen size has changed
     pub fn resize(&mut self, new_size: Vec2D<ScreenUnit>) {
         log::debug!("resize({:?})", new_size);
@@ -762,21 +766,12 @@ impl Pizarra {
         self.undo_queue = Vec::new();
         self.save_status = SaveStatus::NewAndEmpty;
     }
+}
 
-    pub fn open(&mut self, svg: &str) -> Result<(), deserialize::Error> {
-        self.reset();
-        self.storage = Storage::from_svg(svg, self.config)?;
-
-        Ok(())
-    }
-
-    pub fn to_svg(&self) -> String {
-        let settings = serialize::Settings {
-            export_padding: self.config.export_padding,
-            bgcolor: self.bgcolor,
-        };
-
-        self.storage.to_svg(settings)
+/// Crate-private interface
+impl Pizarra {
+    pub(crate) fn set_storage(&mut self, storage: Storage) {
+        self.storage = storage;
     }
 }
 
@@ -789,8 +784,12 @@ impl Pizarra {
         Pizarra::new(Vec2D::new_screen(80.0, 60.0), Default::default())
     }
 
-    fn add_sample_shape(&mut self, shape: Box<dyn ShapeStored>) {
+    pub fn add_sample_shape(&mut self, shape: Box<dyn ShapeStored>) {
         self.storage.add(shape);
+    }
+
+    pub fn storage(&self) -> &Storage {
+        &self.storage
     }
 }
 

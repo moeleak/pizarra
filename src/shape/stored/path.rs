@@ -1,3 +1,5 @@
+use xml::writer::{EventWriter, XmlEvent};
+
 use crate::draw_commands::DrawCommand;
 use crate::point::{Vec2D, WorldUnit};
 use crate::geom::bbox_from_points;
@@ -70,6 +72,21 @@ impl ShapeStored for Path {
 
     fn style(&self) -> Style<WorldUnit> {
         self.style
+    }
+
+    fn serialize(&self, writer: &mut EventWriter<&mut Vec<u8>>) {
+        let d: String = self.commands.iter().map(|p| p.to_string()).collect();
+
+        writer.write(XmlEvent::start_element("path")
+            .attr("style", &format!(
+                "fill:{fill};stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
+                fill = self.style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
+                stroke = self.style.stroke.map(|s| s.size).unwrap_or_else(|| 0.0.into()),
+                color = self.style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
+                alpha = self.style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
+            ))
+            .attr("d", &d)).unwrap();
+        writer.write(XmlEvent::end_element()).unwrap();
     }
 }
 
