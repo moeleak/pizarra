@@ -187,7 +187,7 @@ mod tests {
             fill: None,
         })));
 
-        assert_str_eq!(app.to_svg(), include_str!("../res/serialize_alpha.svg"));
+        assert_str_eq!(app.to_svg(), include_str!("../res/serialize/alpha.svg"));
     }
 
     #[test]
