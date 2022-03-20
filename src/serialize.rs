@@ -194,7 +194,7 @@ mod tests {
     fn an_empty_drawing_is_serializable() {
         let app = Pizarra::new_for_testing();
 
-        assert_eq!(app.to_svg(), include_str!("../res/serialize_empty.svg"));
+        assert_str_eq!(app.to_svg(), include_str!("../res/serialize/empty.svg"));
     }
 
     #[test]
