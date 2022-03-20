@@ -135,7 +135,7 @@ mod tests {
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2D::new_screen(20.0, 20.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2D::new_screen(21.0, 20.0));
 
-        assert_str_eq!(app.to_svg(), include_str!("../res/serialize_test.svg"));
+        assert_str_eq!(app.to_svg(), include_str!("../res/serialize/test.svg"));
     }
 
     #[test]

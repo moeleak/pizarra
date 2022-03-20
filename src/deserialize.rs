@@ -260,9 +260,10 @@ mod tests {
         assert_eq!(app.storage().shape_count(), 1);
     }
 
+    /// This represents the very first SVG format of pizarra.
     #[test]
-    fn test_from_custom_svg() {
-        let svg_data = include_str!("../res/serialize_test.svg");
+    fn read_original_serialization_test() {
+        let svg_data = include_str!("../res/deserialize/original.svg");
         let app = Pizarra::from_svg(svg_data, Default::default()).unwrap();
 
         assert_eq!(app.storage().shape_count(), 1);
