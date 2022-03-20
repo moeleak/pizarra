@@ -169,7 +169,7 @@ mod tests {
         app.handle_mouse_move(e);
         app.handle_mouse_button_released(MouseButton::Left, e);
 
-        assert_str_eq!(app.to_svg(), include_str!("../res/serialize_ellipse.svg"));
+        assert_str_eq!(app.to_svg(), include_str!("../res/serialize/ellipse.svg"));
     }
 
     #[test]

@@ -365,7 +365,7 @@ mod tests {
 
     #[test]
     fn can_deserialize_ellipse_serialization_test() {
-        let svg_data = include_str!("../res/serialize_ellipse.svg");
+        let svg_data = include_str!("../res/serialize/ellipse.svg");
 
         Pizarra::from_svg(svg_data, Default::default()).unwrap();
     }
