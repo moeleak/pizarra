@@ -220,12 +220,6 @@ impl Deserialize for Ellipse {
     }
 }
 
-fn color_from_style(style: &str) -> Result<Color, Error> {
-    let attrs = css_attrs_as_hashmap(style);
-
-    todo!()
-}
-
 /// Keeps the state of deserialization
 #[derive(Debug)]
 enum DeState {
@@ -242,6 +236,11 @@ enum DeState {
     V1StorageOpened,
 
     V1Correct {
+        storage: Storage,
+        background: Color,
+    },
+
+    V1Finished {
         storage: Storage,
         background: Color,
     },
@@ -306,10 +305,17 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
         (V1StorageOpened, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "rect" => {
             // The first rect in this state is the background, lets read it.
             if let Some(style) = get_single_attr(&attributes, "style", None) {
-                match color_from_style(style) {
-                    Ok(color) => V1Correct {
+                let attrs = css_attrs_as_hashmap(style);
+                let color = attrs.get("fill").map(|c| parse_color(c)).transpose().map(|o| o.flatten());
+
+                match color {
+                    Ok(Some(color)) => V1Correct {
                         storage: Storage::new(),
                         background: color,
+                    },
+                    Ok(None) => V1Correct {
+                        storage: Storage::new(),
+                        background: config.background_color,
                     },
                     Err(e) => todo!("background color was not understood"),
                 }
@@ -318,8 +324,24 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
             }
         }
 
+        (V1Correct { mut storage, background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
+            let attributes = xml_attrs_as_hashmap(attributes);
+            let path = Path::deserialize(attributes, config);
+
+            match path {
+                Ok(path) => {
+                    storage.add(path);
+                    V1Correct { storage, background }
+                }
+                Err(e) => todo!("error deserializing path"),
+            }
+        }
+
+        (V1Correct { storage, background }, XmlEvent::EndDocument) => V1Finished { storage, background },
+
         // Explicitly ignored events
         (state, XmlEvent::Whitespace(_)) => state,
+        (state, XmlEvent::EndElement { .. }) => state,
 
         (state, event) => {
             dbg!(state);
@@ -342,6 +364,14 @@ impl Pizarra {
         }
 
         match state {
+            V1Finished { storage, background } => {
+                let mut pizarra = Pizarra::new(Vec2D::new_screen(0.0, 0.0), config);
+
+                pizarra.set_bgcolor(background);
+                pizarra.set_storage(storage);
+
+                DeserializeResult::Ok(pizarra)
+            }
             x => {
                 dbg!(x);
                 todo!()
@@ -556,7 +586,7 @@ mod tests {
         let v1_format_file = include_str!("../res/deserialize/v1_format_bgcolor.svg");
         let pizarra = Pizarra::from_svg(v1_format_file, Default::default()).unwrap();
 
-        assert_eq!(pizarra.bgcolor(), Color::from_int_rgb(0xba, 0xda, 0xba));
+        assert_eq!(pizarra.bgcolor(), Color::from_int_rgb(0xca, 0xe3, 0xff));
     }
 
     #[test]
