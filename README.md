@@ -11,7 +11,7 @@ algún frontend (como [gtk](https://gitlab.com/categulario/pizarra-gtk) o
 Para el código de una aplicación que puedes ejecutar en tu escritorio visita
 [pizarra-gtk](https://gitlab.com/categulario/pizarra-gtk)
 
-Para usar la versión web visita https://pizarra.categulario.tk
+Para usar la versión web visita https://pizarra.categulario.xyz
 
 ## Características
 

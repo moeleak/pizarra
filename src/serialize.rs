@@ -54,7 +54,7 @@ impl Pizarra {
             .ns("", "http://www.w3.org/2000/svg")
 
             // Aditional namespaces for custom elements
-            .ns("pizarra", "http://pizarra.categulario.tk/pizarra_svg.html")
+            .ns("pizarra", "http://pizarra.categulario.xyz/pizarra_svg.html")
             .ns("inkscape", "http://www.inkscape.org/namespaces/inkscape")
             .ns("sodipodi", "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd")
 

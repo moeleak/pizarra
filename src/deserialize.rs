@@ -1,12 +1,9 @@
 use std::fmt;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 use xml::{
     attribute::OwnedAttribute, reader::{EventReader, XmlEvent, Error as XmlError}
 };
-use regex::Regex;
-use lazy_static::lazy_static;
 
 use crate::app::Pizarra;
 use crate::storage::Storage;
@@ -18,22 +15,9 @@ use crate::config::Config;
 use crate::style::{Style, Stroke};
 
 mod path;
+mod impls;
 
 use path::{parse_path, PathBuilder as SvgPathBuilder};
-
-lazy_static! {
-    static ref POINT_REGEX: Regex = Regex::new(r"(?x)
-        (?P<x>-?\d+(\.\d+)?)
-        \s+
-        (?P<y>-?\d+(\.\d+)?)
-    ").unwrap();
-    static ref ANGLE_REGEX: Regex = Regex::new(r"(?x)
-        rotate\(
-            (?P<angle>-?\d+(\.\d*)?)
-            (\s+(-?\d+(\.\d*)?)\s+(-?\d+(\.\d*)?))?
-        \)
-    ").unwrap();
-}
 
 #[derive(Debug)]
 pub enum Error {
@@ -45,6 +29,11 @@ pub enum Error {
     AngleDoesntMatchRegex(String),
     MissingAttribute(String),
     PathParseError(path::ParseError),
+    UnexpectedTag(String),
+    UnsupportedShape(String),
+
+    /// An SVG tag that pizarra doesn't use was found
+    UnknownTag(String),
 }
 
 impl From<path::ParseError> for Error {
@@ -71,38 +60,61 @@ impl fmt::Display for Error {
     }
 }
 
-impl std::error::Error for Error {
+impl std::error::Error for Error { }
+
+/// A partial result of deserialization
+#[derive(Debug)]
+pub struct Partial {
+    /// The portion that was properly read
+    read: Pizarra,
+
+    /// All the errors that were found
+    errors: Vec<Error>,
 }
 
-type Result<T> = std::result::Result<T, Error>;
+/// Result of the deserialization process.
+///
+/// With this the user can be warned when a file was not created with pizarra.
+#[derive(Debug)]
+pub enum DeserializeResult {
+    /// The file was parsed without problems as the stabilized file format
+    Ok(Pizarra),
 
-impl FromStr for Vec2D<WorldUnit> {
-    type Err = Error;
+    /// The file could be understood, but problems where found. Likely not made
+    /// with pizarra but with another program, or made with pizarra and edited
+    /// with non-supported features.
+    Partial(Partial),
 
-    fn from_str(s: &str) -> Result<Self> {
-        if let Some(captures) = POINT_REGEX.captures(s) {
-            Ok(Vec2D::new(
-                captures["x"].parse::<WorldUnit>()?,
-                captures["y"].parse::<WorldUnit>()?,
-            ))
-        } else {
-            Err(Error::PointDoesntMatchRegex)
+    /// Something is very wrong with the file, like the encoding or the
+    /// formatting, thus the file cannot yield any usable content.
+    Err(Error),
+}
+
+impl DeserializeResult {
+    pub fn unwrap(self) -> Pizarra {
+        match self {
+            DeserializeResult::Ok(p) => p,
+            _ => panic!("Deserialization was not successful: {self:?}"),
+        }
+    }
+
+    pub fn unwrap_partial(self) -> Partial {
+        match self {
+            DeserializeResult::Partial(p) => p,
+            _ => panic!("Result of deserialization is not partial: {self:?}"),
+        }
+    }
+
+    pub fn unwrap_err(self) -> Error {
+        match self {
+            DeserializeResult::Err(e) => e,
+            _ => panic!("Deserialization didn't error: {self:?}"),
         }
     }
 }
 
-impl FromStr for Angle {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Angle> {
-        if let Some(angle) = ANGLE_REGEX.captures(s) {
-            Ok(Angle::from_degrees(angle["angle"].parse()?))
-        } else {
-            Err(Error::AngleDoesntMatchRegex(s.into()))
-        }
-    }
-}
-
+/// Converst a string taken from an element's style="" attribtue to a hashmap of
+/// the applied styles.
 fn css_attrs_as_hashmap(attrs: &str) -> HashMap<&str, &str> {
     attrs.split(';').filter_map(|s| {
         let pieces: Vec<_> = s.split(':').collect();
@@ -121,7 +133,7 @@ fn xml_attrs_as_hashmap(attrs: Vec<OwnedAttribute>) -> HashMap<String, String> {
     }).collect()
 }
 
-fn parse_color(color_str: &str) -> Result<Option<Color>> {
+fn parse_color(color_str: &str) -> Result<Option<Color>, Error> {
     if color_str.to_lowercase() == "none" {
         Ok(None)
     } else {
@@ -130,7 +142,7 @@ fn parse_color(color_str: &str) -> Result<Option<Color>> {
 }
 
 impl Path {
-    pub fn from_xml_attributes(style: &str, path: &str, config: Config) -> Result<Path> {
+    pub fn from_xml_attributes(style: &str, path: &str, config: Config) -> Result<Path, Error> {
         let attrs = css_attrs_as_hashmap(style);
 
         let color: Option<Color> = attrs.get("stroke").map(|s| parse_color(s)).transpose()?.flatten();
@@ -157,11 +169,11 @@ impl Path {
 }
 
 trait Deserialize {
-    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>>;
+    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>, Error>;
 }
 
 impl Deserialize for Path {
-    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>> {
+    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>, Error> {
         let styleattr = attributes.get("style").ok_or_else(|| Error::MissingAttribute("style".into()))?;
         let dattr = attributes.get("d").ok_or_else(|| Error::MissingAttribute("d".into()))?;
 
@@ -170,7 +182,7 @@ impl Deserialize for Path {
 }
 
 impl Deserialize for Ellipse {
-    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>> {
+    fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>, Error> {
         let cx = attributes.get("cx").ok_or_else(|| Error::MissingAttribute("cx".into()))?;
         let cy = attributes.get("cy").ok_or_else(|| Error::MissingAttribute("cy".into()))?;
         let rx = attributes.get("rx").ok_or_else(|| Error::MissingAttribute("rx".into()))?;
@@ -208,40 +220,133 @@ impl Deserialize for Ellipse {
     }
 }
 
-impl Pizarra {
-    pub fn from_svg(svg: &str, config: Config) -> std::result::Result<Pizarra, Result<(Pizarra, Vec<Error>)>> {
-        let parser = EventReader::from_str(svg);
-        let mut app = Pizarra::new((1.0, 1.0).into(), config);
-        let mut storage = Storage::new();
+fn color_from_style(style: &str) -> Result<Color, Error> {
+    let attrs = css_attrs_as_hashmap(style);
 
-        for e in parser {
-            match e {
-                Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "svg" => {
-                    // TODO check if the svg tag contains the pizarra:format attribute
-                    // storage.add(Path::deserialize(xml_attrs_as_hashmap(attributes), config)?);
-                }
+    todo!()
+}
 
-                Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
-                    // storage.add(Path::deserialize(xml_attrs_as_hashmap(attributes), config)?);
-                }
+/// Keeps the state of deserialization
+#[derive(Debug)]
+enum DeState {
+    /// Start, we know nothing about the format yet
+    Initial,
 
-                Ok(XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
-                    // storage.add(Ellipse::deserialize(xml_attrs_as_hashmap(attributes), config)?);
-                }
+    /// So far it looks like a correct v2 file
+    StartedV2,
 
-                Err(e) => {
-                    // Irrecoverable, according to the docs this is either
-                    // syntax, utf8 or IO:
-                    // https://docs.rs/xml-rs/latest/xml/reader/enum.ErrorKind.html
-                    return Err(Err(e.into()));
+    /// So far it looks like a correct v1 file
+    StartedV1,
+
+    /// Just found <g id="storage">
+    V1StorageOpened,
+
+    V1Correct {
+        storage: Storage,
+        background: Color,
+    },
+
+    /// This file its likely not made with pizarra or it was edited in
+    /// non-supported ways. Pizarra will do its best to understand it but the
+    /// user should be warned.
+    External(Storage, Vec<Error>),
+}
+
+use DeState::*;
+
+/// Gets a single attribute's value from a list of them. Used for cases where
+/// only one attribute is needed to spare the hashmap allocation.
+fn get_single_attr<'a, 'b, 'c>(attrs: &'a [OwnedAttribute], key: &'b str, namespace: Option<&'c str>) -> Option<&'a str> {
+    for attr in attrs {
+        if attr.name.prefix.as_ref().map(|s| s.as_str()) == namespace && attr.name.local_name == key {
+            return Some(&attr.value)
+        }
+    }
+
+    None
+}
+
+fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
+    match (state, event) {
+        (state@Initial, XmlEvent::StartDocument { .. }) => state,
+        (Initial, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "svg" => {
+            if let Some(version) = get_single_attr(&attributes, "format", Some("pizarra")) {
+                if version.trim() == "2" {
+                    // So far we are looking at a correct V2 file
+                    StartedV2
+                } else {
+                    // version field exists but it is not "2". We might be
+                    // dealing with a file created using a future version of
+                    // pizarra
+                    let d = todo!();
                 }
-                _ => {}
+            } else {
+                // No version field at all (or at least not in the pizarra
+                // namespace) so this looks so far like a V1 format
+                StartedV1
             }
         }
 
-        app.set_storage(storage);
+        (_, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "svg" => {
+            todo!("file with two svg tags?")
+        }
 
-        Ok(app)
+        (StartedV1, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "g" => {
+            if let Some(id) = get_single_attr(&attributes, "id", None) {
+                if id == "storage" {
+                    V1StorageOpened
+                } else {
+                    todo!("first group has a different id than storage, likely not a v1 file");
+                }
+            } else {
+                todo!("group without id");
+            }
+        }
+
+        (V1StorageOpened, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "rect" => {
+            // The first rect in this state is the background, lets read it.
+            if let Some(style) = get_single_attr(&attributes, "style", None) {
+                match color_from_style(style) {
+                    Ok(color) => V1Correct {
+                        storage: Storage::new(),
+                        background: color,
+                    },
+                    Err(e) => todo!("background color was not understood"),
+                }
+            } else {
+                todo!("No style, this is malformed v1 file or external");
+            }
+        }
+
+        // Explicitly ignored events
+        (state, XmlEvent::Whitespace(_)) => state,
+
+        (state, event) => {
+            dbg!(state);
+            dbg!(event);
+            todo!();
+        }
+    }
+}
+
+impl Pizarra {
+    pub fn from_svg(svg: &str, config: Config) -> DeserializeResult {
+        let parser = EventReader::from_str(svg);
+        let mut state = Initial;
+
+        for e in parser {
+            state = match e {
+                Ok(event) => step(state, event, config),
+                Err(e) => return DeserializeResult::Err(e.into()),
+            };
+        }
+
+        match state {
+            x => {
+                dbg!(x);
+                todo!()
+            }
+        }
     }
 }
 
@@ -403,11 +508,11 @@ mod tests {
         assert_eq!(app.bgcolor(), Color::from_int_rgb(0xba, 0xda, 0xba));
     }
 
-    /// It must be possible to tell from files made with pizarra, and from files
-    /// made in some other program. This is important to warn the user about the
-    /// risk of modifying a file that was made with some other software because
-    /// pizarra files are a subset of SVG.
-    ///
+    /// It must be possible to tell which files were made with pizarra, and
+    /// which files were made in some other program. This is important to warn
+    /// the user about the risk of modifying a file that was made with some
+    /// other software because pizarra files are a subset of SVG.
+
     /// The return value of the from_svg function will have the following shape:
     ///
     /// `Result<Pizarra, Result<(Pizarra, Vec<Error>), Error>>`
@@ -421,21 +526,41 @@ mod tests {
     ///   XML or it doesn't have shapes at all.
     #[test]
     fn file_is_identified_as_pizarra_file_or_external() {
+        // correct v2 file
         let correct_file = include_str!("../res/deserialize/correct_v2_file.svg");
         Pizarra::from_svg(correct_file, Default::default()).unwrap();
 
+        // correct file but old format
         let correct_old = include_str!("../res/deserialize/correct_old.svg");
         Pizarra::from_svg(correct_old, Default::default()).unwrap();
 
+        // file made in some other software
         let made_external = include_str!("../res/deserialize/made_external.svg");
-        Pizarra::from_svg(made_external, Default::default()).unwrap_err().unwrap();
+        let partial = Pizarra::from_svg(made_external, Default::default()).unwrap_partial();
+        assert_eq!(partial.read.storage().shape_count(), 1);
+        assert_eq!(partial.errors.len(), 2);
 
+        for error in partial.errors {
+            assert!(matches!(error, Error::UnknownTag(x) if x == "de"));
+        }
+
+        // cannot even understand this
         let errored_file_1 = include_str!("../res/deserialize/errored_file_1.svg");
-        Pizarra::from_svg(errored_file_1, Default::default()).unwrap_err().unwrap_err();
+        Pizarra::from_svg(errored_file_1, Default::default()).unwrap_err();
+
+        todo!("try some correct xml that is not svg");
     }
 
     #[test]
     fn background_color_can_be_read_from_old_format() {
+        let v1_format_file = include_str!("../res/deserialize/v1_format_bgcolor.svg");
+        let pizarra = Pizarra::from_svg(v1_format_file, Default::default()).unwrap();
+
+        assert_eq!(pizarra.bgcolor(), Color::from_int_rgb(0xba, 0xda, 0xba));
+    }
+
+    #[test]
+    fn a_file_saved_from_pizarra_and_not_very_edited_in_inkscape_works() {
         todo!()
     }
 }
