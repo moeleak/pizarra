@@ -776,6 +776,8 @@ impl fmt::Display for ParseError {
     }
 }
 
+impl std::error::Error for ParseError {}
+
 pub fn parse_path(path_str: &str, builder: &mut PathBuilder) -> Result<(), ParseError> {
     let mut parser = PathParser::new(builder, path_str);
 

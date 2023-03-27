@@ -201,6 +201,9 @@ impl Storage {
         commands.into_iter().map(|(_i, dc)| dc).collect()
     }
 
+    /// Returns the shapes stored in this storage ordered by their index. It is
+    /// used for rendering the shapes in the order they where drawn. Creates an
+    /// allocation.
     pub fn shapes_by_index(&self) -> impl Iterator<Item=&dyn ShapeStored> {
         let mut shapes: Vec<_> = self
             .shapes.iter()

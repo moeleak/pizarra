@@ -1,9 +1,9 @@
-use std::fmt;
 use std::collections::HashMap;
 
 use xml::{
     attribute::OwnedAttribute, reader::{EventReader, XmlEvent, Error as XmlError}
 };
+use thiserror::Error;
 
 use crate::app::Pizarra;
 use crate::storage::Storage;
@@ -19,48 +19,35 @@ mod impls;
 
 use path::{parse_path, PathBuilder as SvgPathBuilder};
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error {
-    Xml(XmlError),
-    PathWithNoDAttr,
+    #[error(transparent)]
+    Xml(#[from] XmlError),
+
+    #[error("A path was found without the '{0}' attribute")]
+    PathMissingAttribute(String),
+
+    #[error("An ellipse was found without the '{0}' attribtue")]
+    EllipseMissingAttribute(String),
+
+    #[error("The given color '{0}' was not understood")]
     CouldntUnderstandColor(String),
-    ParseFloatError(std::num::ParseFloatError),
-    PointDoesntMatchRegex,
+
+    #[error("Found an unsupported value for attribute {attr}: {value}")]
+    UnsupportedAttributeValue { attr: &'static str, value: String },
+
+    #[error(transparent)]
+    PathParseError(#[from] path::ParseError),
+
+    #[error("A point part of a path doesn't have a known shape: {0}")]
+    PointDoesntMatchRegex(String),
+
+    #[error("the given angle was not understood: {0}")]
     AngleDoesntMatchRegex(String),
-    MissingAttribute(String),
-    PathParseError(path::ParseError),
-    UnexpectedTag(String),
-    UnsupportedShape(String),
 
-    /// An SVG tag that pizarra doesn't use was found
-    UnknownTag(String),
+    #[error("An SVG tag that pizarra doesn't use was found: {0}")]
+    UnsupportedTag(String),
 }
-
-impl From<path::ParseError> for Error {
-    fn from(error: path::ParseError) -> Error {
-        Error::PathParseError(error)
-    }
-}
-
-impl From<XmlError> for Error {
-    fn from(error: XmlError) -> Error {
-        Error::Xml(error)
-    }
-}
-
-impl From<std::num::ParseFloatError> for Error {
-    fn from(error: std::num::ParseFloatError) -> Self {
-        Error::ParseFloatError(error)
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Load error caused by {:?}", self)
-    }
-}
-
-impl std::error::Error for Error { }
 
 /// A partial result of deserialization
 #[derive(Debug)]
@@ -141,15 +128,43 @@ fn parse_color(color_str: &str) -> Result<Option<Color>, Error> {
     }
 }
 
+fn parse_length(attr: &'static str, stroke: &str) -> Result<WorldUnit, Error> {
+    stroke
+        .trim_end_matches("px")
+        .parse()
+        .map_err(|_| Error::UnsupportedAttributeValue {
+            attr,
+            value: stroke.to_owned()
+        })
+}
+
+fn parse_stroke_opacity(opacity: &str) -> Result<f64, Error> {
+    opacity
+        .parse()
+        .map_err(|_| Error::UnsupportedAttributeValue {
+            attr: "stroke-opacity".into(),
+            value: opacity.to_owned(),
+        })
+}
+
+fn parse_fill_opacity(opacity: &str) -> Result<f64, Error> {
+    opacity
+        .parse()
+        .map_err(|_| Error::UnsupportedAttributeValue {
+            attr: "fill-opacity".into(),
+            value: opacity.to_owned(),
+        })
+}
+
 impl Path {
     pub fn from_xml_attributes(style: &str, path: &str, config: Config) -> Result<Path, Error> {
         let attrs = css_attrs_as_hashmap(style);
 
         let color: Option<Color> = attrs.get("stroke").map(|s| parse_color(s)).transpose()?.flatten();
         let fill: Option<Color> = attrs.get("fill").map(|s| parse_color(s)).transpose()?.flatten();
-        let thickness: WorldUnit = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or_else(|| config.thickness.val().into());
-        let alpha = attrs.get("stroke-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
-        let fill_alpha = attrs.get("fill-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
+        let thickness = attrs.get("stroke-width").map(|s| parse_length("stroke-width", s)).transpose()?.unwrap_or_else(|| config.thickness.val().into());
+        let alpha = attrs.get("stroke-opacity").map(|s| parse_stroke_opacity(s)).transpose()?.unwrap_or(1.0);
+        let fill_alpha = attrs.get("fill-opacity").map(|s| parse_fill_opacity(s)).transpose()?.unwrap_or(1.0);
 
         let mut builder = SvgPathBuilder::new();
 
@@ -174,8 +189,8 @@ trait Deserialize {
 
 impl Deserialize for Path {
     fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>, Error> {
-        let styleattr = attributes.get("style").ok_or_else(|| Error::MissingAttribute("style".into()))?;
-        let dattr = attributes.get("d").ok_or_else(|| Error::MissingAttribute("d".into()))?;
+        let styleattr = attributes.get("style").ok_or_else(|| Error::PathMissingAttribute("style".into()))?;
+        let dattr = attributes.get("d").ok_or_else(|| Error::PathMissingAttribute("d".into()))?;
 
         Ok(Box::new(Path::from_xml_attributes(styleattr, dattr, config)?))
     }
@@ -183,26 +198,24 @@ impl Deserialize for Path {
 
 impl Deserialize for Ellipse {
     fn deserialize(attributes: HashMap<String, String>, config: Config) -> Result<Box<dyn ShapeStored>, Error> {
-        let cx = attributes.get("cx").ok_or_else(|| Error::MissingAttribute("cx".into()))?;
-        let cy = attributes.get("cy").ok_or_else(|| Error::MissingAttribute("cy".into()))?;
-        let rx = attributes.get("rx").ok_or_else(|| Error::MissingAttribute("rx".into()))?;
-        let ry = attributes.get("ry").ok_or_else(|| Error::MissingAttribute("ry".into()))?;
+        let cx = parse_length("cx", attributes.get("cx").ok_or_else(|| Error::EllipseMissingAttribute("cx".into()))?)?;
+        let cy = parse_length("cy", attributes.get("cy").ok_or_else(|| Error::EllipseMissingAttribute("cy".into()))?)?;
+        let rx = parse_length("rx", attributes.get("rx").ok_or_else(|| Error::EllipseMissingAttribute("rx".into()))?)?;
+        let ry = parse_length("ry", attributes.get("ry").ok_or_else(|| Error::EllipseMissingAttribute("ry".into()))?)?;
         let angle= attributes.get("transform").map(|s| s.as_str()).unwrap_or("rotate(0)");
-        let styleattr = attributes.get("style").ok_or_else(|| Error::MissingAttribute("style".into()))?;
+        let styleattr = attributes.get("style").ok_or_else(|| Error::EllipseMissingAttribute("style".into()))?;
 
         let attrs = css_attrs_as_hashmap(styleattr);
 
         let color: Option<Color> = attrs.get("stroke").map(|s| parse_color(s)).transpose()?.flatten();
         let fill: Option<Color> = attrs.get("fill").map(|s| parse_color(s)).transpose()?.flatten();
-        let thickness: WorldUnit = attrs.get("stroke-width").map(|s| s.parse()).transpose()?.unwrap_or_else(|| config.thickness.val().into());
-        let alpha = attrs.get("stroke-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
-        let fill_alpha = attrs.get("fill-opacity").map(|s| s.parse()).transpose()?.unwrap_or(1.0);
+        let thickness = attrs.get("stroke-width").map(|s| parse_length("stroke-width", s)).transpose()?.unwrap_or_else(|| config.thickness.val().into());
+        let alpha = attrs.get("stroke-opacity").map(|s| parse_stroke_opacity(s)).transpose()?.unwrap_or(1.0);
+        let fill_alpha = attrs.get("fill-opacity").map(|s| parse_fill_opacity(s)).transpose()?.unwrap_or(1.0);
 
         let angle: Angle = angle.parse()?;
 
-        let center = Vec2D::new_world(cx.parse()?, cy.parse()?);
-        let rx = rx.parse()?;
-        let ry = ry.parse()?;
+        let center = Vec2D::new(cx, cy);
 
         Ok(Box::new(Ellipse::from_parts(
             center,
@@ -227,10 +240,23 @@ enum DeState {
     Initial,
 
     /// So far it looks like a correct v2 file
-    StartedV2,
+    V2Started,
+
+    /// <g id="background"> just seen
+    V2BackgroundOpened,
+
+    /// The rectangle with the fill color just appeared
+    V2BackgroundRead {
+        background: Color,
+    },
+
+    V2StorageStarted {
+        storage: Storage,
+        background: Color,
+    },
 
     /// So far it looks like a correct v1 file
-    StartedV1,
+    V1Started,
 
     /// Just found <g id="storage">
     V1StorageOpened,
@@ -240,7 +266,7 @@ enum DeState {
         background: Color,
     },
 
-    V1Finished {
+    Finished {
         storage: Storage,
         background: Color,
     },
@@ -248,7 +274,11 @@ enum DeState {
     /// This file its likely not made with pizarra or it was edited in
     /// non-supported ways. Pizarra will do its best to understand it but the
     /// user should be warned.
-    External(Storage, Vec<Error>),
+    External {
+        background: Color,
+        storage: Storage,
+        errors: Vec<Error>,
+    },
 }
 
 use DeState::*;
@@ -265,6 +295,57 @@ fn get_single_attr<'a, 'b, 'c>(attrs: &'a [OwnedAttribute], key: &'b str, namesp
     None
 }
 
+macro_rules! parse_shape_v1 {
+    ($shape_type:ty, $attributes:ident, $config:ident, $storage:ident, $background:ident) => {
+        {
+            let attributes = xml_attrs_as_hashmap($attributes);
+            let path = <$shape_type>::deserialize(attributes, $config);
+
+            match path {
+                Ok(path) => {
+                    $storage.add(path);
+                    V1Correct { $storage, $background }
+                }
+                Err(e) => todo!("error deserializing path"),
+            }
+        }
+    };
+}
+
+macro_rules! parse_shape_v2 {
+    ($shape_type:ty, $attributes:ident, $config:ident, $storage:ident, $background:ident) => {
+        {
+            let attributes = xml_attrs_as_hashmap($attributes);
+            let path = <$shape_type>::deserialize(attributes, $config);
+
+            match path {
+                Ok(path) => {
+                    $storage.add(path);
+                    V2StorageStarted { $storage, $background }
+                }
+                Err(e) => todo!("error deserializing path"),
+            }
+        }
+    };
+}
+
+macro_rules! parse_shape_external {
+    ($shape_type:ty, $attributes:ident, $config:ident, $storage:ident, $background:ident, $errors:ident) => {
+        {
+            let attributes = xml_attrs_as_hashmap($attributes);
+            let path = <$shape_type>::deserialize(attributes, $config);
+
+            match path {
+                Ok(path) => {
+                    $storage.add(path);
+                    External { $storage, $background, $errors }
+                }
+                Err(e) => {dbg!(e); todo!("error deserializing path")},
+            }
+        }
+    };
+}
+
 fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
     match (state, event) {
         (state@Initial, XmlEvent::StartDocument { .. }) => state,
@@ -272,7 +353,7 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
             if let Some(version) = get_single_attr(&attributes, "format", Some("pizarra")) {
                 if version.trim() == "2" {
                     // So far we are looking at a correct V2 file
-                    StartedV2
+                    V2Started
                 } else {
                     // version field exists but it is not "2". We might be
                     // dealing with a file created using a future version of
@@ -282,15 +363,69 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
             } else {
                 // No version field at all (or at least not in the pizarra
                 // namespace) so this looks so far like a V1 format
-                StartedV1
+                V1Started
             }
         }
 
-        (_, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "svg" => {
-            todo!("file with two svg tags?")
+        (V2Started, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "g" => {
+            if let Some(id) = get_single_attr(&attributes, "id", None) {
+                if id == "background" {
+                    V2BackgroundOpened
+                } else {
+                    todo!("first group has id but it is not \"background\". File likely modified")
+                }
+            } else {
+                todo!("first group doesnt have an id, file likely modified")
+            }
         }
 
-        (StartedV1, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "g" => {
+        (V2BackgroundOpened, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "rect" => {
+            // The first and only shape in the background group is a rectangle
+            // with the fill set to the background color.
+            if let Some(style) = get_single_attr(&attributes, "style", None) {
+                let attrs = css_attrs_as_hashmap(style);
+                let color = attrs.get("fill").map(|c| parse_color(c)).transpose().map(|o| o.flatten());
+
+                match color {
+                    Ok(Some(color)) => V2BackgroundRead {
+                        background: color,
+                    },
+                    Ok(None) => V2BackgroundRead {
+                        background: config.background_color,
+                    },
+                    Err(e) => todo!("background color was not understood"),
+                }
+            } else {
+                todo!("No style, this is malformed v1 file or external");
+            }
+        }
+
+        (V2BackgroundRead { background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "g" => {
+            if let Some(id) = get_single_attr(&attributes, "id", None) {
+                if id == "shapes" {
+                    V2StorageStarted {
+                        storage: Storage::new(),
+                        background,
+                    }
+                } else {
+                    todo!("second group has a different id than shapes");
+                }
+            } else {
+                todo!("another group with unknown id");
+            }
+        }
+
+        (V2StorageStarted { mut storage, background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
+            parse_shape_v2!(Path, attributes, config, storage, background)
+        }
+
+        (V2StorageStarted { mut storage, background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
+            parse_shape_v2!(Ellipse, attributes, config, storage, background)
+        }
+
+        (V2StorageStarted { storage, background }, XmlEvent::EndDocument) => Finished { storage, background },
+
+        (V1Started, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "g" => {
             if let Some(id) = get_single_attr(&attributes, "id", None) {
                 if id == "storage" {
                     V1StorageOpened
@@ -325,24 +460,44 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
         }
 
         (V1Correct { mut storage, background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
-            let attributes = xml_attrs_as_hashmap(attributes);
-            let path = Path::deserialize(attributes, config);
-
-            match path {
-                Ok(path) => {
-                    storage.add(path);
-                    V1Correct { storage, background }
-                }
-                Err(e) => todo!("error deserializing path"),
-            }
+            parse_shape_v1!(Path, attributes, config, storage, background)
         }
 
-        (V1Correct { storage, background }, XmlEvent::EndDocument) => V1Finished { storage, background },
+        (V1Correct { mut storage, background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
+            parse_shape_v1!(Ellipse, attributes, config, storage, background)
+        }
+
+        (V1Correct { storage, background }, XmlEvent::EndDocument) => Finished { storage, background },
 
         // Explicitly ignored events
         (state, XmlEvent::Whitespace(_)) => state,
         (state, XmlEvent::EndElement { .. }) => state,
 
+        // Once an error has ocurred while reading a file it is tagged as
+        // external and further deserializing happens here.
+        (External { mut storage, errors, background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
+            parse_shape_external!(Path, attributes, config, storage, background, errors)
+        }
+        (External { mut storage, errors, background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
+            parse_shape_external!(Ellipse, attributes, config, storage, background, errors)
+        }
+        // Ignore groups if reading external file
+        (state@External { .. }, XmlEvent::StartElement { name, .. }) if name.local_name == "g" => state,
+        (state@External { .. }, XmlEvent::EndDocument) => state,
+        // Catch all unknown tags
+        (External { storage, mut errors, background }, XmlEvent::StartElement { name, .. }) => {
+            errors.push(Error::UnsupportedTag(name.local_name));
+
+            External { storage, errors, background }
+        }
+
+        (_state, XmlEvent::StartElement { name,  .. }) => External {
+            background: config.background_color,
+            storage: Storage::new(),
+            errors: vec![Error::UnsupportedTag(name.local_name)],
+        },
+
+        // All other states
         (state, event) => {
             dbg!(state);
             dbg!(event);
@@ -364,13 +519,24 @@ impl Pizarra {
         }
 
         match state {
-            V1Finished { storage, background } => {
+            Finished { storage, background } => {
                 let mut pizarra = Pizarra::new(Vec2D::new_screen(0.0, 0.0), config);
 
                 pizarra.set_bgcolor(background);
                 pizarra.set_storage(storage);
 
                 DeserializeResult::Ok(pizarra)
+            }
+            External { background, storage, errors } => {
+                let mut pizarra = Pizarra::new(Vec2D::new_screen(0.0, 0.0), config);
+
+                pizarra.set_bgcolor(background);
+                pizarra.set_storage(storage);
+
+                DeserializeResult::Partial(Partial {
+                    read: pizarra,
+                    errors,
+                })
             }
             x => {
                 dbg!(x);
@@ -460,13 +626,6 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_point() {
-        let p = " 152.496094 51.714844 ";
-
-        assert_eq!(p.parse::<Vec2D<WorldUnit>>().unwrap(), Vec2D::new_world(152.496094, 51.714844));
-    }
-
-    #[test]
     fn test_parse_alpha() {
         let line = Path::from_xml_attributes("fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke:#FF0000;stroke-opacity:0.8;stroke-miterlimit:10;", "M 10 10 L 20 20", Default::default()).unwrap();
 
@@ -531,62 +690,48 @@ mod tests {
     }
 
     #[test]
-    fn new_format_can_be_read() {
+    fn v2_format_can_be_read() {
         let svg_data = include_str!("../res/deserialize/v2_format.svg");
         let app = Pizarra::from_svg(svg_data, Default::default()).unwrap();
 
-        assert_eq!(app.bgcolor(), Color::from_int_rgb(0xba, 0xda, 0xba));
+        assert_eq!(app.bgcolor(), Color::from_int_rgb(0xba, 0xde, 0xba));
+
+        assert_eq!(app.storage().shape_count(), 78);
     }
 
-    /// It must be possible to tell which files were made with pizarra, and
-    /// which files were made in some other program. This is important to warn
-    /// the user about the risk of modifying a file that was made with some
-    /// other software because pizarra files are a subset of SVG.
-
-    /// The return value of the from_svg function will have the following shape:
-    ///
-    /// `Result<Pizarra, Result<(Pizarra, Vec<Error>), Error>>`
-    ///
-    /// Where the Ok variant is a file that was created with pizarra and was
-    /// read without problms, and the Err variant can have two cases:
-    ///
-    /// * it either can be partially read, but it likely was made with a
-    ///   different program (and a collection o errors is returned), or
-    /// * it failed miserably at being read. Most likely it is malformed SVG,
-    ///   XML or it doesn't have shapes at all.
     #[test]
-    fn file_is_identified_as_pizarra_file_or_external() {
-        // correct v2 file
-        let correct_file = include_str!("../res/deserialize/correct_v2_file.svg");
-        Pizarra::from_svg(correct_file, Default::default()).unwrap();
-
-        // correct file but old format
-        let correct_old = include_str!("../res/deserialize/correct_old.svg");
-        Pizarra::from_svg(correct_old, Default::default()).unwrap();
-
-        // file made in some other software
+    fn file_made_in_another_software() {
         let made_external = include_str!("../res/deserialize/made_external.svg");
         let partial = Pizarra::from_svg(made_external, Default::default()).unwrap_partial();
+
         assert_eq!(partial.read.storage().shape_count(), 1);
-        assert_eq!(partial.errors.len(), 2);
+        assert_eq!(partial.errors.len(), 3);
 
-        for error in partial.errors {
-            assert!(matches!(error, Error::UnknownTag(x) if x == "de"));
-        }
+        assert!(matches!(&partial.errors[0], Error::UnsupportedTag(x) if x == "namedview"));
+        assert!(matches!(&partial.errors[1], Error::UnsupportedTag(x) if x == "defs"));
+        assert!(matches!(dbg!(&partial.errors[2]), Error::UnsupportedTag(x) if x == "rect"));
+    }
 
+    #[test]
+    fn file_with_errors() {
         // cannot even understand this
         let errored_file_1 = include_str!("../res/deserialize/errored_file_1.svg");
         Pizarra::from_svg(errored_file_1, Default::default()).unwrap_err();
+    }
 
+    #[test]
+    fn non_svg_file() {
         todo!("try some correct xml that is not svg");
     }
 
     #[test]
-    fn background_color_can_be_read_from_old_format() {
+    fn v1_format_can_be_read() {
         let v1_format_file = include_str!("../res/deserialize/v1_format_bgcolor.svg");
         let pizarra = Pizarra::from_svg(v1_format_file, Default::default()).unwrap();
 
         assert_eq!(pizarra.bgcolor(), Color::from_int_rgb(0xca, 0xe3, 0xff));
+
+        assert_eq!(pizarra.storage().shape_count(), 78);
     }
 
     #[test]

@@ -3,7 +3,6 @@ use std::str::FromStr;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::point::{Vec2D, WorldUnit};
 use crate::geom::Angle;
 
 use super::Error;
@@ -22,27 +21,12 @@ lazy_static! {
     ").unwrap();
 }
 
-impl FromStr for Vec2D<WorldUnit> {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Error> {
-        if let Some(captures) = POINT_REGEX.captures(s) {
-            Ok(Vec2D::new(
-                captures["x"].parse::<WorldUnit>()?,
-                captures["y"].parse::<WorldUnit>()?,
-            ))
-        } else {
-            Err(Error::PointDoesntMatchRegex)
-        }
-    }
-}
-
 impl FromStr for Angle {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Angle, Error> {
         if let Some(angle) = ANGLE_REGEX.captures(s) {
-            Ok(Angle::from_degrees(angle["angle"].parse()?))
+            Ok(Angle::from_degrees(angle["angle"].parse().map_err(|_| Error::AngleDoesntMatchRegex(s.into()))?))
         } else {
             Err(Error::AngleDoesntMatchRegex(s.into()))
         }

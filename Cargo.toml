@@ -20,6 +20,7 @@ log = "0.4"
 serde_with = "1.11"
 num-traits = "0.2"
 num-derive = "0.3"
+thiserror = "1.0.40"
 
 [dependencies.serde]
 version = "1.0"

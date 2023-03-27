@@ -339,9 +339,9 @@ impl FromStr for Color {
             Ok(*c)
         } else if let Some(captures) = PERCENTAGE_COLOR_REGEX.captures(s) {
             Ok(Color::from_float_rgb(
-                captures["r"].parse::<f64>()?/ 100.0,
-                captures["g"].parse::<f64>()?/100.0,
-                captures["b"].parse::<f64>()?/100.0,
+                captures["r"].parse::<f64>().map_err(|_| Error::CouldntUnderstandColor(s.into()))?/ 100.0,
+                captures["g"].parse::<f64>().map_err(|_| Error::CouldntUnderstandColor(s.into()))?/100.0,
+                captures["b"].parse::<f64>().map_err(|_| Error::CouldntUnderstandColor(s.into()))?/100.0,
             ))
         } else if let Some(captures) = CSS_COLOR_REGEX.captures(s) {
             let c = Color::from_int_rgb(
