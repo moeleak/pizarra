@@ -47,6 +47,9 @@ pub enum Error {
 
     #[error("An SVG tag that pizarra doesn't use was found: {0}")]
     UnsupportedTag(String),
+
+    #[error("File is not svg, instead its first element is <{0}>")]
+    NotSvg(String),
 }
 
 /// A partial result of deserialization
@@ -279,6 +282,10 @@ enum DeState {
         storage: Storage,
         errors: Vec<Error>,
     },
+
+    /// Not an SVG file. This is a final state and contains the first tag that
+    /// was found
+    NotSvg(String),
 }
 
 use DeState::*;
@@ -367,6 +374,11 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
             }
         }
 
+        // First element is not <svg>, discard this file faster for not even
+        // trying to be svg
+        (Initial, XmlEvent::StartElement { name, .. }) => NotSvg(name.local_name),
+        (state@NotSvg(_), _) => state,
+
         (V2Started, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "g" => {
             if let Some(id) = get_single_attr(&attributes, "id", None) {
                 if id == "background" {
@@ -428,12 +440,14 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
         (V1Started, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "g" => {
             if let Some(id) = get_single_attr(&attributes, "id", None) {
                 if id == "storage" {
-                    V1StorageOpened
-                } else {
-                    todo!("first group has a different id than storage, likely not a v1 file");
+                    return V1StorageOpened
                 }
-            } else {
-                todo!("group without id");
+            }
+
+            External {
+                background: config.background_color,
+                storage: Storage::new(),
+                errors: Vec::new(),
             }
         }
 
@@ -490,6 +504,8 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
 
             External { storage, errors, background }
         }
+        // Ignore characters in external state
+        (state@External { .. }, XmlEvent::Characters(_)) => state,
 
         (_state, XmlEvent::StartElement { name,  .. }) => External {
             background: config.background_color,
@@ -538,6 +554,7 @@ impl Pizarra {
                     errors,
                 })
             }
+            NotSvg(tag) => DeserializeResult::Err(Error::NotSvg(tag)),
             x => {
                 dbg!(x);
                 todo!()
@@ -556,9 +573,12 @@ mod tests {
     #[test]
     fn test_from_svg() {
         let svg_data = include_str!("../res/simple_file_load.svg");
-        let app = Pizarra::from_svg(svg_data, Default::default()).unwrap();
+        let partial = Pizarra::from_svg(svg_data, Default::default()).unwrap_partial();
 
-        assert_eq!(app.storage().shape_count(), 1);
+        assert_eq!(partial.read.storage().shape_count(), 1);
+
+        assert_eq!(partial.errors.len(), 1);
+        assert!(matches!(&partial.errors[0], Error::UnsupportedTag(x) if x == "rect"));
     }
 
     /// This represents the very first SVG format of pizarra.
@@ -714,14 +734,18 @@ mod tests {
 
     #[test]
     fn file_with_errors() {
-        // cannot even understand this
         let errored_file_1 = include_str!("../res/deserialize/errored_file_1.svg");
-        Pizarra::from_svg(errored_file_1, Default::default()).unwrap_err();
+        let err = Pizarra::from_svg(errored_file_1, Default::default()).unwrap_err();
+
+        assert!(matches!(dbg!(err), Error::Xml(_)));
     }
 
     #[test]
     fn non_svg_file() {
-        todo!("try some correct xml that is not svg");
+        let file = include_str!("../res/deserialize/not.svg");
+        let err = Pizarra::from_svg(file, Default::default()).unwrap_err();
+
+        assert!(matches!(err, Error::NotSvg(x) if x == "foo"));
     }
 
     #[test]
@@ -735,7 +759,30 @@ mod tests {
     }
 
     #[test]
-    fn a_file_saved_from_pizarra_and_not_very_edited_in_inkscape_works() {
-        todo!()
+    fn v1_edited_is_recovered() {
+        let file = include_str!("../res/deserialize/v1_edited.svg");
+        let partial = Pizarra::from_svg(file, Default::default()).unwrap_partial();
+
+        assert_eq!(partial.read.storage().shape_count(), 77);
+        assert_eq!(partial.errors.len(), 5);
+
+        assert!(matches!(dbg!(&partial.errors[0]), Error::UnsupportedTag(x) if x == "defs"));
+        assert!(matches!(dbg!(&partial.errors[1]), Error::UnsupportedTag(x) if x == "namedview"));
+        assert!(matches!(dbg!(&partial.errors[2]), Error::UnsupportedTag(x) if x == "rect"));
+        assert!(matches!(dbg!(&partial.errors[3]), Error::UnsupportedTag(x) if x == "circle"));
+        assert!(matches!(dbg!(&partial.errors[4]), Error::UnsupportedTag(x) if x == "circle"));
+    }
+
+    #[test]
+    fn v2_edited_is_recovered() {
+        let file = include_str!("../res/deserialize/v2_edited.svg");
+        let partial = Pizarra::from_svg(file, Default::default()).unwrap_partial();
+
+        assert_eq!(partial.read.storage().shape_count(), 79);
+        assert_eq!(partial.errors.len(), 3);
+
+        assert!(matches!(dbg!(&partial.errors[0]), Error::UnsupportedTag(x) if x == "defs"));
+        assert!(matches!(dbg!(&partial.errors[1]), Error::UnsupportedTag(x) if x == "namedview"));
+        assert!(matches!(dbg!(&partial.errors[2]), Error::UnsupportedTag(x) if x == "rect"));
     }
 }
