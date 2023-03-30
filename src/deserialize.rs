@@ -56,10 +56,10 @@ pub enum Error {
 #[derive(Debug)]
 pub struct Partial {
     /// The portion that was properly read
-    read: Pizarra,
+    pub read: Pizarra,
 
     /// All the errors that were found
-    errors: Vec<Error>,
+    pub errors: Vec<Error>,
 }
 
 /// Result of the deserialization process.
