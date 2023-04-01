@@ -33,6 +33,12 @@ pub enum Error {
     #[error("The given color '{0}' was not understood")]
     CouldntUnderstandColor(String),
 
+    #[error("The background color '{0}' was not understood")]
+    InvalidBackgroundColor(String),
+
+    #[error("Background color not specified in file")]
+    NoBackgroundColor,
+
     #[error("Found an unsupported value for attribute {attr}: {value}")]
     UnsupportedAttributeValue { attr: &'static str, value: String },
 
@@ -50,6 +56,9 @@ pub enum Error {
 
     #[error("File is not svg, instead its first element is <{0}>")]
     NotSvg(String),
+
+    #[error("Future version of pizarra found (file format v{0}). Consider updating")]
+    FutureVersion(String),
 }
 
 /// A partial result of deserialization
@@ -362,6 +371,16 @@ macro_rules! parse_shape_external {
     };
 }
 
+macro_rules! external {
+    ($error: expr, $config: ident) => {
+        External {
+            background: $config.background_color,
+            storage: Storage::new(),
+            errors: vec![$error],
+        }
+    }
+}
+
 fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
     match (state, event) {
         (state@Initial, XmlEvent::StartDocument { .. }) => state,
@@ -374,7 +393,11 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
                     // version field exists but it is not "2". We might be
                     // dealing with a file created using a future version of
                     // pizarra
-                    let d = todo!();
+                    External {
+                        background: config.background_color,
+                        storage: Storage::new(),
+                        errors: vec![Error::FutureVersion(version.into())],
+                    }
                 }
             } else {
                 // No version field at all (or at least not in the pizarra
@@ -405,19 +428,22 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
             // with the fill set to the background color.
             if let Some(style) = get_single_attr(&attributes, "style", None) {
                 let attrs = css_attrs_as_hashmap(style);
-                let color = attrs.get("fill").map(|c| parse_color(c)).transpose().map(|o| o.flatten());
+                let color = attrs.get("fill");
 
                 match color {
-                    Ok(Some(color)) => V2BackgroundRead {
-                        background: color,
-                    },
-                    Ok(None) => V2BackgroundRead {
-                        background: config.background_color,
-                    },
-                    Err(e) => todo!("background color was not understood"),
+                    Some(color) => match parse_color(color) {
+                        Ok(Some(color)) => V2BackgroundRead {
+                            background: color,
+                        },
+                        Ok(None) => V2BackgroundRead {
+                            background: config.background_color,
+                        },
+                        Err(_) => external!(Error::InvalidBackgroundColor(color.to_string()), config),
+                    }
+                    None => external!(Error::NoBackgroundColor, config),
                 }
             } else {
-                todo!("No style, this is malformed v1 file or external");
+                external!(Error::NoBackgroundColor, config)
             }
         }
 
@@ -464,21 +490,24 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
             // The first rect in this state is the background, lets read it.
             if let Some(style) = get_single_attr(&attributes, "style", None) {
                 let attrs = css_attrs_as_hashmap(style);
-                let color = attrs.get("fill").map(|c| parse_color(c)).transpose().map(|o| o.flatten());
+                let color = attrs.get("fill");
 
                 match color {
-                    Ok(Some(color)) => V1Correct {
-                        storage: Storage::new(),
-                        background: color,
+                    Some(color) => match parse_color(color) {
+                        Ok(Some(color)) => V1Correct {
+                            storage: Storage::new(),
+                            background: color,
+                        },
+                        Ok(None) => V1Correct {
+                            storage: Storage::new(),
+                            background: config.background_color,
+                        },
+                        Err(_) => external!(Error::InvalidBackgroundColor(color.to_string()), config),
                     },
-                    Ok(None) => V1Correct {
-                        storage: Storage::new(),
-                        background: config.background_color,
-                    },
-                    Err(e) => todo!("background color was not understood"),
+                    None => external!(Error::NoBackgroundColor, config),
                 }
             } else {
-                todo!("No style, this is malformed v1 file or external");
+                external!(Error::NoBackgroundColor, config)
             }
         }
 
