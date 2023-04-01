@@ -313,7 +313,10 @@ macro_rules! parse_shape_v1 {
                     $storage.add(path);
                     V1Correct { $storage, $background }
                 }
-                Err(e) => todo!("error deserializing path"),
+                Err(e) => External {
+                    $storage, $background,
+                    errors: vec![e],
+                },
             }
         }
     };
@@ -330,7 +333,10 @@ macro_rules! parse_shape_v2 {
                     $storage.add(path);
                     V2StorageStarted { $storage, $background }
                 }
-                Err(e) => todo!("error deserializing path"),
+                Err(e) => External {
+                    $storage, $background,
+                    errors: vec![e],
+                },
             }
         }
     };
@@ -347,7 +353,10 @@ macro_rules! parse_shape_external {
                     $storage.add(path);
                     External { $storage, $background, $errors }
                 }
-                Err(e) => {dbg!(e); todo!("error deserializing path")},
+                Err(e) => External {
+                    $storage, $background,
+                    errors: vec![e],
+                },
             }
         }
     };
