@@ -59,6 +59,12 @@ pub enum Error {
 
     #[error("Future version of pizarra found (file format v{0}). Consider updating")]
     FutureVersion(String),
+
+    #[error("The file's first group does not have an ID")]
+    FirstGroupWihoutId,
+
+    #[error("The file's first group is not the background, but '{0}'")]
+    FirstGroupIsNotBackground(String),
 }
 
 /// A partial result of deserialization
@@ -416,10 +422,10 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
                 if id == "background" {
                     V2BackgroundOpened
                 } else {
-                    todo!("first group has id but it is not \"background\". File likely modified")
+                    external!(Error::FirstGroupIsNotBackground(id.to_string()), config)
                 }
             } else {
-                todo!("first group doesnt have an id, file likely modified")
+                external!(Error::FirstGroupWihoutId, config)
             }
         }
 
