@@ -65,6 +65,15 @@ pub enum Error {
 
     #[error("The file's first group is not the background, but '{0}'")]
     FirstGroupIsNotBackground(String),
+
+    #[error("The file's first group's id is not storage but '{0}'")]
+    FirstGroupIsNotStorage(String),
+
+    #[error("The file's second group's expected id was 'shapes' but instead it is '{0}'")]
+    SecondGroupNotShapes(String),
+
+    #[error("The file's second group doesn't have an ID")]
+    SecondGroupWithoutId,
 }
 
 /// A partial result of deserialization
@@ -399,11 +408,7 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
                     // version field exists but it is not "2". We might be
                     // dealing with a file created using a future version of
                     // pizarra
-                    External {
-                        background: config.background_color,
-                        storage: Storage::new(),
-                        errors: vec![Error::FutureVersion(version.into())],
-                    }
+                    external!(Error::FutureVersion(version.into()), config)
                 }
             } else {
                 // No version field at all (or at least not in the pizarra
@@ -461,10 +466,10 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
                         background,
                     }
                 } else {
-                    todo!("second group has a different id than shapes");
+                    external!(Error::SecondGroupNotShapes(id.to_string()), config)
                 }
             } else {
-                todo!("another group with unknown id");
+                external!(Error::SecondGroupWithoutId, config)
             }
         }
 
@@ -482,13 +487,11 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
             if let Some(id) = get_single_attr(&attributes, "id", None) {
                 if id == "storage" {
                     return V1StorageOpened
+                } else {
+                    external!(Error::FirstGroupIsNotStorage(id.to_string()), config)
                 }
-            }
-
-            External {
-                background: config.background_color,
-                storage: Storage::new(),
-                errors: Vec::new(),
+            } else {
+                external!(Error::FirstGroupWihoutId, config)
             }
         }
 
@@ -551,11 +554,7 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
         // Ignore characters in external state
         (state@External { .. }, XmlEvent::Characters(_)) => state,
 
-        (_state, XmlEvent::StartElement { name,  .. }) => External {
-            background: config.background_color,
-            storage: Storage::new(),
-            errors: vec![Error::UnsupportedTag(name.local_name)],
-        },
+        (_state, XmlEvent::StartElement { name,  .. }) => external!(Error::UnsupportedTag(name.local_name), config),
 
         // All other states
         (state, event) => {
@@ -621,8 +620,9 @@ mod tests {
 
         assert_eq!(partial.read.storage().shape_count(), 1);
 
-        assert_eq!(partial.errors.len(), 1);
-        assert!(matches!(&partial.errors[0], Error::UnsupportedTag(x) if x == "rect"));
+        assert_eq!(partial.errors.len(), 2);
+        assert!(matches!(dbg!(&partial.errors[0]), Error::FirstGroupIsNotStorage(x) if x == "surface2538"));
+        assert!(matches!(dbg!(&partial.errors[1]), Error::UnsupportedTag(x) if x == "rect"));
     }
 
     /// This represents the very first SVG format of pizarra.
