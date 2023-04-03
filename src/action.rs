@@ -1,16 +1,12 @@
 use crate::shape::{Shape, ShapeId};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum Action {
     Unfinished,
+
+    #[default]
     Empty,
 
     Draw(Vec<ShapeId>),
     Erase(Vec<Shape>),
-}
-
-impl Default for Action {
-    fn default() -> Action {
-        Action::Empty
-    }
 }
