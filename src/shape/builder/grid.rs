@@ -261,9 +261,9 @@ mod tests {
         let xs = [-2.9, -1.44, 0.020000000000000018];
         let ys = [1.66, 0.82, -0.020000000000000018];
 
-        assert_eq!(grid, Matrix::from_parts(ys.into_iter().map(|y| {
+        assert_eq!(grid, Matrix::from_parts(ys.into_iter().flat_map(|y| {
             xs.iter().map(move |&x| Vec2D::new_unitless(x, y))
-        }).flatten().collect(), 3));
+        }).collect(), 3));
     }
 
     #[test]
@@ -278,9 +278,9 @@ mod tests {
         let xs = [-3.0, -1.5, 0.0, 1.5];
         let ys = [3.0, 2.0, 1.0];
 
-        assert_eq!(grid, Matrix::from_parts(ys.into_iter().map(|y| {
+        assert_eq!(grid, Matrix::from_parts(ys.into_iter().flat_map(|y| {
             xs.iter().map(move |x| Vec2D::new_unitless(*x, y))
-        }).flatten().collect(), 4));
+        }).collect(), 4));
     }
 
     #[test]

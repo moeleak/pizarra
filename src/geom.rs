@@ -398,7 +398,7 @@ mod tests {
         assert!(center.distance((-11.5, -5.98).into()) < 0.06.into());
         assert!((semimajor - sum / 2.0).abs() < 0.01.into());
         assert!((semiminor - 11.28.into()).abs() < 0.01.into());
-        assert!((angle.degrees() - 39.94).abs() < 0.02.into());
+        assert!((angle.degrees() - 39.94).abs() < 0.02);
     }
 
     #[test]

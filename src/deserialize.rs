@@ -178,7 +178,7 @@ fn parse_stroke_opacity(opacity: &str) -> Result<f64, Error> {
     opacity
         .parse()
         .map_err(|_| Error::UnsupportedAttributeValue {
-            attr: "stroke-opacity".into(),
+            attr: "stroke-opacity",
             value: opacity.to_owned(),
         })
 }
@@ -187,7 +187,7 @@ fn parse_fill_opacity(opacity: &str) -> Result<f64, Error> {
     opacity
         .parse()
         .map_err(|_| Error::UnsupportedAttributeValue {
-            attr: "fill-opacity".into(),
+            attr: "fill-opacity",
             value: opacity.to_owned(),
         })
 }
@@ -327,9 +327,9 @@ use DeState::*;
 
 /// Gets a single attribute's value from a list of them. Used for cases where
 /// only one attribute is needed to spare the hashmap allocation.
-fn get_single_attr<'a, 'b, 'c>(attrs: &'a [OwnedAttribute], key: &'b str, namespace: Option<&'c str>) -> Option<&'a str> {
+fn get_single_attr<'a>(attrs: &'a [OwnedAttribute], key: &str, namespace: Option<&str>) -> Option<&'a str> {
     for attr in attrs {
-        if attr.name.prefix.as_ref().map(|s| s.as_str()) == namespace && attr.name.local_name == key {
+        if attr.name.prefix.as_deref() == namespace && attr.name.local_name == key {
             return Some(&attr.value)
         }
     }
@@ -564,7 +564,7 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
         (V1Started, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "g" => {
             if let Some(id) = get_single_attr(&attributes, "id", None) {
                 if id == "storage" {
-                    return V1StorageOpened
+                    V1StorageOpened
                 } else {
                     external!(Error::FirstGroupIsNotStorage(id.to_string()), config)
                 }

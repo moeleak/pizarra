@@ -1216,7 +1216,7 @@ mod tests {
         assert_eq!(app.save_status, SaveStatus::NewAndChanged);
         assert_eq!(app.storage.shape_count(), 1);
 
-        if let Some(_) = app.current_shape.as_ref() {
+        if app.current_shape.is_some() {
             panic!()
         }
     }

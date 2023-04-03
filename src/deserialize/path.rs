@@ -855,98 +855,98 @@ mod tests {
         test_parser(
             "M 10 20",
             "",
-            &vec![moveto(10.0, 20.0)],
+            &[moveto(10.0, 20.0)],
             None,
         );
 
         test_parser(
             "M -10 -20",
             "",
-            &vec![moveto(-10.0, -20.0)],
+            &[moveto(-10.0, -20.0)],
             None,
         );
 
         test_parser(
             "M .10 0.20",
             "",
-            &vec![moveto(0.10, 0.20)],
+            &[moveto(0.10, 0.20)],
             None,
         );
 
         test_parser(
             "M -.10 -0.20",
             "",
-            &vec![moveto(-0.10, -0.20)],
+            &[moveto(-0.10, -0.20)],
             None,
         );
 
         test_parser(
             "M-.10-0.20",
             "",
-            &vec![moveto(-0.10, -0.20)],
+            &[moveto(-0.10, -0.20)],
             None,
         );
 
         test_parser(
             "M10.5.50",
             "",
-            &vec![moveto(10.5, 0.50)],
+            &[moveto(10.5, 0.50)],
             None,
         );
 
         test_parser(
             "M.10.20",
             "",
-            &vec![moveto(0.10, 0.20)],
+            &[moveto(0.10, 0.20)],
             None,
         );
 
         test_parser(
             "M .10E1 .20e-4",
             "",
-            &vec![moveto(1.0, 0.000020)],
+            &[moveto(1.0, 0.000020)],
             None,
         );
 
         test_parser(
             "M-.10E1-.20",
             "",
-            &vec![moveto(-1.0, -0.20)],
+            &[moveto(-1.0, -0.20)],
             None,
         );
 
         test_parser(
             "M10.10E2 -0.20e3",
             "",
-            &vec![moveto(1010.0, -200.0)],
+            &[moveto(1010.0, -200.0)],
             None,
         );
 
         test_parser(
             "M-10.10E2-0.20e-3",
             "",
-            &vec![moveto(-1010.0, -0.00020)],
+            &[moveto(-1010.0, -0.00020)],
             None,
         );
 
         test_parser(
             "M1e2.5", // a decimal after exponent start the next number
             "",
-            &vec![moveto(100.0, 0.5)],
+            &[moveto(100.0, 0.5)],
             None,
         );
 
         test_parser(
             "M1e-2.5", // but we are allowed a sign after exponent
             "",
-            &vec![moveto(0.01, 0.5)],
+            &[moveto(0.01, 0.5)],
             None,
         );
 
         test_parser(
             "M1e+2.5", // but we are allowed a sign after exponent
             "",
-            &vec![moveto(100.0, 0.5)],
+            &[moveto(100.0, 0.5)],
             None,
         );
     }
@@ -956,49 +956,49 @@ mod tests {
         test_parser(
             "M+",
             " ^",
-            &vec![],
+            &[],
             Some(ErrorKind::LexError(LexError::UnexpectedEof)),
         );
 
         test_parser(
             "M-",
             " ^",
-            &vec![],
+            &[],
             Some(ErrorKind::LexError(LexError::UnexpectedEof)),
         );
 
         test_parser(
             "M+x",
             " ^",
-            &vec![],
+            &[],
             Some(ErrorKind::LexError(LexError::UnexpectedByte(b'x'))),
         );
 
         test_parser(
             "M10e",
             " ^",
-            &vec![],
+            &[],
             Some(ErrorKind::LexError(LexError::ParseFloatError)),
         );
 
         test_parser(
             "M10ex",
             " ^",
-            &vec![],
+            &[],
             Some(ErrorKind::LexError(LexError::ParseFloatError)),
         );
 
         test_parser(
             "M10e-",
             " ^",
-            &vec![],
+            &[],
             Some(ErrorKind::LexError(LexError::ParseFloatError)),
         );
 
         test_parser(
             "M10e+x",
             " ^",
-            &vec![],
+            &[],
             Some(ErrorKind::LexError(LexError::ParseFloatError)),
         );
     }
@@ -1008,70 +1008,70 @@ mod tests {
         test_parser(
             "M 10, 20",
             "",
-            &vec![moveto(10.0, 20.0)],
+            &[moveto(10.0, 20.0)],
             None,
         );
 
         test_parser(
             "M -10,-20",
             "",
-            &vec![moveto(-10.0, -20.0)],
+            &[moveto(-10.0, -20.0)],
             None,
         );
 
         test_parser(
             "M.10    ,    0.20",
             "",
-            &vec![moveto(0.10, 0.20)],
+            &[moveto(0.10, 0.20)],
             None,
         );
 
         test_parser(
             "M -.10, -0.20   ",
             "",
-            &vec![moveto(-0.10, -0.20)],
+            &[moveto(-0.10, -0.20)],
             None,
         );
 
         test_parser(
             "M-.10-0.20",
             "",
-            &vec![moveto(-0.10, -0.20)],
+            &[moveto(-0.10, -0.20)],
             None,
         );
 
         test_parser(
             "M.10.20",
             "",
-            &vec![moveto(0.10, 0.20)],
+            &[moveto(0.10, 0.20)],
             None,
         );
 
         test_parser(
             "M .10E1,.20e-4",
             "",
-            &vec![moveto(1.0, 0.000020)],
+            &[moveto(1.0, 0.000020)],
             None,
         );
 
         test_parser(
             "M-.10E-2,-.20",
             "",
-            &vec![moveto(-0.0010, -0.20)],
+            &[moveto(-0.0010, -0.20)],
             None,
         );
 
         test_parser(
             "M10.10E2,-0.20e3",
             "",
-            &vec![moveto(1010.0, -200.0)],
+            &[moveto(1010.0, -200.0)],
             None,
         );
 
         test_parser(
             "M-10.10E2,-0.20e-3",
             "",
-            &vec![moveto(-1010.0, -0.00020)],
+            &[moveto(-1010.0, -0.00020)],
             None,
         );
     }
@@ -1081,28 +1081,28 @@ mod tests {
         test_parser(
             "M 10 20 ",
             "",
-            &vec![moveto(10.0, 20.0)],
+            &[moveto(10.0, 20.0)],
             None,
         );
 
         test_parser(
             "M10,20  ",
             "",
-            &vec![moveto(10.0, 20.0)],
+            &[moveto(10.0, 20.0)],
             None,
         );
 
         test_parser(
             "M10 20   ",
             "",
-            &vec![moveto(10.0, 20.0)],
+            &[moveto(10.0, 20.0)],
             None,
         );
 
         test_parser(
             "    M10,20     ",
             "",
-            &vec![moveto(10.0, 20.0)],
+            &[moveto(10.0, 20.0)],
             None,
         );
     }
@@ -1112,7 +1112,7 @@ mod tests {
         test_parser(
             "m10 20",
             "",
-            &vec![moveto(10.0, 20.0)],
+            &[moveto(10.0, 20.0)],
             None,
         );
     }
@@ -1122,21 +1122,21 @@ mod tests {
         test_parser(
             "M10 20 30 40",
             "",
-            &vec![moveto(10.0, 20.0), lineto(30.0, 40.0)],
+            &[moveto(10.0, 20.0), lineto(30.0, 40.0)],
             None,
         );
 
         test_parser(
             "M10,20,30,40",
             "",
-            &vec![moveto(10.0, 20.0), lineto(30.0, 40.0)],
+            &[moveto(10.0, 20.0), lineto(30.0, 40.0)],
             None,
         );
 
         test_parser(
             "M.1-2,3E2-4",
             "",
-            &vec![moveto(0.1, -2.0), lineto(300.0, -4.0)],
+            &[moveto(0.1, -2.0), lineto(300.0, -4.0)],
             None,
         );
     }
@@ -1146,7 +1146,7 @@ mod tests {
         test_parser(
             "m10 20 30 40",
             "",
-            &vec![moveto(10.0, 20.0), lineto(40.0, 60.0)],
+            &[moveto(10.0, 20.0), lineto(40.0, 60.0)],
             None,
         );
     }
@@ -1157,7 +1157,7 @@ mod tests {
             //          1     2    3    4   5
             "m 46,447 l 0,0.5 -1,0 -1,0 0,1 0,12",
             "",
-            &vec![moveto(46.0, 447.0), lineto(46.0, 447.5), lineto(45.0, 447.5),
+            &[moveto(46.0, 447.0), lineto(46.0, 447.5), lineto(45.0, 447.5),
                   lineto(44.0, 447.5), lineto(44.0, 448.5), lineto(44.0, 460.5)],
             None,
         );
@@ -1168,7 +1168,7 @@ mod tests {
         test_parser(
             "M10,20 30,40,50 60",
             "",
-            &vec![moveto(10.0, 20.0), lineto(30.0, 40.0), lineto(50.0, 60.0)],
+            &[moveto(10.0, 20.0), lineto(30.0, 40.0), lineto(50.0, 60.0)],
             None,
         );
     }
@@ -1178,7 +1178,7 @@ mod tests {
         test_parser(
             "m10 20 30 40 50 60",
             "",
-            &vec![moveto(10.0, 20.0), lineto(40.0, 60.0), lineto(90.0, 120.0)],
+            &[moveto(10.0, 20.0), lineto(40.0, 60.0), lineto(90.0, 120.0)],
             None,
         );
     }
@@ -1188,7 +1188,7 @@ mod tests {
         test_parser(
             "M10 20 M 30 40",
             "",
-            &vec![moveto(10.0, 20.0), moveto(30.0, 40.0)],
+            &[moveto(10.0, 20.0), moveto(30.0, 40.0)],
             None,
         );
     }
@@ -1198,7 +1198,7 @@ mod tests {
         test_parser(
             "m10 20 m 30 40",
             "",
-            &vec![moveto(10.0, 20.0), moveto(40.0, 60.0)],
+            &[moveto(10.0, 20.0), moveto(40.0, 60.0)],
             None,
         );
     }
@@ -1208,7 +1208,7 @@ mod tests {
         test_parser(
             "m10 20 30 40 m 50 60",
             "",
-            &vec![moveto(10.0, 20.0), lineto(40.0, 60.0), moveto(90.0, 120.0)],
+            &[moveto(10.0, 20.0), lineto(40.0, 60.0), moveto(90.0, 120.0)],
             None,
         );
     }
@@ -1218,7 +1218,7 @@ mod tests {
         test_parser(
             "M10 20 L30,40",
             "",
-            &vec![moveto(10.0, 20.0), lineto(30.0, 40.0)],
+            &[moveto(10.0, 20.0), lineto(30.0, 40.0)],
             None,
         );
     }
@@ -1228,7 +1228,7 @@ mod tests {
         test_parser(
             "m10 20 l30,40",
             "",
-            &vec![moveto(10.0, 20.0), lineto(40.0, 60.0)],
+            &[moveto(10.0, 20.0), lineto(40.0, 60.0)],
             None,
         );
     }
@@ -1238,7 +1238,7 @@ mod tests {
         test_parser(
             "m10 20 30 40l30,40,50 60L200,300",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 lineto(40.0, 60.0),
                 lineto(70.0, 100.0),
@@ -1254,21 +1254,21 @@ mod tests {
         test_parser(
             "M10 20 H30",
             "",
-            &vec![moveto(10.0, 20.0), lineto(30.0, 20.0)],
+            &[moveto(10.0, 20.0), lineto(30.0, 20.0)],
             None,
         );
 
         test_parser(
             "M10 20 H30 40",
             "",
-            &vec![moveto(10.0, 20.0), lineto(30.0, 20.0), lineto(40.0, 20.0)],
+            &[moveto(10.0, 20.0), lineto(30.0, 20.0), lineto(40.0, 20.0)],
             None,
         );
 
         test_parser(
             "M10 20 H30,40-50",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 lineto(30.0, 20.0),
                 lineto(40.0, 20.0),
@@ -1280,7 +1280,7 @@ mod tests {
         test_parser(
             "m10 20 h30,40-50",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 lineto(40.0, 20.0),
                 lineto(80.0, 20.0),
@@ -1295,21 +1295,21 @@ mod tests {
         test_parser(
             "M10 20 V30",
             "",
-            &vec![moveto(10.0, 20.0), lineto(10.0, 30.0)],
+            &[moveto(10.0, 20.0), lineto(10.0, 30.0)],
             None,
         );
 
         test_parser(
             "M10 20 V30 40",
             "",
-            &vec![moveto(10.0, 20.0), lineto(10.0, 30.0), lineto(10.0, 40.0)],
+            &[moveto(10.0, 20.0), lineto(10.0, 30.0), lineto(10.0, 40.0)],
             None,
         );
 
         test_parser(
             "M10 20 V30,40-50",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 lineto(10.0, 30.0),
                 lineto(10.0, 40.0),
@@ -1321,7 +1321,7 @@ mod tests {
         test_parser(
             "m10 20 v30,40-50",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 lineto(10.0, 50.0),
                 lineto(10.0, 90.0),
@@ -1336,7 +1336,7 @@ mod tests {
         test_parser(
             "M10 20 C 30,40 50 60-70,80",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(30.0, 40.0, 50.0, 60.0, -70.0, 80.0),
             ],
@@ -1346,7 +1346,7 @@ mod tests {
         test_parser(
             "M10 20 C 30,40 50 60-70,80,90 100,110 120,130,140",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(30.0, 40.0, 50.0, 60.0, -70.0, 80.0),
                 curveto(90.0, 100.0, 110.0, 120.0, 130.0, 140.0),
@@ -1357,7 +1357,7 @@ mod tests {
         test_parser(
             "m10 20 c 30,40 50 60-70,80,90 100,110 120,130,140",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(40.0, 60.0, 60.0, 80.0, -60.0, 100.0),
                 curveto(30.0, 200.0, 50.0, 220.0, 70.0, 240.0),
@@ -1368,7 +1368,7 @@ mod tests {
         test_parser(
             "m10 20 c 30,40 50 60-70,80,90 100,110 120,130,140",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(40.0, 60.0, 60.0, 80.0, -60.0, 100.0),
                 curveto(30.0, 200.0, 50.0, 220.0, 70.0, 240.0),
@@ -1382,7 +1382,7 @@ mod tests {
         test_parser(
             "M10 20 S 30,40-50,60",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(10.0, 20.0, 30.0, 40.0, -50.0, 60.0),
             ],
@@ -1392,7 +1392,7 @@ mod tests {
         test_parser(
             "M10 20 S 30,40 50 60-70,80,90 100",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(10.0, 20.0, 30.0, 40.0, 50.0, 60.0),
                 curveto(70.0, 80.0, -70.0, 80.0, 90.0, 100.0),
@@ -1403,7 +1403,7 @@ mod tests {
         test_parser(
             "m10 20 s 30,40 50 60-70,80,90 100",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(10.0, 20.0, 40.0, 60.0, 60.0, 80.0),
                 curveto(80.0, 100.0, -10.0, 160.0, 150.0, 180.0),
@@ -1417,7 +1417,7 @@ mod tests {
         test_parser(
             "M10 20 Q30 40 50 60",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(
                     70.0 / 3.0,
@@ -1434,7 +1434,7 @@ mod tests {
         test_parser(
             "M10 20 Q30 40 50 60,70,80-90 100",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(
                     70.0 / 3.0,
@@ -1459,7 +1459,7 @@ mod tests {
         test_parser(
             "m10 20 q 30,40 50 60-70,80 90 100",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(
                     90.0 / 3.0,
@@ -1487,7 +1487,7 @@ mod tests {
         test_parser(
             "M10 20 T30 40",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(10.0, 20.0, 50.0 / 3.0, 80.0 / 3.0, 30.0, 40.0),
             ],
@@ -1497,7 +1497,7 @@ mod tests {
         test_parser(
             "M10 20 Q30 40 50 60 T70 80",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(
                     70.0 / 3.0,
@@ -1515,7 +1515,7 @@ mod tests {
         test_parser(
             "m10 20 q 30,40 50 60t-70,80",
             "",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(
                     90.0 / 3.0,
@@ -1536,7 +1536,7 @@ mod tests {
         test_parser(
             "  L10 20",
             "   ^", // FIXME: why is this not at position 2?
-            &vec![],
+            &[],
             Some(ErrorKind::UnexpectedCommand(b'L')),
         );
     }
@@ -1546,42 +1546,42 @@ mod tests {
         test_parser(
             "M",
             " ^",
-            &vec![],
+            &[],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M,",
             " ^",
-            &vec![],
+            &[],
             Some(ErrorKind::UnexpectedToken(Comma)),
         );
 
         test_parser(
             "M10",
             "   ^",
-            &vec![],
+            &[],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10,",
             "    ^",
-            &vec![],
+            &[],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10x",
             "   ^",
-            &vec![],
+            &[],
             Some(ErrorKind::UnexpectedToken(Command(b'x'))),
         );
 
         test_parser(
             "M10,x",
             "    ^",
-            &vec![],
+            &[],
             Some(ErrorKind::UnexpectedToken(Command(b'x'))),
         );
     }
@@ -1591,21 +1591,21 @@ mod tests {
         test_parser(
             "M10-20,",
             "       ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20-30",
             "         ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20-30 x",
             "          ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedToken(Command(b'x'))),
         );
     }
@@ -1615,21 +1615,21 @@ mod tests {
         test_parser(
             "M10-20L10",
             "         ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M 10,10 L 20,20,30",
             "                  ^",
-            &vec![moveto(10.0, 10.0), lineto(20.0, 20.0)],
+            &[moveto(10.0, 10.0), lineto(20.0, 20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M 10,10 L 20,20,",
             "                ^",
-            &vec![moveto(10.0, 10.0), lineto(20.0, 20.0)],
+            &[moveto(10.0, 10.0), lineto(20.0, 20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
     }
@@ -1639,21 +1639,21 @@ mod tests {
         test_parser(
             "M10-20H",
             "       ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20H,",
             "       ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedToken(Comma)),
         );
 
         test_parser(
             "M10-20H30,",
             "          ^",
-            &vec![moveto(10.0, -20.0), lineto(30.0, -20.0)],
+            &[moveto(10.0, -20.0), lineto(30.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
     }
@@ -1663,21 +1663,21 @@ mod tests {
         test_parser(
             "M10-20v",
             "       ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20v,",
             "       ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedToken(Comma)),
         );
 
         test_parser(
             "M10-20v30,",
             "          ^",
-            &vec![moveto(10.0, -20.0), lineto(10.0, 10.0)],
+            &[moveto(10.0, -20.0), lineto(10.0, 10.0)],
             Some(ErrorKind::UnexpectedEof),
         );
     }
@@ -1687,90 +1687,90 @@ mod tests {
         test_parser(
             "M10-20C1",
             "        ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20C1,",
             "         ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20C1 2",
             "          ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20C1,2,",
             "           ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20C1 2 3",
             "            ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20C1,2,3",
             "            ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20C1,2,3,",
             "             ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20C1 2 3 4",
             "              ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20C1,2,3,4",
             "              ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20C1,2,3,4,",
             "               ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20C1 2 3 4 5",
             "                ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20C1,2,3,4,5",
             "                ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20C1,2,3,4,5,",
             "                 ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20C1,2,3,4,5,6,",
             "                   ^",
-            &vec![moveto(10.0, -20.0), curveto(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)],
+            &[moveto(10.0, -20.0), curveto(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)],
             Some(ErrorKind::UnexpectedEof),
         );
     }
@@ -1780,52 +1780,52 @@ mod tests {
         test_parser(
             "M10-20S1",
             "        ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20S1,",
             "         ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20S1 2",
             "          ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20S1,2,",
             "           ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20S1 2 3",
             "            ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20S1,2,3",
             "            ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20S1,2,3,",
             "             ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20S1,2,3,4,",
             "               ^",
-            &vec![
+            &[
                 moveto(10.0, -20.0),
                 curveto(10.0, -20.0, 1.0, 2.0, 3.0, 4.0),
             ],
@@ -1838,52 +1838,52 @@ mod tests {
         test_parser(
             "M10-20Q1",
             "        ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20Q1,",
             "         ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20Q1 2",
             "          ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20Q1,2,",
             "           ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10-20Q1 2 3",
             "            ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20Q1,2,3",
             "            ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20Q1,2,3,",
             "             ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10 20 Q30 40 50 60,",
             "                    ^",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(
                     70.0 / 3.0,
@@ -1903,20 +1903,20 @@ mod tests {
         test_parser(
             "M10-20T1",
             "        ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
         test_parser(
             "M10-20T1,",
             "         ^",
-            &vec![moveto(10.0, -20.0)],
+            &[moveto(10.0, -20.0)],
             Some(ErrorKind::UnexpectedEof),
         );
 
         test_parser(
             "M10 20 T30 40,",
             "              ^",
-            &vec![
+            &[
                 moveto(10.0, 20.0),
                 curveto(10.0, 20.0, 50.0 / 3.0, 80.0 / 3.0, 30.0, 40.0),
             ],
@@ -1930,7 +1930,7 @@ mod tests {
         test_parser(
             "M.. 1,0 0,100000",
             " ^", // FIXME: we have to report position of error in lexer errors to make this right
-            &vec![],
+            &[],
             Some(ErrorKind::LexError(LexError::UnexpectedByte(b'.'))),
         );
     }
