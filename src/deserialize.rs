@@ -74,6 +74,15 @@ pub enum Error {
 
     #[error("The file's second group doesn't have an ID")]
     SecondGroupWithoutId,
+
+    #[error("Shapes where found in a group that is only supposed to contain the background")]
+    ShapesInBackgroundGroup,
+
+    #[error("Shapes where found outside groups")]
+    ShapesOutsideGroups,
+
+    #[error("Shapes where found before the background")]
+    ShapesBeforeBackground,
 }
 
 /// A partial result of deserialization
@@ -310,6 +319,8 @@ enum DeState {
     /// Not an SVG file. This is a final state and contains the first tag that
     /// was found
     NotSvg(String),
+
+    Empty,
 }
 
 use DeState::*;
@@ -386,6 +397,8 @@ macro_rules! parse_shape_external {
     };
 }
 
+/// Used to quickly return a transition to the External state given a found
+/// error
 macro_rules! external {
     ($error: expr, $config: ident) => {
         External {
@@ -399,6 +412,9 @@ macro_rules! external {
 fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
     match (state, event) {
         (state@Initial, XmlEvent::StartDocument { .. }) => state,
+        (Initial, XmlEvent::EndDocument) => Empty,
+        (state, XmlEvent::StartDocument { .. }) => unreachable!("Start document in state: {state:?}"),
+
         (Initial, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "svg" => {
             if let Some(version) = get_single_attr(&attributes, "format", Some("pizarra")) {
                 if version.trim() == "2" {
@@ -433,6 +449,22 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
                 external!(Error::FirstGroupWihoutId, config)
             }
         }
+        (V2Started, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
+            let mut storage = Storage::new();
+            let background = config.background_color;
+            let errors = vec![Error::ShapesOutsideGroups];
+
+            parse_shape_external!(Path, attributes, config, storage, background, errors)
+        }
+        (V2Started, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
+            let mut storage = Storage::new();
+            let background = config.background_color;
+            let errors = vec![Error::ShapesOutsideGroups];
+
+            parse_shape_external!(Ellipse, attributes, config, storage, background, errors)
+        }
+        (V2Started, XmlEvent::StartElement { name, .. }) => external!(Error::UnsupportedTag(name.local_name), config),
+        (V2Started, XmlEvent::EndDocument) => Empty,
 
         (V2BackgroundOpened, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "rect" => {
             // The first and only shape in the background group is a rectangle
@@ -457,6 +489,26 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
                 external!(Error::NoBackgroundColor, config)
             }
         }
+        (V2BackgroundOpened, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
+            let mut storage = Storage::new();
+            let background = config.background_color;
+            let errors = vec![Error::ShapesInBackgroundGroup];
+
+            parse_shape_external!(Path, attributes, config, storage, background, errors)
+        }
+        (V2BackgroundOpened, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
+            let mut storage = Storage::new();
+            let background = config.background_color;
+            let errors = vec![Error::ShapesInBackgroundGroup];
+
+            parse_shape_external!(Ellipse, attributes, config, storage, background, errors)
+        }
+        (V2BackgroundOpened, XmlEvent::StartElement { name, .. }) => External {
+            background: config.background_color,
+            storage: Storage::new(),
+            errors: vec![Error::ShapesInBackgroundGroup, Error::UnsupportedTag(name.local_name)],
+        },
+        (V2BackgroundOpened, XmlEvent::EndDocument) => Empty,
 
         (V2BackgroundRead { background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "g" => {
             if let Some(id) = get_single_attr(&attributes, "id", None) {
@@ -472,15 +524,41 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
                 external!(Error::SecondGroupWithoutId, config)
             }
         }
+        (V2BackgroundRead { background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
+            let errors = vec![Error::ShapesOutsideGroups];
+            let mut storage = Storage::new();
+
+            parse_shape_external!(Path, attributes, config, storage, background, errors)
+        }
+        (V2BackgroundRead { background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
+            let errors = vec![Error::ShapesOutsideGroups];
+            let mut storage = Storage::new();
+
+            parse_shape_external!(Ellipse, attributes, config, storage, background, errors)
+        }
+        (V2BackgroundRead { background }, XmlEvent::StartElement { name, .. }) => External {
+            background,
+            storage: Storage::new(),
+            errors: vec![Error::ShapesOutsideGroups, Error::UnsupportedTag(name.local_name)],
+        },
+        (V2BackgroundRead { background }, XmlEvent::EndDocument) => Finished {
+            background,
+            storage: Storage::new(),
+        },
 
         (V2StorageStarted { mut storage, background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
             parse_shape_v2!(Path, attributes, config, storage, background)
         }
-
         (V2StorageStarted { mut storage, background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
             parse_shape_v2!(Ellipse, attributes, config, storage, background)
         }
-
+        (V2StorageStarted { storage, background }, XmlEvent::StartElement { name, .. }) => {
+            External {
+                background,
+                storage,
+                errors: vec![Error::UnsupportedTag(name.local_name)],
+            }
+        }
         (V2StorageStarted { storage, background }, XmlEvent::EndDocument) => Finished { storage, background },
 
         (V1Started, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "g" => {
@@ -494,6 +572,28 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
                 external!(Error::FirstGroupWihoutId, config)
             }
         }
+        (V1Started, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
+            let background = config.background_color;
+            let mut storage = Storage::new();
+            let errors = vec![Error::ShapesOutsideGroups];
+
+            parse_shape_external!(Path, attributes, config, storage, background, errors)
+        }
+        (V1Started, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
+            let background = config.background_color;
+            let mut storage = Storage::new();
+            let errors = vec![Error::ShapesOutsideGroups];
+
+            parse_shape_external!(Ellipse, attributes, config, storage, background, errors)
+        }
+        (V1Started, XmlEvent::StartElement { name, .. }) => {
+            External {
+                background: config.background_color,
+                storage: Storage::new(),
+                errors: vec![Error::ShapesOutsideGroups, Error::UnsupportedTag(name.local_name)],
+            }
+        }
+        (V1Started, XmlEvent::EndDocument) => Empty,
 
         (V1StorageOpened, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "rect" => {
             // The first rect in this state is the background, lets read it.
@@ -519,20 +619,47 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
                 external!(Error::NoBackgroundColor, config)
             }
         }
+        (V1StorageOpened, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
+            let mut storage = Storage::new();
+            let background = config.background_color;
+            let errors = vec![Error::ShapesBeforeBackground];
+
+            parse_shape_external!(Path, attributes, config, storage, background, errors)
+        }
+        (V1StorageOpened, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
+            let mut storage = Storage::new();
+            let background = config.background_color;
+            let errors = vec![Error::ShapesBeforeBackground];
+
+            parse_shape_external!(Ellipse, attributes, config, storage, background, errors)
+        }
+        (V1StorageOpened, XmlEvent::StartElement { name, .. }) => External {
+            background: config.background_color,
+            storage: Storage::new(),
+            errors: vec![Error::ShapesBeforeBackground, Error::UnsupportedTag(name.local_name)],
+        },
+        (V1StorageOpened, XmlEvent::EndDocument) => Empty,
 
         (V1Correct { mut storage, background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "path" => {
             parse_shape_v1!(Path, attributes, config, storage, background)
         }
-
         (V1Correct { mut storage, background }, XmlEvent::StartElement { name, attributes, .. }) if name.local_name == "ellipse" => {
             parse_shape_v1!(Ellipse, attributes, config, storage, background)
         }
-
+        (V1Correct { storage, background }, XmlEvent::StartElement { name, .. }) => External {
+            background,
+            storage,
+            errors: vec![Error::UnsupportedTag(name.local_name)],
+        },
         (V1Correct { storage, background }, XmlEvent::EndDocument) => Finished { storage, background },
 
         // Explicitly ignored events
         (state, XmlEvent::Whitespace(_)) => state,
         (state, XmlEvent::EndElement { .. }) => state,
+        (state, XmlEvent::ProcessingInstruction { .. }) => state,
+        (state, XmlEvent::CData(_)) => state,
+        (state, XmlEvent::Comment(_)) => state,
+        (state, XmlEvent::Characters(_)) => state,
 
         // Once an error has ocurred while reading a file it is tagged as
         // external and further deserializing happens here.
@@ -551,17 +678,12 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
 
             External { storage, errors, background }
         }
-        // Ignore characters in external state
-        (state@External { .. }, XmlEvent::Characters(_)) => state,
 
-        (_state, XmlEvent::StartElement { name,  .. }) => external!(Error::UnsupportedTag(name.local_name), config),
-
-        // All other states
-        (state, event) => {
-            dbg!(state);
-            dbg!(event);
-            todo!();
-        }
+        // Exotic states
+        (Finished { .. }, XmlEvent::StartElement { .. }) => unreachable!("Got start element but file was finished"),
+        (Finished { .. }, XmlEvent::EndDocument) => unreachable!("Why did we get more events after EndDocument?"),
+        (Empty, XmlEvent::StartElement{ .. }) => unreachable!("Element started after empty state"),
+        (Empty, XmlEvent::EndDocument) => unreachable!("Empty is a final state and got an EndDocument"),
     }
 }
 
@@ -769,11 +891,12 @@ mod tests {
         let partial = Pizarra::from_svg(made_external, Default::default()).unwrap_partial();
 
         assert_eq!(partial.read.storage().shape_count(), 1);
-        assert_eq!(partial.errors.len(), 3);
+        assert_eq!(partial.errors.len(), 4);
 
-        assert!(matches!(&partial.errors[0], Error::UnsupportedTag(x) if x == "namedview"));
-        assert!(matches!(&partial.errors[1], Error::UnsupportedTag(x) if x == "defs"));
-        assert!(matches!(dbg!(&partial.errors[2]), Error::UnsupportedTag(x) if x == "rect"));
+        assert!(matches!(dbg!(&partial.errors[0]), Error::ShapesOutsideGroups));
+        assert!(matches!(dbg!(&partial.errors[1]), Error::UnsupportedTag(x) if x == "namedview"));
+        assert!(matches!(dbg!(&partial.errors[2]), Error::UnsupportedTag(x) if x == "defs"));
+        assert!(matches!(dbg!(&partial.errors[3]), Error::UnsupportedTag(x) if x == "rect"));
     }
 
     #[test]
@@ -808,13 +931,14 @@ mod tests {
         let partial = Pizarra::from_svg(file, Default::default()).unwrap_partial();
 
         assert_eq!(partial.read.storage().shape_count(), 77);
-        assert_eq!(partial.errors.len(), 5);
+        assert_eq!(partial.errors.len(), 6);
 
-        assert!(matches!(dbg!(&partial.errors[0]), Error::UnsupportedTag(x) if x == "defs"));
-        assert!(matches!(dbg!(&partial.errors[1]), Error::UnsupportedTag(x) if x == "namedview"));
-        assert!(matches!(dbg!(&partial.errors[2]), Error::UnsupportedTag(x) if x == "rect"));
-        assert!(matches!(dbg!(&partial.errors[3]), Error::UnsupportedTag(x) if x == "circle"));
+        assert!(matches!(dbg!(&partial.errors[0]), Error::ShapesOutsideGroups));
+        assert!(matches!(dbg!(&partial.errors[1]), Error::UnsupportedTag(x) if x == "defs"));
+        assert!(matches!(dbg!(&partial.errors[2]), Error::UnsupportedTag(x) if x == "namedview"));
+        assert!(matches!(dbg!(&partial.errors[3]), Error::UnsupportedTag(x) if x == "rect"));
         assert!(matches!(dbg!(&partial.errors[4]), Error::UnsupportedTag(x) if x == "circle"));
+        assert!(matches!(dbg!(&partial.errors[5]), Error::UnsupportedTag(x) if x == "circle"));
     }
 
     #[test]
