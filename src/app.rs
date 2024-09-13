@@ -343,8 +343,8 @@ impl Pizarra {
             selected_color: config.stroke_color,
             erase_radius: config.erase_radius,
 
-            /// a vector from the top-left corner of the screen to the origin
-            /// of coordinates in the storage
+            // a vector from the top-left corner of the screen to the origin
+            // of coordinates in the storage
             transform: Transform::default_for_viewport(dimensions),
             dimensions,
 
