@@ -136,7 +136,7 @@ impl Iterator for Lexer<'_> {
 
         match self.current {
             // commas are separators
-            Some((pos, c)) if c == b',' => {
+            Some((pos, b',')) => {
                 self.advance();
                 Some((pos, Ok(Comma)))
             }
