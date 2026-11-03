@@ -1,12 +1,12 @@
-use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper};
-use crate::path_command::PathCommand::{self, *};
-use crate::point::{Vec2D, Unit, WorldUnit, ScreenUnit};
-use crate::transform::Transform;
-use crate::style::Style;
+use crate::draw_commands::{cancel_helper, circle_helper, DrawCommand};
 use crate::matrix::Matrix;
+use crate::path_command::PathCommand::{self, *};
+use crate::point::{ScreenUnit, Unit, Vec2D, WorldUnit};
 use crate::shape::stored::path::Path;
 use crate::shape::ShapeStored;
+use crate::shape::{ShapeBuilder, ShapeFinished};
+use crate::style::Style;
+use crate::transform::Transform;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -58,9 +58,15 @@ impl ShapeBuilder for Grid {
         }
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) {
+    }
 
-    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
+    fn handle_button_released(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        t: Transform,
+        snap: ScreenUnit,
+    ) -> ShapeFinished {
         let wpos = t.to_world_coordinates(pos);
 
         match self.state {
@@ -86,17 +92,17 @@ impl ShapeBuilder for Grid {
                 }
             }
 
-            State::DefineGrid { cell: (p1, p2), free } => {
-                let cell = (
-                    t.to_screen_coordinates(p1),
-                    t.to_screen_coordinates(p2),
-                );
+            State::DefineGrid {
+                cell: (p1, p2),
+                free,
+            } => {
+                let cell = (t.to_screen_coordinates(p1), t.to_screen_coordinates(p2));
                 let free = t.to_screen_coordinates(free);
                 let grid = grid_from_cell_and_point(cell, free);
 
                 let mut shapes: Vec<Box<dyn ShapeStored>> = Vec::with_capacity(
-                    grid.row_count() * (grid.col_count() - 1) +
-                    grid.col_count() * (grid.row_count() - 1)
+                    grid.row_count() * (grid.col_count() - 1)
+                        + grid.col_count() * (grid.row_count() - 1),
                 );
 
                 let rows = grid.rows();
@@ -133,9 +139,7 @@ impl ShapeBuilder for Grid {
 
     fn draw_commands(&self, t: Transform, snap: ScreenUnit) -> Vec<DrawCommand> {
         match self.state {
-            State::Initial(p) => vec![
-                circle_helper(t.to_screen_coordinates(p), snap),
-            ],
+            State::Initial(p) => vec![circle_helper(t.to_screen_coordinates(p), snap)],
 
             State::DefineCell(p1, p2) => {
                 let corners = corners_from_two_points(p1, p2, t);
@@ -145,17 +149,16 @@ impl ShapeBuilder for Grid {
                         commands: corners_to_path_commands(corners),
                         style: self.style,
                     },
-
                     cancel_helper(corners[1], p2, t, snap),
                     cancel_helper(corners[3], p2, t, snap),
                 ]
             }
 
-            State::DefineGrid { cell: (p1, p2), free } => {
-                let cell = (
-                    t.to_screen_coordinates(p1),
-                    t.to_screen_coordinates(p2),
-                );
+            State::DefineGrid {
+                cell: (p1, p2),
+                free,
+            } => {
+                let cell = (t.to_screen_coordinates(p1), t.to_screen_coordinates(p2));
                 let free = t.to_screen_coordinates(free);
                 let grid = grid_from_cell_and_point(cell, free);
 
@@ -189,7 +192,10 @@ impl ShapeBuilder for Grid {
 
 /// Given the two points that define a cell and a third point outside (or
 /// inside) it, return a matrix of all the points that make it and its width
-pub(crate) fn grid_from_cell_and_point<T: Unit>((p1, p2): (Vec2D<T>, Vec2D<T>), free: Vec2D<T>) -> Matrix<Vec2D<T>> {
+pub(crate) fn grid_from_cell_and_point<T: Unit>(
+    (p1, p2): (Vec2D<T>, Vec2D<T>),
+    free: Vec2D<T>,
+) -> Matrix<Vec2D<T>> {
     let diagonal = p2 - p1;
     let freep = free - p1;
 
@@ -204,8 +210,12 @@ pub(crate) fn grid_from_cell_and_point<T: Unit>((p1, p2): (Vec2D<T>, Vec2D<T>), 
     let num_y_cells = y_cells.abs().ceil() as usize;
 
     // lines that divide the space (the grid separators)
-    let x_separators: Vec<_> = (0..num_x_cells+1).map(|n| n as i32 * x_cells.signum() as i32).collect();
-    let y_separators: Vec<_> = (0..num_y_cells+1).map(|n| n as i32 * y_cells.signum() as i32).collect();
+    let x_separators: Vec<_> = (0..num_x_cells + 1)
+        .map(|n| n as i32 * x_cells.signum() as i32)
+        .collect();
+    let y_separators: Vec<_> = (0..num_y_cells + 1)
+        .map(|n| n as i32 * y_cells.signum() as i32)
+        .collect();
 
     let mut grid = Vec::with_capacity((num_x_cells + 1) * (num_y_cells + 1));
 
@@ -218,7 +228,11 @@ pub(crate) fn grid_from_cell_and_point<T: Unit>((p1, p2): (Vec2D<T>, Vec2D<T>), 
     Matrix::from_parts(grid, num_x_cells + 1)
 }
 
-fn corners_from_two_points(p1: Vec2D<WorldUnit>, p2: Vec2D<WorldUnit>, t: Transform) -> [Vec2D<WorldUnit>; 4] {
+fn corners_from_two_points(
+    p1: Vec2D<WorldUnit>,
+    p2: Vec2D<WorldUnit>,
+    t: Transform,
+) -> [Vec2D<WorldUnit>; 4] {
     let p1s = t.to_screen_coordinates(p1);
     let p2s = t.to_screen_coordinates(p2);
     let diagonal = p2s - p1s;
@@ -232,18 +246,20 @@ fn corners_from_two_points(p1: Vec2D<WorldUnit>, p2: Vec2D<WorldUnit>, t: Transf
 }
 
 fn corners_to_path_commands(corners: [Vec2D<WorldUnit>; 4]) -> Vec<PathCommand<WorldUnit>> {
-    corners.into_iter().cycle().take(5).enumerate().map(|(i, p)| if i == 0 {
-        MoveTo(p)
-    } else {
-        LineTo(p)
-    }).collect()
+    corners
+        .into_iter()
+        .cycle()
+        .take(5)
+        .enumerate()
+        .map(|(i, p)| if i == 0 { MoveTo(p) } else { LineTo(p) })
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use crate::point::{Vec2D, Unittless};
+    use crate::point::{Unittless, Vec2D};
 
     use super::*;
 
@@ -252,8 +268,8 @@ mod tests {
     #[test]
     fn can_make_a_grid() {
         // the points for a 2x2 grid
-        let a: Vec2D<Unittless> = (-2.9,1.66).into();
-        let b: Vec2D<Unittless> = (-1.44,0.82).into();
+        let a: Vec2D<Unittless> = (-2.9, 1.66).into();
+        let b: Vec2D<Unittless> = (-1.44, 0.82).into();
         let c: Vec2D<Unittless> = (-1.0, 0.0).into();
 
         let grid = grid_from_cell_and_point((a, b), c);
@@ -261,9 +277,15 @@ mod tests {
         let xs = [-2.9, -1.44, 0.020000000000000018];
         let ys = [1.66, 0.82, -0.020000000000000018];
 
-        assert_eq!(grid, Matrix::from_parts(ys.into_iter().flat_map(|y| {
-            xs.iter().map(move |&x| Vec2D::new_unitless(x, y))
-        }).collect(), 3));
+        assert_eq!(
+            grid,
+            Matrix::from_parts(
+                ys.into_iter()
+                    .flat_map(|y| { xs.iter().map(move |&x| Vec2D::new_unitless(x, y)) })
+                    .collect(),
+                3
+            )
+        );
     }
 
     #[test]
@@ -278,9 +300,15 @@ mod tests {
         let xs = [-3.0, -1.5, 0.0, 1.5];
         let ys = [3.0, 2.0, 1.0];
 
-        assert_eq!(grid, Matrix::from_parts(ys.into_iter().flat_map(|y| {
-            xs.iter().map(move |x| Vec2D::new_unitless(*x, y))
-        }).collect(), 4));
+        assert_eq!(
+            grid,
+            Matrix::from_parts(
+                ys.into_iter()
+                    .flat_map(|y| { xs.iter().map(move |x| Vec2D::new_unitless(*x, y)) })
+                    .collect(),
+                4
+            )
+        );
     }
 
     #[test]
@@ -301,23 +329,22 @@ mod tests {
         grid.handle_button_released(b, t, snap);
         grid.handle_mouse_moved(p, t, snap);
 
-        let mut expected_rows: Vec<_> = rows.iter().map(|&r| {
-            DrawCommand::Path {
+        let mut expected_rows: Vec<_> = rows
+            .iter()
+            .map(|&r| DrawCommand::Path {
                 commands: vec![
                     MoveTo(Vec2D::new_world(cols[0], r)),
                     LineTo(Vec2D::new_world(cols[3], r)),
                 ],
                 style: Default::default(),
-            }
-        }).collect();
-        expected_rows.extend(cols.iter().map(|&c| {
-            DrawCommand::Path {
-                commands: vec![
-                    MoveTo(Vec2D::new_world(c, rows[0])),
-                    LineTo(Vec2D::new_world(c, rows[2])),
-                ],
-                style: Default::default(),
-            }
+            })
+            .collect();
+        expected_rows.extend(cols.iter().map(|&c| DrawCommand::Path {
+            commands: vec![
+                MoveTo(Vec2D::new_world(c, rows[0])),
+                LineTo(Vec2D::new_world(c, rows[2])),
+            ],
+            style: Default::default(),
         }));
 
         assert_eq!(grid.draw_commands(t, snap), expected_rows);
@@ -337,70 +364,76 @@ mod tests {
 
         grid.handle_mouse_moved((50.0, 0.0).into(), t, SNAP);
 
-        assert_eq!(grid.draw_commands(t, SNAP), vec![
-            DrawCommand::Path {
-                commands: vec![
-                    MoveTo((0.0, 0.0).into()),
-                    LineTo((50.0, 0.0).into()),
-                    LineTo((50.0, 0.0).into()),
-                    LineTo((0.0, 0.0).into()),
-                    LineTo((0.0, 0.0).into()),
-                ],
-                style: Default::default(),
-            },
+        assert_eq!(
+            grid.draw_commands(t, SNAP),
+            vec![
+                DrawCommand::Path {
+                    commands: vec![
+                        MoveTo((0.0, 0.0).into()),
+                        LineTo((50.0, 0.0).into()),
+                        LineTo((50.0, 0.0).into()),
+                        LineTo((0.0, 0.0).into()),
+                        LineTo((0.0, 0.0).into()),
+                    ],
+                    style: Default::default(),
+                },
+                DrawCommand::ScreenCircle {
+                    center: (50.0, 0.0).into(),
+                    radius: SNAP,
+                    style: Style::red_circle_helper(),
+                },
+                DrawCommand::ScreenCircle {
+                    center: (0.0, 0.0).into(),
+                    radius: SNAP,
+                    style: Style::circle_helper(),
+                },
+            ]
+        );
 
-            DrawCommand::ScreenCircle {
-                center: (50.0, 0.0).into(),
-                radius: SNAP,
-                style: Style::red_circle_helper(),
-            },
-
-            DrawCommand::ScreenCircle {
-                center: (0.0, 0.0).into(),
-                radius: SNAP,
-                style: Style::circle_helper(),
-            },
-        ]);
-
-        Some(grid).map(|mut grid| {
-            match grid.handle_button_released((50.0, 0.0).into(), t, SNAP) {
-                ShapeFinished::Cancelled => {}
-                _ => panic!()
-            }
-        }).unwrap();
+        Some(grid)
+            .map(
+                |mut grid| match grid.handle_button_released((50.0, 0.0).into(), t, SNAP) {
+                    ShapeFinished::Cancelled => {}
+                    _ => panic!(),
+                },
+            )
+            .unwrap();
 
         grid.handle_mouse_moved((0.0, 50.0).into(), t, SNAP);
 
-        assert_eq!(grid.draw_commands(t, SNAP), vec![
-            DrawCommand::Path {
-                commands: vec![
-                    MoveTo((0.0, 0.0).into()),
-                    LineTo((0.0, 0.0).into()),
-                    LineTo((0.0, 50.0).into()),
-                    LineTo((0.0, 50.0).into()),
-                    LineTo((0.0, 0.0).into()),
-                ],
-                style: Default::default(),
-            },
+        assert_eq!(
+            grid.draw_commands(t, SNAP),
+            vec![
+                DrawCommand::Path {
+                    commands: vec![
+                        MoveTo((0.0, 0.0).into()),
+                        LineTo((0.0, 0.0).into()),
+                        LineTo((0.0, 50.0).into()),
+                        LineTo((0.0, 50.0).into()),
+                        LineTo((0.0, 0.0).into()),
+                    ],
+                    style: Default::default(),
+                },
+                DrawCommand::ScreenCircle {
+                    center: (0.0, 0.0).into(),
+                    radius: SNAP,
+                    style: Style::circle_helper(),
+                },
+                DrawCommand::ScreenCircle {
+                    center: (0.0, 50.0).into(),
+                    radius: SNAP,
+                    style: Style::red_circle_helper(),
+                },
+            ]
+        );
 
-            DrawCommand::ScreenCircle {
-                center: (0.0, 0.0).into(),
-                radius: SNAP,
-                style: Style::circle_helper(),
-            },
-
-            DrawCommand::ScreenCircle {
-                center: (0.0, 50.0).into(),
-                radius: SNAP,
-                style: Style::red_circle_helper(),
-            },
-        ]);
-
-        Some(grid).map(|mut grid| {
-            match grid.handle_button_released((50.0, 0.0).into(), t, SNAP) {
-                ShapeFinished::Cancelled => {}
-                _ => panic!()
-            }
-        }).unwrap();
+        Some(grid)
+            .map(
+                |mut grid| match grid.handle_button_released((50.0, 0.0).into(), t, SNAP) {
+                    ShapeFinished::Cancelled => {}
+                    _ => panic!(),
+                },
+            )
+            .unwrap();
     }
 }

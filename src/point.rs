@@ -1,19 +1,64 @@
-use std::fmt;
-use std::ops::{Mul, Add, Sub, Div, Neg, Rem};
 use std::f64::consts::FRAC_PI_2;
-use std::str::FromStr;
+use std::fmt;
 use std::num::ParseFloatError;
+use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
+use std::str::FromStr;
 
-use num_traits::{float::Float, sign::Signed, bounds::Bounded};
-use serde::{Serialize, Deserialize};
+use num_traits::{bounds::Bounded, float::Float, sign::Signed};
+use serde::{Deserialize, Serialize};
 
 use crate::geom::Angle;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Zero, One, Num, ToPrimitive, NumCast, Float, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    PartialOrd,
+    Zero,
+    One,
+    Num,
+    ToPrimitive,
+    NumCast,
+    Float,
+    Serialize,
+    Deserialize,
+)]
 pub struct ScreenUnit(f64);
-#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Zero, One, Num, ToPrimitive, NumCast, Float, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    PartialOrd,
+    Zero,
+    One,
+    Num,
+    ToPrimitive,
+    NumCast,
+    Float,
+    Serialize,
+    Deserialize,
+)]
 pub struct WorldUnit(f64);
-#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd, Zero, One, Num, ToPrimitive, NumCast, Float, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    PartialOrd,
+    Zero,
+    One,
+    Num,
+    ToPrimitive,
+    NumCast,
+    Float,
+    Serialize,
+    Deserialize,
+)]
 pub struct Unittless(f64);
 
 macro_rules! impls {
@@ -24,7 +69,7 @@ macro_rules! impls {
             }
 
             pub fn min(self, other: Self) -> Self {
-                Self (self.0.min(other.0))
+                Self(self.0.min(other.0))
             }
         }
 
@@ -38,7 +83,7 @@ macro_rules! impls {
             type Output = Self;
 
             fn add(self, other: Self) -> Self {
-                Self (self.0 + other.0)
+                Self(self.0 + other.0)
             }
         }
 
@@ -46,7 +91,7 @@ macro_rules! impls {
             type Output = Self;
 
             fn sub(self, other: Self) -> Self {
-                Self (self.0 - other.0)
+                Self(self.0 - other.0)
             }
         }
 
@@ -54,7 +99,7 @@ macro_rules! impls {
             type Output = Self;
 
             fn neg(self) -> Self {
-                Self (-self.0)
+                Self(-self.0)
             }
         }
 
@@ -62,7 +107,7 @@ macro_rules! impls {
             type Output = Self;
 
             fn div(self, other: f64) -> Self {
-                Self (self.0 / other)
+                Self(self.0 / other)
             }
         }
 
@@ -70,7 +115,7 @@ macro_rules! impls {
             type Output = Self;
 
             fn mul(self, other: Self) -> Self {
-                Self (self.0 * other.0)
+                Self(self.0 * other.0)
             }
         }
 
@@ -78,7 +123,7 @@ macro_rules! impls {
             type Output = Self;
 
             fn div(self, other: Self) -> Self {
-                Self (self.0 / other.0)
+                Self(self.0 / other.0)
             }
         }
 
@@ -86,29 +131,29 @@ macro_rules! impls {
             type Output = Self;
 
             fn rem(self, other: Self) -> Self {
-                Self (self.0 % other.0)
+                Self(self.0 % other.0)
             }
         }
 
         impl Signed for $x {
             fn abs(&self) -> Self {
                 if self.0.is_nan() {
-                    Self (f64::NAN)
+                    Self(f64::NAN)
                 } else {
-                    Self (self.0.abs())
+                    Self(self.0.abs())
                 }
             }
 
             fn abs_sub(&self, other: &Self) -> Self {
                 if self.0 <= other.0 {
-                    Self (0.0)
+                    Self(0.0)
                 } else {
-                    Self (self.0 - other.0)
+                    Self(self.0 - other.0)
                 }
             }
 
             fn signum(&self) -> Self {
-                Self (self.0.signum())
+                Self(self.0.signum())
             }
 
             fn is_positive(&self) -> bool {
@@ -122,11 +167,11 @@ macro_rules! impls {
 
         impl Bounded for $x {
             fn min_value() -> Self {
-                Self (f64::MAX)
+                Self(f64::MAX)
             }
 
             fn max_value() -> Self {
-                Self (f64::MIN)
+                Self(f64::MIN)
             }
         }
 
@@ -140,7 +185,7 @@ macro_rules! impls {
             type Err = ParseFloatError;
 
             fn from_str(s: &str) -> Result<$x, Self::Err> {
-                Ok(Self (s.parse()?))
+                Ok(Self(s.parse()?))
             }
         }
     };
@@ -150,7 +195,20 @@ impls!(ScreenUnit);
 impls!(WorldUnit);
 impls!(Unittless);
 
-pub trait Unit: Copy + Clone + From<f64> + PartialEq + PartialOrd + Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> + Div<f64, Output=Self> + Float + fmt::Display {
+pub trait Unit:
+    Copy
+    + Clone
+    + From<f64>
+    + PartialEq
+    + PartialOrd
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + Mul<Output = Self>
+    + Div<Output = Self>
+    + Div<f64, Output = Self>
+    + Float
+    + fmt::Display
+{
     fn val(self) -> f64;
 }
 
@@ -225,14 +283,13 @@ impl<T: Unit> Vec2D<T> {
     }
 
     pub fn distance(&self, other: Self) -> T {
-        ((self.x.val() - other.x.val()).powi(2) + (self.y.val() - other.y.val()).powi(2)).sqrt().into()
+        ((self.x.val() - other.x.val()).powi(2) + (self.y.val() - other.y.val()).powi(2))
+            .sqrt()
+            .into()
     }
 
     pub fn abs(self) -> Self {
-        Self::new(
-            self.x.val().abs().into(),
-            self.y.val().abs().into(),
-        )
+        Self::new(self.x.val().abs().into(), self.y.val().abs().into())
     }
 
     pub fn min(self, other: Self) -> Self {

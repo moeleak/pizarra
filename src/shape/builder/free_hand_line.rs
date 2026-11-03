@@ -1,18 +1,22 @@
-use crate::transform::Transform;
-use crate::path_command::{PathCommand, CubicBezierCurve};
-use crate::point::{Vec2D, Unit, WorldUnit, ScreenUnit};
-use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::geom::{thirds, bisector};
-use crate::shape::stored::path::Path;
 use crate::draw_commands::DrawCommand;
+use crate::geom::{bisector, thirds};
+use crate::path_command::{CubicBezierCurve, PathCommand};
+use crate::point::{ScreenUnit, Unit, Vec2D, WorldUnit};
+use crate::shape::stored::path::Path;
+use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::style::Style;
+use crate::transform::Transform;
 
 /// Given the last two commands of a path and a new point given as input compute
 /// what the last two commands of the path should be.
 ///
 /// This means that the command at the last position before the operation must
 /// be replaced with the one provided first by this function.
-fn add_smooth<T: Unit + 'static>(sec: Option<PathCommand<T>>, last: PathCommand<T>, pos: Vec2D<T>) -> (PathCommand<T>, Option<PathCommand<T>>) {
+fn add_smooth<T: Unit + 'static>(
+    sec: Option<PathCommand<T>>,
+    last: PathCommand<T>,
+    pos: Vec2D<T>,
+) -> (PathCommand<T>, Option<PathCommand<T>>) {
     match last {
         PathCommand::MoveTo(p) | PathCommand::LineTo(p) => {
             // Second point, put pt1 and pt2 at 1/3 and 2/3 of the
@@ -22,11 +26,10 @@ fn add_smooth<T: Unit + 'static>(sec: Option<PathCommand<T>>, last: PathCommand<
             } else {
                 let (pt1, pt2) = thirds(p, pos);
 
-                (last, Some(PathCommand::CurveTo(CubicBezierCurve {
-                    pt1,
-                    pt2,
-                    to: pos,
-                })))
+                (
+                    last,
+                    Some(PathCommand::CurveTo(CubicBezierCurve { pt1, pt2, to: pos })),
+                )
             }
         }
         PathCommand::CurveTo(c) => {
@@ -44,21 +47,24 @@ fn add_smooth<T: Unit + 'static>(sec: Option<PathCommand<T>>, last: PathCommand<
                 let prev = sec.unwrap().to();
                 let bis = bisector(prev, c.to, pos);
 
-                let fixed_prev_handle = bis * (c.to - prev).magnitude()/-3.0 + c.to;
-                let new_pt1 = bis * (pos - c.to).magnitude()/3.0 + c.to;
-                let new_pt2 = (pos - c.to) * 2.0/3.0 + c.to;
+                let fixed_prev_handle = bis * (c.to - prev).magnitude() / -3.0 + c.to;
+                let new_pt1 = bis * (pos - c.to).magnitude() / 3.0 + c.to;
+                let new_pt2 = (pos - c.to) * 2.0 / 3.0 + c.to;
 
                 if fixed_prev_handle.is_nan() || new_pt1.is_nan() || new_pt2.is_nan() {
                     (last, None)
                 } else {
-                    (PathCommand::CurveTo(CubicBezierCurve {
-                        pt2: fixed_prev_handle,
-                        ..c
-                    }), Some(PathCommand::CurveTo(CubicBezierCurve {
-                        pt1: new_pt1,
-                        pt2: new_pt2,
-                        to: pos,
-                    })))
+                    (
+                        PathCommand::CurveTo(CubicBezierCurve {
+                            pt2: fixed_prev_handle,
+                            ..c
+                        }),
+                        Some(PathCommand::CurveTo(CubicBezierCurve {
+                            pt1: new_pt1,
+                            pt2: new_pt2,
+                            to: pos,
+                        })),
+                    )
                 }
             }
         }
@@ -94,16 +100,14 @@ impl FreeHandLine {
 
         commands.push(PathCommand::MoveTo(initial));
 
-        FreeHandLine {
-            commands,
-            style,
-        }
+        FreeHandLine { commands, style }
     }
 
-    pub fn with_params(commands: Vec<PathCommand<WorldUnit>>, style: Style<WorldUnit>) -> FreeHandLine {
-        FreeHandLine {
-            commands, style,
-        }
+    pub fn with_params(
+        commands: Vec<PathCommand<WorldUnit>>,
+        style: Style<WorldUnit>,
+    ) -> FreeHandLine {
+        FreeHandLine { commands, style }
     }
 }
 
@@ -122,11 +126,18 @@ impl ShapeBuilder for FreeHandLine {
         add_point(&mut self.commands, t.to_world_coordinates(pos));
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) {
+    }
 
-    fn handle_button_released(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) -> ShapeFinished {
+    fn handle_button_released(
+        &mut self,
+        _pos: Vec2D<ScreenUnit>,
+        _t: Transform,
+        _snap: ScreenUnit,
+    ) -> ShapeFinished {
         ShapeFinished::Yes(vec![Box::new(Path::from_parts(
-            self.commands.clone(), self.style,
+            self.commands.clone(),
+            self.style,
         ))])
     }
 

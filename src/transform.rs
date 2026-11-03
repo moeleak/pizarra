@@ -1,5 +1,5 @@
-use crate::point::{Vec2D, Unit, WorldUnit, ScreenUnit, Unittless};
 use crate::geom::Angle;
+use crate::point::{ScreenUnit, Unit, Unittless, Vec2D, WorldUnit};
 
 fn multiply(t2: &Transform, t1: &Transform) -> Transform {
     Transform {
@@ -38,36 +38,29 @@ impl Default for Transform {
 impl Transform {
     fn new(xx: f64, xy: f64, x0: f64, yx: f64, yy: f64, y0: f64) -> Transform {
         Transform {
-            xx, yx, xy, yy, x0, y0,
+            xx,
+            yx,
+            xy,
+            yy,
+            x0,
+            y0,
         }
     }
 
     pub fn new_scale(factor: f64) -> Transform {
-        Transform::new(
-            factor,    0.0, 0.0,
-            0.0,    factor, 0.0,
-        )
+        Transform::new(factor, 0.0, 0.0, 0.0, factor, 0.0)
     }
 
     pub fn new_scale_x(factor: f64) -> Transform {
-        Transform::new(
-            factor, 0.0, 0.0,
-            0.0,    1.0, 0.0,
-        )
+        Transform::new(factor, 0.0, 0.0, 0.0, 1.0, 0.0)
     }
 
     pub fn new_scale_y(factor: f64) -> Transform {
-        Transform::new(
-            1.0,    0.0, 0.0,
-            0.0, factor, 0.0,
-        )
+        Transform::new(1.0, 0.0, 0.0, 0.0, factor, 0.0)
     }
 
     pub fn new_translate(vector: Vec2D<Unittless>) -> Transform {
-        Transform::new(
-            1.0, 0.0, vector.x.val(),
-            0.0, 1.0, vector.y.val(),
-        )
+        Transform::new(1.0, 0.0, vector.x.val(), 0.0, 1.0, vector.y.val())
     }
 
     /// Returns a rotating transform that rotates the world `angle` degrees
@@ -76,21 +69,24 @@ impl Transform {
         let theta = angle.radians();
 
         Transform::new(
-            theta.cos(), -theta.sin(), 0.0,
-            theta.sin(),  theta.cos(), 0.0,
+            theta.cos(),
+            -theta.sin(),
+            0.0,
+            theta.sin(),
+            theta.cos(),
+            0.0,
         )
     }
 
     pub fn new_shear_x(factor: f64) -> Transform {
-        Transform::new(
-            1.0, factor, 0.0,
-            0.0,    1.0, 0.0,
-        )
+        Transform::new(1.0, factor, 0.0, 0.0, 1.0, 0.0)
     }
 
     /// Computes a transform to go back to 1.0 zoom with the drawing's origin centered in the viewport.
     pub fn default_for_viewport(viewport_dimensions: Vec2D<ScreenUnit>) -> Transform {
-        Transform::new_translate(Vec2D::new_unitless(viewport_dimensions.x.val(), viewport_dimensions.y.val()) * 0.5)
+        Transform::new_translate(
+            Vec2D::new_unitless(viewport_dimensions.x.val(), viewport_dimensions.y.val()) * 0.5,
+        )
     }
 
     /// Take the current transformation matrix and scale it by this factor. New
@@ -139,7 +135,9 @@ impl Transform {
         let t = fixed * -1.0;
         let t1 = fixed;
 
-        self.translate(t.to_vec2d()).scale(factor).translate(t1.to_vec2d())
+        self.translate(t.to_vec2d())
+            .scale(factor)
+            .translate(t1.to_vec2d())
     }
 
     /// Objects on the screen rotate `angle`. Rotation happens around the
@@ -148,7 +146,9 @@ impl Transform {
         let t = fixed * -1.0;
         let t1 = fixed;
 
-        self.translate(t.to_vec2d()).rotate(angle).translate(t1.to_vec2d())
+        self.translate(t.to_vec2d())
+            .rotate(angle)
+            .translate(t1.to_vec2d())
     }
 
     /// Objects on the screen move by this delta in screen units
@@ -163,7 +163,7 @@ impl Transform {
 
     #[inline]
     fn transform_point(&self, px: f64, py: f64) -> (f64, f64) {
-        let Vec2D {x, y} = self.transform_distance(px, py);
+        let Vec2D { x, y } = self.transform_distance(px, py);
         (x.val() + self.x0, y.val() + self.y0)
     }
 
@@ -326,15 +326,24 @@ mod tests {
         let center = dimensions / 2.0;
         let mut t = Transform::default_for_viewport(dimensions);
 
-        assert_eq!(t.to_screen_coordinates(Vec2D::new_world(0.0, 0.0)), Vec2D::new_screen(100.0, 50.0));
+        assert_eq!(
+            t.to_screen_coordinates(Vec2D::new_world(0.0, 0.0)),
+            Vec2D::new_screen(100.0, 50.0)
+        );
 
         t = t.zoom(2.0, center);
 
-        assert_eq!(t.to_screen_coordinates(Vec2D::new_world(0.0, 0.0)), Vec2D::new_screen(100.0, 50.0));
+        assert_eq!(
+            t.to_screen_coordinates(Vec2D::new_world(0.0, 0.0)),
+            Vec2D::new_screen(100.0, 50.0)
+        );
 
         t = t.zoom(2.0, center);
 
-        assert_eq!(t.to_screen_coordinates(Vec2D::new_world(0.0, 0.0)), Vec2D::new_screen(100.0, 50.0));
+        assert_eq!(
+            t.to_screen_coordinates(Vec2D::new_world(0.0, 0.0)),
+            Vec2D::new_screen(100.0, 50.0)
+        );
     }
 
     #[test]
@@ -344,13 +353,19 @@ mod tests {
         let mut t = Transform::default_for_viewport(dimensions);
 
         // screen center is world origin
-        assert_eq!(t.to_world_coordinates(screen_center), Vec2D::new_world(0.0, 0.0));
+        assert_eq!(
+            t.to_world_coordinates(screen_center),
+            Vec2D::new_world(0.0, 0.0)
+        );
 
         // zoom in
         t = t.zoom(2.0, screen_center);
 
         // screen center is still world origin
-        assert_eq!(t.to_world_coordinates(screen_center), Vec2D::new_world(0.0, 0.0));
+        assert_eq!(
+            t.to_world_coordinates(screen_center),
+            Vec2D::new_world(0.0, 0.0)
+        );
 
         // move the screen by this vector
         t = t.r#move(Vec2D::new_screen(5.0, 0.0));

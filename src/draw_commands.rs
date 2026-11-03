@@ -1,7 +1,7 @@
-use crate::point::{Vec2D, WorldUnit, ScreenUnit};
 use crate::color::Color;
-use crate::path_command::PathCommand::{self, *};
 use crate::geom::Ellipse;
+use crate::path_command::PathCommand::{self, *};
+use crate::point::{ScreenUnit, Vec2D, WorldUnit};
 use crate::style::Style;
 use crate::transform::Transform;
 
@@ -77,8 +77,16 @@ fn red_circle_helper(center: Vec2D<ScreenUnit>, radius: ScreenUnit) -> DrawComma
     }
 }
 
-pub fn cancel_helper(prev: Vec2D<WorldUnit>, new: Vec2D<WorldUnit>, t: Transform, snap: ScreenUnit) -> DrawCommand {
-    if t.to_screen_coordinates(new).distance(t.to_screen_coordinates(prev)) < snap {
+pub fn cancel_helper(
+    prev: Vec2D<WorldUnit>,
+    new: Vec2D<WorldUnit>,
+    t: Transform,
+    snap: ScreenUnit,
+) -> DrawCommand {
+    if t.to_screen_coordinates(new)
+        .distance(t.to_screen_coordinates(prev))
+        < snap
+    {
         red_circle_helper(t.to_screen_coordinates(prev), snap)
     } else {
         circle_helper(t.to_screen_coordinates(prev), snap)
@@ -87,13 +95,11 @@ pub fn cancel_helper(prev: Vec2D<WorldUnit>, new: Vec2D<WorldUnit>, t: Transform
 
 pub fn path_helper(points: Vec<Vec2D<ScreenUnit>>) -> DrawCommand {
     DrawCommand::ScreenPath {
-        commands: points.into_iter().enumerate().map(|(i, p)| {
-            if i == 0 {
-                MoveTo(p)
-            } else {
-                LineTo(p)
-            }
-        }).collect(),
+        commands: points
+            .into_iter()
+            .enumerate()
+            .map(|(i, p)| if i == 0 { MoveTo(p) } else { LineTo(p) })
+            .collect(),
         style: Style::path_helper(),
     }
 }

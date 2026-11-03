@@ -1,6 +1,6 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
-use std::collections::HashMap;
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -17,7 +17,10 @@ lazy_static! {
         ("beige".into(), Color::from_int_rgb(0xF5, 0xF5, 0xDC)),
         ("bisque".into(), Color::from_int_rgb(0xFF, 0xE4, 0xC4)),
         ("black".into(), Color::from_int_rgb(0x00, 0x00, 0x00)),
-        ("blanchedalmond".into(), Color::from_int_rgb(0xFF, 0xEB, 0xCD)),
+        (
+            "blanchedalmond".into(),
+            Color::from_int_rgb(0xFF, 0xEB, 0xCD)
+        ),
         ("blue".into(), Color::from_int_rgb(0x00, 0x00, 0xFF)),
         ("blueviolet".into(), Color::from_int_rgb(0x8A, 0x2B, 0xE2)),
         ("brown".into(), Color::from_int_rgb(0xA5, 0x2A, 0x2A)),
@@ -26,28 +29,49 @@ lazy_static! {
         ("chartreuse".into(), Color::from_int_rgb(0x7F, 0xFF, 0x00)),
         ("chocolate".into(), Color::from_int_rgb(0xD2, 0x69, 0x1E)),
         ("coral".into(), Color::from_int_rgb(0xFF, 0x7F, 0x50)),
-        ("cornflowerblue".into(), Color::from_int_rgb(0x64, 0x95, 0xED)),
+        (
+            "cornflowerblue".into(),
+            Color::from_int_rgb(0x64, 0x95, 0xED)
+        ),
         ("cornsilk".into(), Color::from_int_rgb(0xFF, 0xF8, 0xDC)),
         ("crimson".into(), Color::from_int_rgb(0xDC, 0x14, 0x3C)),
         ("cyan".into(), Color::from_int_rgb(0x00, 0xFF, 0xFF)),
         ("darkblue".into(), Color::from_int_rgb(0x00, 0x00, 0x8B)),
         ("darkcyan".into(), Color::from_int_rgb(0x00, 0x8B, 0x8B)),
-        ("darkgoldenrod".into(), Color::from_int_rgb(0xB8, 0x86, 0x0B)),
+        (
+            "darkgoldenrod".into(),
+            Color::from_int_rgb(0xB8, 0x86, 0x0B)
+        ),
         ("darkgray".into(), Color::from_int_rgb(0xA9, 0xA9, 0xA9)),
         ("darkgreen".into(), Color::from_int_rgb(0x00, 0x64, 0x00)),
         ("darkgrey".into(), Color::from_int_rgb(0xA9, 0xA9, 0xA9)),
         ("darkkhaki".into(), Color::from_int_rgb(0xBD, 0xB7, 0x6B)),
         ("darkmagenta".into(), Color::from_int_rgb(0x8B, 0x00, 0x8B)),
-        ("darkolivegreen".into(), Color::from_int_rgb(0x55, 0x6B, 0x2F)),
+        (
+            "darkolivegreen".into(),
+            Color::from_int_rgb(0x55, 0x6B, 0x2F)
+        ),
         ("darkorange".into(), Color::from_int_rgb(0xFF, 0x8C, 0x00)),
         ("darkorchid".into(), Color::from_int_rgb(0x99, 0x32, 0xCC)),
         ("darkred".into(), Color::from_int_rgb(0x8B, 0x00, 0x00)),
         ("darksalmon".into(), Color::from_int_rgb(0xE9, 0x96, 0x7A)),
         ("darkseagreen".into(), Color::from_int_rgb(0x8F, 0xBC, 0x8F)),
-        ("darkslateblue".into(), Color::from_int_rgb(0x48, 0x3D, 0x8B)),
-        ("darkslategray".into(), Color::from_int_rgb(0x2F, 0x4F, 0x4F)),
-        ("darkslategrey".into(), Color::from_int_rgb(0x2F, 0x4F, 0x4F)),
-        ("darkturquoise".into(), Color::from_int_rgb(0x00, 0xCE, 0xD1)),
+        (
+            "darkslateblue".into(),
+            Color::from_int_rgb(0x48, 0x3D, 0x8B)
+        ),
+        (
+            "darkslategray".into(),
+            Color::from_int_rgb(0x2F, 0x4F, 0x4F)
+        ),
+        (
+            "darkslategrey".into(),
+            Color::from_int_rgb(0x2F, 0x4F, 0x4F)
+        ),
+        (
+            "darkturquoise".into(),
+            Color::from_int_rgb(0x00, 0xCE, 0xD1)
+        ),
         ("darkviolet".into(), Color::from_int_rgb(0x94, 0x00, 0xD3)),
         ("deeppink".into(), Color::from_int_rgb(0xFF, 0x14, 0x93)),
         ("deepskyblue".into(), Color::from_int_rgb(0x00, 0xBF, 0xFF)),
@@ -73,37 +97,73 @@ lazy_static! {
         ("ivory".into(), Color::from_int_rgb(0xFF, 0xFF, 0xF0)),
         ("khaki".into(), Color::from_int_rgb(0xF0, 0xE6, 0x8C)),
         ("lavender".into(), Color::from_int_rgb(0xE6, 0xE6, 0xFA)),
-        ("lavenderblush".into(), Color::from_int_rgb(0xFF, 0xF0, 0xF5)),
+        (
+            "lavenderblush".into(),
+            Color::from_int_rgb(0xFF, 0xF0, 0xF5)
+        ),
         ("lawngreen".into(), Color::from_int_rgb(0x7C, 0xFC, 0x00)),
         ("lemonchiffon".into(), Color::from_int_rgb(0xFF, 0xFA, 0xCD)),
         ("lightblue".into(), Color::from_int_rgb(0xAD, 0xD8, 0xE6)),
         ("lightcoral".into(), Color::from_int_rgb(0xF0, 0x80, 0x80)),
         ("lightcyan".into(), Color::from_int_rgb(0xE0, 0xFF, 0xFF)),
-        ("lightgoldenrodyellow".into(), Color::from_int_rgb(0xFA, 0xFA, 0xD2)),
+        (
+            "lightgoldenrodyellow".into(),
+            Color::from_int_rgb(0xFA, 0xFA, 0xD2)
+        ),
         ("lightgreen".into(), Color::from_int_rgb(0x90, 0xEE, 0x90)),
         ("lightgrey".into(), Color::from_int_rgb(0xD3, 0xD3, 0xD3)),
         ("lightpink".into(), Color::from_int_rgb(0xFF, 0xB6, 0xC1)),
         ("lightsalmon".into(), Color::from_int_rgb(0xFF, 0xA0, 0x7A)),
-        ("lightseagreen".into(), Color::from_int_rgb(0x20, 0xB2, 0xAA)),
+        (
+            "lightseagreen".into(),
+            Color::from_int_rgb(0x20, 0xB2, 0xAA)
+        ),
         ("lightskyblue".into(), Color::from_int_rgb(0x87, 0xCE, 0xFA)),
-        ("lightslategray".into(), Color::from_int_rgb(0x77, 0x88, 0x99)),
-        ("lightslategrey".into(), Color::from_int_rgb(0x77, 0x88, 0x99)),
-        ("lightsteelblue".into(), Color::from_int_rgb(0xB0, 0xC4, 0xDE)),
+        (
+            "lightslategray".into(),
+            Color::from_int_rgb(0x77, 0x88, 0x99)
+        ),
+        (
+            "lightslategrey".into(),
+            Color::from_int_rgb(0x77, 0x88, 0x99)
+        ),
+        (
+            "lightsteelblue".into(),
+            Color::from_int_rgb(0xB0, 0xC4, 0xDE)
+        ),
         ("lightyellow".into(), Color::from_int_rgb(0xFF, 0xFF, 0xE0)),
         ("lime".into(), Color::from_int_rgb(0x00, 0xFF, 0x00)),
         ("limegreen".into(), Color::from_int_rgb(0x32, 0xCD, 0x32)),
         ("linen".into(), Color::from_int_rgb(0xFA, 0xF0, 0xE6)),
         ("magenta".into(), Color::from_int_rgb(0xFF, 0x00, 0xFF)),
         ("maroon".into(), Color::from_int_rgb(0x80, 0x00, 0x00)),
-        ("mediumaquamarine".into(), Color::from_int_rgb(0x66, 0xCD, 0xAA)),
+        (
+            "mediumaquamarine".into(),
+            Color::from_int_rgb(0x66, 0xCD, 0xAA)
+        ),
         ("mediumblue".into(), Color::from_int_rgb(0x00, 0x00, 0xCD)),
         ("mediumorchid".into(), Color::from_int_rgb(0xBA, 0x55, 0xD3)),
         ("mediumpurple".into(), Color::from_int_rgb(0x93, 0x70, 0xDB)),
-        ("mediumseagreen".into(), Color::from_int_rgb(0x3C, 0xB3, 0x71)),
-        ("mediumslateblue".into(), Color::from_int_rgb(0x7B, 0x68, 0xEE)),
-        ("mediumspringgreen".into(), Color::from_int_rgb(0x00, 0xFA, 0x9A)),
-        ("mediumturquoise".into(), Color::from_int_rgb(0x48, 0xD1, 0xCC)),
-        ("mediumvioletred".into(), Color::from_int_rgb(0xC7, 0x15, 0x85)),
+        (
+            "mediumseagreen".into(),
+            Color::from_int_rgb(0x3C, 0xB3, 0x71)
+        ),
+        (
+            "mediumslateblue".into(),
+            Color::from_int_rgb(0x7B, 0x68, 0xEE)
+        ),
+        (
+            "mediumspringgreen".into(),
+            Color::from_int_rgb(0x00, 0xFA, 0x9A)
+        ),
+        (
+            "mediumturquoise".into(),
+            Color::from_int_rgb(0x48, 0xD1, 0xCC)
+        ),
+        (
+            "mediumvioletred".into(),
+            Color::from_int_rgb(0xC7, 0x15, 0x85)
+        ),
         ("midnightblue".into(), Color::from_int_rgb(0x19, 0x19, 0x70)),
         ("mintcream".into(), Color::from_int_rgb(0xF5, 0xFF, 0xFA)),
         ("mistyrose".into(), Color::from_int_rgb(0xFF, 0xE4, 0xE1)),
@@ -116,10 +176,19 @@ lazy_static! {
         ("orange".into(), Color::from_int_rgb(0xFF, 0xA5, 0x00)),
         ("orangered".into(), Color::from_int_rgb(0xFF, 0x45, 0x00)),
         ("orchid".into(), Color::from_int_rgb(0xDA, 0x70, 0xD6)),
-        ("palegoldenrod".into(), Color::from_int_rgb(0xEE, 0xE8, 0xAA)),
+        (
+            "palegoldenrod".into(),
+            Color::from_int_rgb(0xEE, 0xE8, 0xAA)
+        ),
         ("palegreen".into(), Color::from_int_rgb(0x98, 0xFB, 0x98)),
-        ("paleturquoise".into(), Color::from_int_rgb(0xAF, 0xEE, 0xEE)),
-        ("palevioletred".into(), Color::from_int_rgb(0xDB, 0x70, 0x93)),
+        (
+            "paleturquoise".into(),
+            Color::from_int_rgb(0xAF, 0xEE, 0xEE)
+        ),
+        (
+            "palevioletred".into(),
+            Color::from_int_rgb(0xDB, 0x70, 0x93)
+        ),
         ("papayawhip".into(), Color::from_int_rgb(0xFF, 0xEF, 0xD5)),
         ("peachpuff".into(), Color::from_int_rgb(0xFF, 0xDA, 0xB9)),
         ("peru".into(), Color::from_int_rgb(0xCD, 0x85, 0x3F)),
@@ -155,20 +224,28 @@ lazy_static! {
         ("whitesmoke".into(), Color::from_int_rgb(0xF5, 0xF5, 0xF5)),
         ("yellow".into(), Color::from_int_rgb(0xFF, 0xFF, 0x00)),
         ("yellowgreen".into(), Color::from_int_rgb(0x9A, 0xCD, 0x32)),
-    ].into_iter().collect();
-    static ref CSS_COLOR_REGEX: Regex = Regex::new(r"(?x)#
+    ]
+    .into_iter()
+    .collect();
+    static ref CSS_COLOR_REGEX: Regex = Regex::new(
+        r"(?x)#
         (?P<r>[\dA-Fa-f]{2})
         (?P<g>[\dA-Fa-f]{2})
         (?P<b>[\dA-Fa-f]{2})
         (?P<a>[\dA-Fa-f]{2})?
-    ").unwrap();
-    static ref PERCENTAGE_COLOR_REGEX: Regex = Regex::new(r"(?x)rgb\(
+    "
+    )
+    .unwrap();
+    static ref PERCENTAGE_COLOR_REGEX: Regex = Regex::new(
+        r"(?x)rgb\(
         (?P<r>\d+(\.\d+)?)%
         \s*,\s*
         (?P<g>\d+(\.\d+)?)%
         \s*,\s*
         (?P<b>\d+(\.\d+)?)%
-    \s*\)").unwrap();
+    \s*\)"
+    )
+    .unwrap();
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -181,17 +258,11 @@ pub struct Color {
 
 impl Color {
     pub fn with_alpha(self, alpha: u8) -> Color {
-        Color {
-            a: alpha,
-            ..self
-        }
+        Color { a: alpha, ..self }
     }
 
     pub fn half_transparent(self) -> Color {
-        Color {
-            a: 127,
-            ..self
-        }
+        Color { a: 127, ..self }
     }
 
     pub fn with_float_alpha(self, alpha: f64) -> Color {
@@ -223,17 +294,12 @@ impl Color {
 
     /// Creates a color from its integer rgb codes
     pub fn from_int_rgb(r: u8, g: u8, b: u8) -> Color {
-        Color {
-            r, g, b,
-            a: 255,
-        }
+        Color { r, g, b, a: 255 }
     }
 
     /// Creates a color from its integer rgba codes
     pub fn from_int_rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
-        Color {
-            r, g, b, a
-        }
+        Color { r, g, b, a }
     }
 
     /// Creates an opaque color from float rgb.
@@ -339,9 +405,18 @@ impl FromStr for Color {
             Ok(*c)
         } else if let Some(captures) = PERCENTAGE_COLOR_REGEX.captures(s) {
             Ok(Color::from_float_rgb(
-                captures["r"].parse::<f64>().map_err(|_| Error::CouldntUnderstandColor(s.into()))?/ 100.0,
-                captures["g"].parse::<f64>().map_err(|_| Error::CouldntUnderstandColor(s.into()))?/100.0,
-                captures["b"].parse::<f64>().map_err(|_| Error::CouldntUnderstandColor(s.into()))?/100.0,
+                captures["r"]
+                    .parse::<f64>()
+                    .map_err(|_| Error::CouldntUnderstandColor(s.into()))?
+                    / 100.0,
+                captures["g"]
+                    .parse::<f64>()
+                    .map_err(|_| Error::CouldntUnderstandColor(s.into()))?
+                    / 100.0,
+                captures["b"]
+                    .parse::<f64>()
+                    .map_err(|_| Error::CouldntUnderstandColor(s.into()))?
+                    / 100.0,
             ))
         } else if let Some(captures) = CSS_COLOR_REGEX.captures(s) {
             let c = Color::from_int_rgb(
@@ -391,18 +466,28 @@ mod tests {
     fn test_parse_css_color() {
         let color: Color = "#FF2030".parse().unwrap();
 
-        assert_eq!(color, Color::from_float_rgb(1.0, 0.12549019607843137, 0.18823529411764706));
+        assert_eq!(
+            color,
+            Color::from_float_rgb(1.0, 0.12549019607843137, 0.18823529411764706)
+        );
 
         let color: Color = "#FF2003".parse().unwrap();
 
-        assert_eq!(color, Color::from_float_rgb(1.0, 0.12549019607843137, 0.011764705882352941));
+        assert_eq!(
+            color,
+            Color::from_float_rgb(1.0, 0.12549019607843137, 0.011764705882352941)
+        );
     }
 
     #[test]
     fn parse_css_color_with_alpha() {
         let color: Color = "#FF203080".parse().unwrap();
 
-        assert_eq!(color, Color::from_float_rgb(1.0, 0.12549019607843137, 0.18823529411764706).with_float_alpha(0.5019607843137255));
+        assert_eq!(
+            color,
+            Color::from_float_rgb(1.0, 0.12549019607843137, 0.18823529411764706)
+                .with_float_alpha(0.5019607843137255)
+        );
         assert_eq!(color, Color::from_int_rgba(0xff, 0x20, 0x30, 0x80));
     }
 

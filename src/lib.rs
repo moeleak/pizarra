@@ -44,22 +44,22 @@ la fecha en hora local en que se hizo.
 #[macro_use]
 extern crate num_derive;
 
-pub mod color;
-pub mod shape;
-pub mod storage;
-pub mod app;
-pub mod draw_commands;
 pub mod action;
-pub mod point;
-pub mod transform;
+pub mod app;
+pub mod color;
+pub mod config;
 pub mod deserialize;
-pub mod serialize;
+pub mod draw_commands;
 pub mod geom;
 pub mod key;
-pub mod config;
-pub mod ui;
-pub mod path_command;
-pub mod style;
 pub(crate) mod matrix;
+pub mod path_command;
+pub mod point;
+pub mod serialize;
+pub mod shape;
+pub mod storage;
+pub mod style;
+pub mod transform;
+pub mod ui;
 
 pub mod prelude;

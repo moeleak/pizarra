@@ -1,7 +1,5 @@
-use crate::point::{Vec2D, Unit};
-use crate::geom::{
-    segment_intersects_circle, bezier_intersects_circle,
-};
+use crate::geom::{bezier_intersects_circle, segment_intersects_circle};
+use crate::point::{Unit, Vec2D};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct CubicBezierCurve<T: Unit> {
@@ -51,16 +49,19 @@ impl<T: Unit + 'static> PathCommand<T> {
                 p.distance(center) < radius || segment_intersects_circle(prev, p, center, radius)
             }
             PathCommand::CurveTo(p) => {
-                p.to.distance(center) < radius || bezier_intersects_circle(prev, p.pt1, p.pt2, p.to, center, radius)
+                p.to.distance(center) < radius
+                    || bezier_intersects_circle(prev, p.pt1, p.pt2, p.to, center, radius)
             }
         }
     }
 
-    pub fn points(&self) -> Box<dyn Iterator<Item=Vec2D<T>>> {
+    pub fn points(&self) -> Box<dyn Iterator<Item = Vec2D<T>>> {
         match *self {
             PathCommand::MoveTo(p) => Box::new(IntoIterator::into_iter([p])),
             PathCommand::LineTo(p) => Box::new(IntoIterator::into_iter([p])),
-            PathCommand::CurveTo(CubicBezierCurve { pt1, pt2, to }) => Box::new(IntoIterator::into_iter([pt1, pt2, to])),
+            PathCommand::CurveTo(CubicBezierCurve { pt1, pt2, to }) => {
+                Box::new(IntoIterator::into_iter([pt1, pt2, to]))
+            }
         }
     }
 }

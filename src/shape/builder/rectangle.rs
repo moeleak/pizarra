@@ -1,6 +1,6 @@
-use crate::draw_commands::{DrawCommand, cancel_helper};
+use crate::draw_commands::{cancel_helper, DrawCommand};
 use crate::path_command::PathCommand::{self, *};
-use crate::point::{Vec2D, WorldUnit, ScreenUnit};
+use crate::point::{ScreenUnit, Vec2D, WorldUnit};
 use crate::shape::{stored::path::Path, ShapeBuilder, ShapeFinished};
 use crate::style::Style;
 use crate::transform::Transform;
@@ -12,7 +12,10 @@ pub struct AxisAlignedRectangleBuilder {
 }
 
 impl AxisAlignedRectangleBuilder {
-    pub fn start(initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> AxisAlignedRectangleBuilder {
+    pub fn start(
+        initial: Vec2D<WorldUnit>,
+        style: Style<WorldUnit>,
+    ) -> AxisAlignedRectangleBuilder {
         AxisAlignedRectangleBuilder {
             corners: [initial; 4],
             style,
@@ -47,9 +50,15 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
         ];
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) {
+    }
 
-    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
+    fn handle_button_released(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        t: Transform,
+        snap: ScreenUnit,
+    ) -> ShapeFinished {
         self.handle_mouse_moved(pos, t, snap);
 
         let first_point = self.corners[0];
@@ -59,7 +68,8 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
         }
 
         ShapeFinished::Yes(vec![Box::new(Path::from_parts(
-            draw_commands(self.all_four_corners()), self.style,
+            draw_commands(self.all_four_corners()),
+            self.style,
         ))])
     }
 
@@ -71,7 +81,6 @@ impl ShapeBuilder for AxisAlignedRectangleBuilder {
                 commands: draw_commands(corners),
                 style: self.style,
             },
-
             cancel_helper(corners[0], corners[2], t, snap),
         ]
     }
@@ -91,35 +100,42 @@ mod tests {
         let b: Vec2D<ScreenUnit> = (10.0, 10.0).into();
         let t: Transform = Default::default();
 
-        let mut rect = AxisAlignedRectangleBuilder::start(t.to_world_coordinates(a), Default::default());
+        let mut rect =
+            AxisAlignedRectangleBuilder::start(t.to_world_coordinates(a), Default::default());
 
         rect.handle_mouse_moved(b, t, SNAP);
 
         // while being drawn
-        assert_eq!(rect.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            style: Default::default(),
-            commands: vec![
-                MoveTo(Vec2D::new_world(4.0, 5.0)),
-                LineTo(Vec2D::new_world(10.0, 5.0)),
-                LineTo(Vec2D::new_world(10.0, 10.0)),
-                LineTo(Vec2D::new_world(4.0, 10.0)),
-                LineTo(Vec2D::new_world(4.0, 5.0)),
-            ],
-        });
+        assert_eq!(
+            rect.draw_commands(t, SNAP)[0],
+            DrawCommand::Path {
+                style: Default::default(),
+                commands: vec![
+                    MoveTo(Vec2D::new_world(4.0, 5.0)),
+                    LineTo(Vec2D::new_world(10.0, 5.0)),
+                    LineTo(Vec2D::new_world(10.0, 10.0)),
+                    LineTo(Vec2D::new_world(4.0, 10.0)),
+                    LineTo(Vec2D::new_world(4.0, 5.0)),
+                ],
+            }
+        );
 
         // while finished
         match rect.handle_button_released(b, t, SNAP) {
             ShapeFinished::Yes(s) => {
-                assert_eq!(s[0].draw_commands(), DrawCommand::Path {
-                    style: Default::default(),
-                    commands: vec![
-                        MoveTo(Vec2D::new_world(4.0, 5.0)),
-                        LineTo(Vec2D::new_world(10.0, 5.0)),
-                        LineTo(Vec2D::new_world(10.0, 10.0)),
-                        LineTo(Vec2D::new_world(4.0, 10.0)),
-                        LineTo(Vec2D::new_world(4.0, 5.0)),
-                    ],
-                });
+                assert_eq!(
+                    s[0].draw_commands(),
+                    DrawCommand::Path {
+                        style: Default::default(),
+                        commands: vec![
+                            MoveTo(Vec2D::new_world(4.0, 5.0)),
+                            LineTo(Vec2D::new_world(10.0, 5.0)),
+                            LineTo(Vec2D::new_world(10.0, 10.0)),
+                            LineTo(Vec2D::new_world(4.0, 10.0)),
+                            LineTo(Vec2D::new_world(4.0, 5.0)),
+                        ],
+                    }
+                );
             }
             _ => panic!(),
         }
@@ -132,22 +148,25 @@ mod tests {
 
         rect.handle_mouse_moved((0.0, 50.0).into(), t, SNAP);
 
-        assert_eq!(rect.draw_commands(t, SNAP), vec![
-            DrawCommand::Path {
-                commands: vec![
-                    MoveTo((0.0, 0.0).into()),
-                    LineTo((0.0, 0.0).into()),
-                    LineTo((0.0, 50.0).into()),
-                    LineTo((0.0, 50.0).into()),
-                    LineTo((0.0, 0.0).into()),
-                ],
-                style: Default::default(),
-            },
-            DrawCommand::ScreenCircle {
-                center: (0.0, 0.0).into(),
-                radius: SNAP,
-                style: Style::circle_helper(),
-            },
-        ]);
+        assert_eq!(
+            rect.draw_commands(t, SNAP),
+            vec![
+                DrawCommand::Path {
+                    commands: vec![
+                        MoveTo((0.0, 0.0).into()),
+                        LineTo((0.0, 0.0).into()),
+                        LineTo((0.0, 50.0).into()),
+                        LineTo((0.0, 50.0).into()),
+                        LineTo((0.0, 0.0).into()),
+                    ],
+                    style: Default::default(),
+                },
+                DrawCommand::ScreenCircle {
+                    center: (0.0, 0.0).into(),
+                    radius: SNAP,
+                    style: Style::circle_helper(),
+                },
+            ]
+        );
     }
 }

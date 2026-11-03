@@ -1,13 +1,13 @@
-use crate::shape::{ShapeBuilder, ShapeFinished};
-use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper};
+use crate::draw_commands::{cancel_helper, circle_helper, DrawCommand};
+use crate::geom::{project, rombus_to_rectangle};
 use crate::path_command::PathCommand::*;
-use crate::point::{Vec2D, WorldUnit, ScreenUnit};
-use crate::transform::Transform;
-use crate::style::Style;
-use crate::geom::{rombus_to_rectangle, project};
+use crate::point::{ScreenUnit, Vec2D, WorldUnit};
 use crate::shape::builder::grid::grid_from_cell_and_point;
-use crate::shape::ShapeStored;
 use crate::shape::stored::path::Path;
+use crate::shape::ShapeStored;
+use crate::shape::{ShapeBuilder, ShapeFinished};
+use crate::style::Style;
+use crate::transform::Transform;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -15,7 +15,7 @@ enum State {
 
     OneDimension {
         start: Vec2D<WorldUnit>,
-        free: Vec2D<WorldUnit>
+        free: Vec2D<WorldUnit>,
     },
 
     TwoDimension {
@@ -69,29 +69,54 @@ impl ShapeBuilder for FreeGrid {
             }
 
             State::TwoDimension { start, p1, .. } => {
-                self.state = State::TwoDimension { start, p1, free: wpos };
+                self.state = State::TwoDimension {
+                    start,
+                    p1,
+                    free: wpos,
+                };
             }
 
-            State::DefineGrid { start, p1, p2, t, .. } => {
-                self.state = State::DefineGrid { start, p1, p2, t, free: wpos };
+            State::DefineGrid {
+                start, p1, p2, t, ..
+            } => {
+                self.state = State::DefineGrid {
+                    start,
+                    p1,
+                    p2,
+                    t,
+                    free: wpos,
+                };
             }
         }
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) { }
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) {
+    }
 
-    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
+    fn handle_button_released(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        t: Transform,
+        snap: ScreenUnit,
+    ) -> ShapeFinished {
         let wpos = t.to_world_coordinates(pos);
 
         match self.state {
             State::Initial(p) => {
-                self.state = State::OneDimension { start: p, free: wpos };
+                self.state = State::OneDimension {
+                    start: p,
+                    free: wpos,
+                };
 
                 ShapeFinished::No
             }
 
             State::OneDimension { start, free } => {
-                self.state = State::TwoDimension { start, p1: free, free: wpos };
+                self.state = State::TwoDimension {
+                    start,
+                    p1: free,
+                    free: wpos,
+                };
 
                 if t.to_screen_coordinates(start).distance(pos) < snap {
                     ShapeFinished::Cancelled
@@ -104,7 +129,9 @@ impl ShapeBuilder for FreeGrid {
                 let p2 = free;
 
                 self.state = State::DefineGrid {
-                    start, p1, p2,
+                    start,
+                    p1,
+                    p2,
                     t: rombus_to_rectangle(start.to_vec2d(), p1.to_vec2d(), p2.to_vec2d()),
                     free: wpos,
                 };
@@ -114,24 +141,27 @@ impl ShapeBuilder for FreeGrid {
                 let proj = t.to_screen_coordinates(project(free, [start, p1]));
                 let proj2 = t.to_screen_coordinates(project(start, [p1, free]));
 
-                if sstart.distance(pos) < snap || sp1.distance(pos) < snap || proj.distance(pos) < snap || proj2.distance(sstart) < snap {
+                if sstart.distance(pos) < snap
+                    || sp1.distance(pos) < snap
+                    || proj.distance(pos) < snap
+                    || proj2.distance(sstart) < snap
+                {
                     ShapeFinished::Cancelled
                 } else {
                     ShapeFinished::No
                 }
             }
 
-            State::DefineGrid { start, p2, free, t, ..} => {
-                let cell = (
-                    t.to_screen_coordinates(start),
-                    t.to_screen_coordinates(p2),
-                );
+            State::DefineGrid {
+                start, p2, free, t, ..
+            } => {
+                let cell = (t.to_screen_coordinates(start), t.to_screen_coordinates(p2));
                 let free = t.to_screen_coordinates(free);
                 let grid = grid_from_cell_and_point(cell, free);
 
                 let mut shapes: Vec<Box<dyn ShapeStored>> = Vec::with_capacity(
-                    grid.row_count() * (grid.col_count() - 1) +
-                    grid.col_count() * (grid.row_count() - 1)
+                    grid.row_count() * (grid.col_count() - 1)
+                        + grid.col_count() * (grid.row_count() - 1),
                 );
 
                 let rows = grid.rows();
@@ -168,16 +198,11 @@ impl ShapeBuilder for FreeGrid {
 
     fn draw_commands(&self, t: Transform, snap: ScreenUnit) -> Vec<DrawCommand> {
         match self.state {
-            State::Initial(p) => vec![
-                circle_helper(t.to_screen_coordinates(p), snap),
-            ],
+            State::Initial(p) => vec![circle_helper(t.to_screen_coordinates(p), snap)],
 
             State::OneDimension { start, free } => vec![
                 DrawCommand::Path {
-                    commands: vec![
-                        MoveTo(start),
-                        LineTo(free),
-                    ],
+                    commands: vec![MoveTo(start), LineTo(free)],
                     style: self.style,
                 },
                 cancel_helper(start, free, t, snap),
@@ -194,7 +219,6 @@ impl ShapeBuilder for FreeGrid {
                     ],
                     style: self.style,
                 },
-
                 cancel_helper(start, free, t, snap),
                 cancel_helper(p1, free, t, snap),
                 // the projection of the mouse on the line defined by the first
@@ -205,11 +229,14 @@ impl ShapeBuilder for FreeGrid {
                 cancel_helper(project(start, [p1, free]), start, t, snap),
             ],
 
-            State::DefineGrid { start, p1: _, p2, t, free } => {
-                let cell = (
-                    t.apply(start.to_vec2d()),
-                    t.apply(p2.to_vec2d()),
-                );
+            State::DefineGrid {
+                start,
+                p1: _,
+                p2,
+                t,
+                free,
+            } => {
+                let cell = (t.apply(start.to_vec2d()), t.apply(p2.to_vec2d()));
                 let free = t.apply(free.to_vec2d());
                 let inverse = t.invert();
                 let grid = grid_from_cell_and_point(cell, free);
@@ -243,7 +270,7 @@ impl ShapeBuilder for FreeGrid {
 }
 
 #[cfg(test)]
-mod tests  {
+mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -258,13 +285,14 @@ mod tests  {
         grid.handle_mouse_moved((1.0, 1.0).into(), t, SNAP);
 
         // a circle goes around the cursor
-        assert_eq!(grid.draw_commands(t, SNAP), vec![
-            DrawCommand::ScreenCircle {
+        assert_eq!(
+            grid.draw_commands(t, SNAP),
+            vec![DrawCommand::ScreenCircle {
                 center: Vec2D::new_screen(1.0, 1.0),
                 radius: 10.0.into(),
                 style: Style::circle_helper(),
-            }
-        ]);
+            }]
+        );
 
         // start the grid at the origin
         grid.handle_mouse_moved((0.0, 0.0).into(), t, SNAP);
@@ -273,30 +301,31 @@ mod tests  {
         // vove a little bit and observe a circle around the first point
         grid.handle_mouse_moved((1.0, 1.0).into(), t, SNAP);
 
-        assert_eq!(grid.draw_commands(t, SNAP), vec![
-            DrawCommand::Path {
-                commands: vec![
-                    MoveTo((0.0, 0.0).into()),
-                    LineTo((1.0, 1.0).into()),
-                ],
-                style: Default::default(),
-            },
+        assert_eq!(
+            grid.draw_commands(t, SNAP),
+            vec![
+                DrawCommand::Path {
+                    commands: vec![MoveTo((0.0, 0.0).into()), LineTo((1.0, 1.0).into()),],
+                    style: Default::default(),
+                },
+                DrawCommand::ScreenCircle {
+                    center: Vec2D::new_screen(0.0, 0.0),
+                    radius: SNAP,
+                    style: Style::red_circle_helper(),
+                },
+            ]
+        );
 
-            DrawCommand::ScreenCircle {
-                center: Vec2D::new_screen(0.0, 0.0),
-                radius: SNAP,
-                style: Style::red_circle_helper(),
-            },
-        ]);
-
-        Some(grid).map(|mut grid| {
-            // releasing here would cause a cancel
-            grid.handle_button_pressed((1.0, 1.0).into(), t, SNAP);
-            match grid.handle_button_released((1.0, 1.0).into(), t, SNAP) {
-                ShapeFinished::Cancelled => {}
-                _ => panic!(),
-            }
-        }).unwrap();
+        Some(grid)
+            .map(|mut grid| {
+                // releasing here would cause a cancel
+                grid.handle_button_pressed((1.0, 1.0).into(), t, SNAP);
+                match grid.handle_button_released((1.0, 1.0).into(), t, SNAP) {
+                    ShapeFinished::Cancelled => {}
+                    _ => panic!(),
+                }
+            })
+            .unwrap();
 
         // move to the second point and use it to define the grid
         grid.handle_mouse_moved((20.0, 0.0).into(), t, SNAP);
@@ -307,104 +336,106 @@ mod tests  {
         // shape
         grid.handle_mouse_moved((1.0, 1.0).into(), t, SNAP);
 
-        assert_eq!(grid.draw_commands(t, SNAP), vec![
-            DrawCommand::Path {
-                commands: vec![
-                    MoveTo((0.0, 0.0).into()),
-                    LineTo((20.0, 0.0).into()),
-                    LineTo((1.0, 1.0).into()),
-                    LineTo((-19.0, 1.0).into()),
-                    LineTo((0.0, 0.0).into()),
-                ],
-                style: Default::default(),
-            },
-
-            // first circle red
-            DrawCommand::ScreenCircle {
-                center: (0.0, 0.0).into(),
-                radius: SNAP,
-                style: Style::red_circle_helper(),
-            },
-
-            // second circle gray
-            DrawCommand::ScreenCircle {
-                center: (20.0, 0.0).into(),
-                radius: SNAP,
-                style: Style::circle_helper(),
-            },
-
-            // third circle
-            DrawCommand::ScreenCircle {
-                center: (1.0, 0.0).into(),
-                radius: SNAP,
-                style: Style::red_circle_helper(),
-            },
-
-            // fourth circle
-            DrawCommand::ScreenCircle {
-                center: (0.0552486187845318, 1.0497237569060773).into(),
-                radius: SNAP,
-                style: Style::red_circle_helper(),
-            },
-        ]);
+        assert_eq!(
+            grid.draw_commands(t, SNAP),
+            vec![
+                DrawCommand::Path {
+                    commands: vec![
+                        MoveTo((0.0, 0.0).into()),
+                        LineTo((20.0, 0.0).into()),
+                        LineTo((1.0, 1.0).into()),
+                        LineTo((-19.0, 1.0).into()),
+                        LineTo((0.0, 0.0).into()),
+                    ],
+                    style: Default::default(),
+                },
+                // first circle red
+                DrawCommand::ScreenCircle {
+                    center: (0.0, 0.0).into(),
+                    radius: SNAP,
+                    style: Style::red_circle_helper(),
+                },
+                // second circle gray
+                DrawCommand::ScreenCircle {
+                    center: (20.0, 0.0).into(),
+                    radius: SNAP,
+                    style: Style::circle_helper(),
+                },
+                // third circle
+                DrawCommand::ScreenCircle {
+                    center: (1.0, 0.0).into(),
+                    radius: SNAP,
+                    style: Style::red_circle_helper(),
+                },
+                // fourth circle
+                DrawCommand::ScreenCircle {
+                    center: (0.0552486187845318, 1.0497237569060773).into(),
+                    radius: SNAP,
+                    style: Style::red_circle_helper(),
+                },
+            ]
+        );
 
         // releasing here would cancel
-        Some(grid).map(|mut grid| {
-            grid.handle_button_pressed((1.0, 1.0).into(), t, SNAP);
-            match grid.handle_button_released((1.0, 1.0).into(), t, SNAP) {
-                ShapeFinished::Cancelled => {}
-                _ => panic!()
-            }
-        }).unwrap();
+        Some(grid)
+            .map(|mut grid| {
+                grid.handle_button_pressed((1.0, 1.0).into(), t, SNAP);
+                match grid.handle_button_released((1.0, 1.0).into(), t, SNAP) {
+                    ShapeFinished::Cancelled => {}
+                    _ => panic!(),
+                }
+            })
+            .unwrap();
 
         grid.handle_mouse_moved((21.0, 1.0).into(), t, SNAP);
 
-        assert_eq!(grid.draw_commands(t, SNAP), vec![
-            DrawCommand::Path {
-                commands: vec![
-                    MoveTo((0.0, 0.0).into()),
-                    LineTo((20.0, 0.0).into()),
-                    LineTo((21.0, 1.0).into()),
-                    LineTo((1.0, 1.0).into()),
-                    LineTo((0.0, 0.0).into()),
-                ],
-                style: Default::default(),
-            },
-
-            // first circle red
-            DrawCommand::ScreenCircle {
-                center: (0.0, 0.0).into(),
-                radius: SNAP,
-                style: Style::circle_helper(),
-            },
-
-            // second circle gray
-            DrawCommand::ScreenCircle {
-                center: (20.0, 0.0).into(),
-                radius: SNAP,
-                style: Style::red_circle_helper(),
-            },
-
-            DrawCommand::ScreenCircle {
-                center: (21.0, 0.0).into(),
-                radius: SNAP,
-                style: Style::red_circle_helper(),
-            },
-
-            DrawCommand::ScreenCircle {
-                center: (10.0, -10.0).into(),
-                radius: SNAP,
-                style: Style::circle_helper(),
-            },
-        ]);
+        assert_eq!(
+            grid.draw_commands(t, SNAP),
+            vec![
+                DrawCommand::Path {
+                    commands: vec![
+                        MoveTo((0.0, 0.0).into()),
+                        LineTo((20.0, 0.0).into()),
+                        LineTo((21.0, 1.0).into()),
+                        LineTo((1.0, 1.0).into()),
+                        LineTo((0.0, 0.0).into()),
+                    ],
+                    style: Default::default(),
+                },
+                // first circle red
+                DrawCommand::ScreenCircle {
+                    center: (0.0, 0.0).into(),
+                    radius: SNAP,
+                    style: Style::circle_helper(),
+                },
+                // second circle gray
+                DrawCommand::ScreenCircle {
+                    center: (20.0, 0.0).into(),
+                    radius: SNAP,
+                    style: Style::red_circle_helper(),
+                },
+                DrawCommand::ScreenCircle {
+                    center: (21.0, 0.0).into(),
+                    radius: SNAP,
+                    style: Style::red_circle_helper(),
+                },
+                DrawCommand::ScreenCircle {
+                    center: (10.0, -10.0).into(),
+                    radius: SNAP,
+                    style: Style::circle_helper(),
+                },
+            ]
+        );
 
         // releasing here would cancel
-        Some(grid).map(|mut grid| {
-            grid.handle_button_pressed((21.0, 1.0).into(), t, SNAP);
-            match grid.handle_button_released((21.0, 1.0).into(), t, SNAP) {
-                ShapeFinished::Cancelled => {}
-                _ => panic!()
-            }
-        }).unwrap();
+        Some(grid)
+            .map(|mut grid| {
+                grid.handle_button_pressed((21.0, 1.0).into(), t, SNAP);
+                match grid.handle_button_released((21.0, 1.0).into(), t, SNAP) {
+                    ShapeFinished::Cancelled => {}
+                    _ => panic!(),
+                }
+            })
+            .unwrap();
     }
 }

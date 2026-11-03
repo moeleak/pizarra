@@ -1,11 +1,14 @@
 use crate::color::Color;
-use crate::point::{Vec2D, WorldUnit, ScreenUnit};
-use crate::path_command::{PathCommand::{self, *}, CubicBezierCurve};
-use crate::shape::{ShapeBuilder, ShapeFinished, stored::path::Path};
-use crate::draw_commands::{DrawCommand, path_helper};
-use crate::transform::Transform;
+use crate::draw_commands::{path_helper, DrawCommand};
 use crate::geom::mirror;
+use crate::path_command::{
+    CubicBezierCurve,
+    PathCommand::{self, *},
+};
+use crate::point::{ScreenUnit, Vec2D, WorldUnit};
+use crate::shape::{stored::path::Path, ShapeBuilder, ShapeFinished};
 use crate::style::Style;
+use crate::transform::Transform;
 
 /// Enum that handles the states of building a bezier-polygon
 #[derive(Debug, Copy, Clone)]
@@ -69,23 +72,31 @@ impl PolygonBuilder {
     ///    It is not necessary to add more sections
     /// 3. None
     ///    It is not close enough to any of the polygon's points
-    fn touches_prev_point(&self, point: Vec2D<WorldUnit>, t: Transform, radius: ScreenUnit) -> Option<Option<(Vec2D<WorldUnit>, Vec2D<WorldUnit>)>> {
+    fn touches_prev_point(
+        &self,
+        point: Vec2D<WorldUnit>,
+        t: Transform,
+        radius: ScreenUnit,
+    ) -> Option<Option<(Vec2D<WorldUnit>, Vec2D<WorldUnit>)>> {
         let point = t.to_screen_coordinates(point);
 
         // Check all but the last point for a coincidence
-        let ans = self.points.iter().zip(self.points.iter().skip(1)).find(|&(&command, _)| {
-            t.to_screen_coordinates(command.to()).distance(point) <= radius
-        }).map(|(&a, &b)| {
-            if let MoveTo(p) = a {
-                if let CurveTo(c) = b {
-                    (p, mirror(c.pt1, p))
+        let ans = self
+            .points
+            .iter()
+            .zip(self.points.iter().skip(1))
+            .find(|&(&command, _)| t.to_screen_coordinates(command.to()).distance(point) <= radius)
+            .map(|(&a, &b)| {
+                if let MoveTo(p) = a {
+                    if let CurveTo(c) = b {
+                        (p, mirror(c.pt1, p))
+                    } else {
+                        (p, p)
+                    }
                 } else {
-                    (p, p)
+                    (a.to(), a.to())
                 }
-            } else {
-                (a.to(), a.to())
-            }
-        });
+            });
 
         if let Some(ans) = ans {
             return Some(Some(ans));
@@ -121,7 +132,11 @@ impl ShapeBuilder for PolygonBuilder {
                 }
             }
             BuilderState::FreePoint { pt1, .. } => {
-                self.tip = BuilderState::FreePoint { pt1, pt2: pos, to: pos };
+                self.tip = BuilderState::FreePoint {
+                    pt1,
+                    pt2: pos,
+                    to: pos,
+                };
             }
             BuilderState::End => {}
         }
@@ -136,7 +151,9 @@ impl ShapeBuilder for PolygonBuilder {
                 // first point is a handle
                 Some(Some((point, pt2))) => {
                     self.points.push(CurveTo(CubicBezierCurve {
-                        pt1, pt2, to: point,
+                        pt1,
+                        pt2,
+                        to: point,
                     }));
                     self.tip = BuilderState::End;
                 }
@@ -148,7 +165,9 @@ impl ShapeBuilder for PolygonBuilder {
                 // No match, just transition to a free point
                 None => {
                     self.points.push(CurveTo(CubicBezierCurve {
-                        pt1, pt2: pos, to: pos,
+                        pt1,
+                        pt2: pos,
+                        to: pos,
                     }));
                     self.tip = BuilderState::PointStart(pos);
                 }
@@ -156,23 +175,39 @@ impl ShapeBuilder for PolygonBuilder {
         }
     }
 
-    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
+    fn handle_button_released(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        t: Transform,
+        snap: ScreenUnit,
+    ) -> ShapeFinished {
         let pos = t.to_world_coordinates(pos);
 
         match self.tip {
             BuilderState::Init(p) => {
-                self.tip = BuilderState::FreePoint { pt1: p, pt2: pos, to: pos };
+                self.tip = BuilderState::FreePoint {
+                    pt1: p,
+                    pt2: pos,
+                    to: pos,
+                };
 
                 ShapeFinished::No
             }
             BuilderState::PointStart(p) => {
-                self.tip = BuilderState::FreePoint { pt1: p, pt2: pos, to: pos };
+                self.tip = BuilderState::FreePoint {
+                    pt1: p,
+                    pt2: pos,
+                    to: pos,
+                };
 
                 ShapeFinished::No
             }
             BuilderState::Handle { pt1, .. } => {
                 self.tip = if let Some(last) = self.points.last_mut() {
-                    if t.to_screen_coordinates(last.to()).distance(t.to_screen_coordinates(pt1)) < snap {
+                    if t.to_screen_coordinates(last.to())
+                        .distance(t.to_screen_coordinates(pt1))
+                        < snap
+                    {
                         // the handle didn't move more than _snap, probably a
                         // result of the sensitivity of the pen. The line will
                         // be fixed to look perfectly straight.
@@ -187,21 +222,27 @@ impl ShapeBuilder for PolygonBuilder {
                             to: pos,
                         }
                     } else {
-                        BuilderState::FreePoint { pt1, pt2: pos, to: pos }
+                        BuilderState::FreePoint {
+                            pt1,
+                            pt2: pos,
+                            to: pos,
+                        }
                     }
                 } else {
-                    BuilderState::FreePoint { pt1, pt2: pos, to: pos }
+                    BuilderState::FreePoint {
+                        pt1,
+                        pt2: pos,
+                        to: pos,
+                    }
                 };
 
                 ShapeFinished::No
             }
             BuilderState::FreePoint { .. } => ShapeFinished::No,
-            BuilderState::End => {
-                ShapeFinished::Yes(vec![Box::new(Path::from_parts(
-                    self.points.clone(),
-                    self.style,
-                ))])
-            }
+            BuilderState::End => ShapeFinished::Yes(vec![Box::new(Path::from_parts(
+                self.points.clone(),
+                self.style,
+            ))]),
         }
     }
 
@@ -222,13 +263,9 @@ impl ShapeBuilder for PolygonBuilder {
             }
             BuilderState::FreePoint { pt1, pt2, to } => {
                 if let Some(Some((p, h))) = self.touches_prev_point(to, t, snap) {
-                    path_commands.push(CurveTo(CubicBezierCurve {
-                        pt1, pt2: h, to: p,
-                    }));
+                    path_commands.push(CurveTo(CubicBezierCurve { pt1, pt2: h, to: p }));
                 } else {
-                    path_commands.push(CurveTo(CubicBezierCurve {
-                        pt1, pt2, to,
-                    }));
+                    path_commands.push(CurveTo(CubicBezierCurve { pt1, pt2, to }));
                 }
             }
             BuilderState::PointStart(p) => {
@@ -248,54 +285,64 @@ impl ShapeBuilder for PolygonBuilder {
 
         // for every point of the polygon add a helper circle and bezier handler
         // lines
-        commands.extend(path_commands.iter().zip(path_commands.iter().skip(1)).enumerate().flat_map(|(i, (p, next))| {
-            let mut commands = Vec::with_capacity(3);
+        commands.extend(
+            path_commands
+                .iter()
+                .zip(path_commands.iter().skip(1))
+                .enumerate()
+                .flat_map(|(i, (p, next))| {
+                    let mut commands = Vec::with_capacity(3);
 
-            // if the first command (except for the MoveTo) is a CurveTo then
-            // draw a handle in the oposite direction to suggest the user that
-            // the closing of a bezier polygon is soft
-            if i == 0 {
-                if let CurveTo(c) = next {
-                    commands.push(path_helper(vec![
-                        t.to_screen_coordinates(p.to()),
-                        t.to_screen_coordinates(mirror(c.pt1, p.to())),
-                    ]));
-                }
-            }
-
-            // the bezier handles
-            if let CurveTo(c) = next {
-                commands.push(path_helper(vec![
-                    t.to_screen_coordinates(c.to),
-                    t.to_screen_coordinates(c.pt2),
-                ]));
-                commands.push(path_helper(vec![
-                    t.to_screen_coordinates(p.to()),
-                    t.to_screen_coordinates(c.pt1),
-                ]));
-            }
-
-            // the circles
-            commands.push(DrawCommand::ScreenCircle {
-                center: t.to_screen_coordinates(p.to()),
-                radius: snap,
-                style: Style {
-                    stroke: None,
-                    fill: Some(match self.tip {
-                        BuilderState::FreePoint { to, .. } if t.to_screen_coordinates(to).distance(t.to_screen_coordinates(p.to())) <= snap => {
-                            if i == 0 && path_commands.len() == 2 {
-                                Color::red().half_transparent()
-                            } else {
-                                Color::green().half_transparent()
-                            }
+                    // if the first command (except for the MoveTo) is a CurveTo then
+                    // draw a handle in the oposite direction to suggest the user that
+                    // the closing of a bezier polygon is soft
+                    if i == 0 {
+                        if let CurveTo(c) = next {
+                            commands.push(path_helper(vec![
+                                t.to_screen_coordinates(p.to()),
+                                t.to_screen_coordinates(mirror(c.pt1, p.to())),
+                            ]));
                         }
-                        _ => Color::gray().half_transparent()
-                    }),
-                },
-            });
+                    }
 
-            commands
-        }));
+                    // the bezier handles
+                    if let CurveTo(c) = next {
+                        commands.push(path_helper(vec![
+                            t.to_screen_coordinates(c.to),
+                            t.to_screen_coordinates(c.pt2),
+                        ]));
+                        commands.push(path_helper(vec![
+                            t.to_screen_coordinates(p.to()),
+                            t.to_screen_coordinates(c.pt1),
+                        ]));
+                    }
+
+                    // the circles
+                    commands.push(DrawCommand::ScreenCircle {
+                        center: t.to_screen_coordinates(p.to()),
+                        radius: snap,
+                        style: Style {
+                            stroke: None,
+                            fill: Some(match self.tip {
+                                BuilderState::FreePoint { to, .. }
+                                    if t.to_screen_coordinates(to)
+                                        .distance(t.to_screen_coordinates(p.to()))
+                                        <= snap =>
+                                {
+                                    if i == 0 && path_commands.len() == 2 {
+                                        Color::red().half_transparent()
+                                    } else {
+                                        Color::green().half_transparent()
+                                    }
+                                }
+                                _ => Color::gray().half_transparent(),
+                            }),
+                        },
+                    });
+
+                    commands
+                }),
+        );
 
         commands
     }
@@ -321,19 +368,25 @@ mod tests {
 
         poly.handle_mouse_moved(Vec2D::new_screen(20.0, 0.0), t, SNAP);
         poly.handle_button_pressed(Vec2D::new_screen(20.0, 0.0), t, SNAP);
-        if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2D::new_screen(20.0, 0.0), t, SNAP) {
+        if let ShapeFinished::Yes(_) =
+            poly.handle_button_released(Vec2D::new_screen(20.0, 0.0), t, SNAP)
+        {
             panic!()
         }
 
         poly.handle_mouse_moved(Vec2D::new_screen(20.0, 20.0), t, SNAP);
         poly.handle_button_pressed(Vec2D::new_screen(20.0, 20.0), t, SNAP);
-        if let ShapeFinished::Yes(_) = poly.handle_button_released(Vec2D::new_screen(20.0, 20.0), t, SNAP) {
+        if let ShapeFinished::Yes(_) =
+            poly.handle_button_released(Vec2D::new_screen(20.0, 20.0), t, SNAP)
+        {
             panic!()
         }
 
         poly.handle_mouse_moved(Vec2D::new_screen(20.0, 20.0), t, SNAP);
         poly.handle_button_pressed(Vec2D::new_screen(20.0, 20.0), t, SNAP);
-        if let ShapeFinished::No = poly.handle_button_released(Vec2D::new_screen(20.0, 20.0), t, SNAP) {
+        if let ShapeFinished::No =
+            poly.handle_button_released(Vec2D::new_screen(20.0, 20.0), t, SNAP)
+        {
             panic!()
         }
     }
@@ -354,21 +407,26 @@ mod tests {
 
         poly.handle_mouse_moved(Vec2D::new_screen(29.0, 0.0), t, SNAP);
         poly.handle_button_pressed(Vec2D::new_screen(29.0, 0.0), t, SNAP);
-        if let ShapeFinished::No = poly.handle_button_released(Vec2D::new_screen(29.0, 0.0), t, SNAP) {
+        if let ShapeFinished::No =
+            poly.handle_button_released(Vec2D::new_screen(29.0, 0.0), t, SNAP)
+        {
             panic!()
         }
 
-        assert_eq!(poly.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            commands: vec![
-                MoveTo(Vec2D::new_world(0.0, 0.0)),
-                CurveTo(CubicBezierCurve {
-                    pt1: Vec2D::new_world(0.0, 0.0),
-                    pt2: Vec2D::new_world(30.0, 0.0),
-                    to: Vec2D::new_world(30.0, 0.0),
-                }),
-            ],
-            style: Default::default(),
-        });
+        assert_eq!(
+            poly.draw_commands(t, SNAP)[0],
+            DrawCommand::Path {
+                commands: vec![
+                    MoveTo(Vec2D::new_world(0.0, 0.0)),
+                    CurveTo(CubicBezierCurve {
+                        pt1: Vec2D::new_world(0.0, 0.0),
+                        pt2: Vec2D::new_world(30.0, 0.0),
+                        to: Vec2D::new_world(30.0, 0.0),
+                    }),
+                ],
+                style: Default::default(),
+            }
+        );
     }
 
     #[test]
@@ -376,12 +434,13 @@ mod tests {
         let t = Default::default();
         let poly = PolygonBuilder::start(Vec2D::new_world(0.0, 0.0), Default::default());
 
-        assert_eq!(poly.draw_commands(t, SNAP)[0], DrawCommand::Path {
-            commands: vec![
-                MoveTo(Vec2D::new_world(0.0, 0.0)),
-            ],
-            style: Default::default(),
-        });
+        assert_eq!(
+            poly.draw_commands(t, SNAP)[0],
+            DrawCommand::Path {
+                commands: vec![MoveTo(Vec2D::new_world(0.0, 0.0)),],
+                style: Default::default(),
+            }
+        );
     }
 
     fn make_this_poly(t: Transform) -> PolygonBuilder {
@@ -467,14 +526,17 @@ mod tests {
 
         let commands = poly.draw_commands(t, SNAP);
 
-        assert_eq!(commands.last().unwrap(), &DrawCommand::ScreenCircle {
-            center: Vec2D::new_screen(0.0, 0.0),
-            radius: SNAP,
-            style: Style {
-                stroke: None,
-                fill: Some(Color::red().half_transparent()),
-            },
-        });
+        assert_eq!(
+            commands.last().unwrap(),
+            &DrawCommand::ScreenCircle {
+                center: Vec2D::new_screen(0.0, 0.0),
+                radius: SNAP,
+                style: Style {
+                    stroke: None,
+                    fill: Some(Color::red().half_transparent()),
+                },
+            }
+        );
     }
 
     /// test that a shape with smooth border can be made. It will look like a
@@ -516,32 +578,35 @@ mod tests {
         poly.handle_mouse_moved(a, t, SNAP);
         poly.handle_button_pressed(a, t, SNAP);
         if let ShapeFinished::Yes(s) = poly.handle_button_released(a, t, SNAP) {
-            assert_eq!(s[0].draw_commands(), DrawCommand::Path {
-                commands: vec![
-                    MoveTo(t.to_world_coordinates(a)),
-                    CurveTo(CubicBezierCurve {
-                        pt1: t.to_world_coordinates(b),
-                        pt2: Vec2D::new_world(80.0, -20.0),
-                        to: t.to_world_coordinates(c),
-                    }),
-                    CurveTo(CubicBezierCurve {
-                        pt1: t.to_world_coordinates(d),
-                        pt2: Vec2D::new_world(20.0, 60.0),
-                        to: t.to_world_coordinates(e),
-                    }),
-                    CurveTo(CubicBezierCurve {
-                        pt1: t.to_world_coordinates(f),
-                        pt2: Vec2D::new_world(-80.0, 20.0),
-                        to: t.to_world_coordinates(g),
-                    }),
-                    CurveTo(CubicBezierCurve {
-                        pt1: t.to_world_coordinates(h),
-                        pt2: Vec2D::new_world(-30.0, -80.0),
-                        to: t.to_world_coordinates(a),
-                    }),
-                ],
-                style: Default::default(),
-            });
+            assert_eq!(
+                s[0].draw_commands(),
+                DrawCommand::Path {
+                    commands: vec![
+                        MoveTo(t.to_world_coordinates(a)),
+                        CurveTo(CubicBezierCurve {
+                            pt1: t.to_world_coordinates(b),
+                            pt2: Vec2D::new_world(80.0, -20.0),
+                            to: t.to_world_coordinates(c),
+                        }),
+                        CurveTo(CubicBezierCurve {
+                            pt1: t.to_world_coordinates(d),
+                            pt2: Vec2D::new_world(20.0, 60.0),
+                            to: t.to_world_coordinates(e),
+                        }),
+                        CurveTo(CubicBezierCurve {
+                            pt1: t.to_world_coordinates(f),
+                            pt2: Vec2D::new_world(-80.0, 20.0),
+                            to: t.to_world_coordinates(g),
+                        }),
+                        CurveTo(CubicBezierCurve {
+                            pt1: t.to_world_coordinates(h),
+                            pt2: Vec2D::new_world(-30.0, -80.0),
+                            to: t.to_world_coordinates(a),
+                        }),
+                    ],
+                    style: Default::default(),
+                }
+            );
         } else {
             panic!();
         }
@@ -580,57 +645,96 @@ mod tests {
 
         let commands = poly.draw_commands(t, SNAP);
 
-        assert_eq!(commands, vec![
-            DrawCommand::Path {
-                style: Default::default(),
-                commands: vec![
-                    MoveTo(Vec2D::new_world( 0.0, 0.0 )),
-                    CurveTo(CubicBezierCurve { pt1: Vec2D::new_world( 0.0, 0.0 ), pt2: Vec2D::new_world( 0.0, -50.0 ), to: Vec2D::new_world( 0.0, -50.0 ) }),
-                    CurveTo(CubicBezierCurve { pt1: Vec2D::new_world( 0.0, -50.0 ), pt2: Vec2D::new_world( 50.0, 0.0 ), to: Vec2D::new_world( 50.0, 0.0 ) }),
-                    CurveTo(CubicBezierCurve { pt1: Vec2D::new_world( 50.0, 0.0 ), pt2: Vec2D::new_world( 0.0, 0.0 ), to: Vec2D::new_world( 0.0, 0.0 ) })
-                ]},
-            DrawCommand::ScreenPath {
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 0.0, 0.0 )), LineTo(Vec2D::new_screen( 0.0, 0.0 ))
-                ], style: Style::path_helper(), },
-            DrawCommand::ScreenPath {
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 0.0, -50.0 )), LineTo(Vec2D::new_screen( 0.0, -50.0 )),
-                ], style: Style::path_helper(), },
-            DrawCommand::ScreenPath {
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 0.0, 0.0 )), LineTo(Vec2D::new_screen( 0.0, 0.0 )),
-                ], style: Style::path_helper(), },
-            DrawCommand::ScreenCircle {
-                center: Vec2D::new_screen( 0.0, 0.0 ), radius: 10.0.into(),
-                style: Style::circle_helper(),
-            },
-            DrawCommand::ScreenPath {
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 50.0, 0.0 )), LineTo(Vec2D::new_screen( 50.0, 0.0 )),
-                ], style: Style::path_helper(), },
-            DrawCommand::ScreenPath {
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 0.0, -50.0 )), LineTo(Vec2D::new_screen( 0.0, -50.0 ))], style: Style::path_helper(), },
-            DrawCommand::ScreenCircle {
-                center: Vec2D::new_screen( 0.0, -50.0 ), radius: 10.0.into(),
-                style: Style::circle_helper(),
-            },
-            DrawCommand::ScreenPath {
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 0.0, 0.0 )), LineTo(Vec2D::new_screen( 0.0, 0.0 )),
-                ], style: Style::path_helper(),
-            },
-            DrawCommand::ScreenPath {
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 50.0, 0.0 )), LineTo(Vec2D::new_screen( 50.0, 0.0 ))
-                ], style: Style::path_helper(),
-            },
-            DrawCommand::ScreenCircle {
-                center: Vec2D::new_screen( 50.0, 0.0 ), radius: 10.0.into(),
-                style: Style::circle_helper(),
-            },
-        ]);
+        assert_eq!(
+            commands,
+            vec![
+                DrawCommand::Path {
+                    style: Default::default(),
+                    commands: vec![
+                        MoveTo(Vec2D::new_world(0.0, 0.0)),
+                        CurveTo(CubicBezierCurve {
+                            pt1: Vec2D::new_world(0.0, 0.0),
+                            pt2: Vec2D::new_world(0.0, -50.0),
+                            to: Vec2D::new_world(0.0, -50.0)
+                        }),
+                        CurveTo(CubicBezierCurve {
+                            pt1: Vec2D::new_world(0.0, -50.0),
+                            pt2: Vec2D::new_world(50.0, 0.0),
+                            to: Vec2D::new_world(50.0, 0.0)
+                        }),
+                        CurveTo(CubicBezierCurve {
+                            pt1: Vec2D::new_world(50.0, 0.0),
+                            pt2: Vec2D::new_world(0.0, 0.0),
+                            to: Vec2D::new_world(0.0, 0.0)
+                        })
+                    ]
+                },
+                DrawCommand::ScreenPath {
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(0.0, 0.0)),
+                        LineTo(Vec2D::new_screen(0.0, 0.0))
+                    ],
+                    style: Style::path_helper(),
+                },
+                DrawCommand::ScreenPath {
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(0.0, -50.0)),
+                        LineTo(Vec2D::new_screen(0.0, -50.0)),
+                    ],
+                    style: Style::path_helper(),
+                },
+                DrawCommand::ScreenPath {
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(0.0, 0.0)),
+                        LineTo(Vec2D::new_screen(0.0, 0.0)),
+                    ],
+                    style: Style::path_helper(),
+                },
+                DrawCommand::ScreenCircle {
+                    center: Vec2D::new_screen(0.0, 0.0),
+                    radius: 10.0.into(),
+                    style: Style::circle_helper(),
+                },
+                DrawCommand::ScreenPath {
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(50.0, 0.0)),
+                        LineTo(Vec2D::new_screen(50.0, 0.0)),
+                    ],
+                    style: Style::path_helper(),
+                },
+                DrawCommand::ScreenPath {
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(0.0, -50.0)),
+                        LineTo(Vec2D::new_screen(0.0, -50.0))
+                    ],
+                    style: Style::path_helper(),
+                },
+                DrawCommand::ScreenCircle {
+                    center: Vec2D::new_screen(0.0, -50.0),
+                    radius: 10.0.into(),
+                    style: Style::circle_helper(),
+                },
+                DrawCommand::ScreenPath {
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(0.0, 0.0)),
+                        LineTo(Vec2D::new_screen(0.0, 0.0)),
+                    ],
+                    style: Style::path_helper(),
+                },
+                DrawCommand::ScreenPath {
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(50.0, 0.0)),
+                        LineTo(Vec2D::new_screen(50.0, 0.0))
+                    ],
+                    style: Style::path_helper(),
+                },
+                DrawCommand::ScreenCircle {
+                    center: Vec2D::new_screen(50.0, 0.0),
+                    radius: 10.0.into(),
+                    style: Style::circle_helper(),
+                },
+            ]
+        );
     }
 
     /// when dragging the handle for a point it should paint the handle lines
@@ -654,64 +758,73 @@ mod tests {
         poly.handle_button_pressed(c, t, SNAP);
         poly.handle_mouse_moved(d, t, SNAP);
 
-        assert_eq!(poly.draw_commands(t, SNAP), vec![
-            // the paths
-            DrawCommand::Path {
-                commands: vec![
-                    MoveTo(t.to_world_coordinates(a)),
-                    CurveTo(CubicBezierCurve {
-                        pt1: t.to_world_coordinates(b),
-                        pt2: Vec2D::new_world(80.0, -20.0),
-                        to: t.to_world_coordinates(c),
-                    }),
-                    CurveTo(CubicBezierCurve {
-                        pt1: t.to_world_coordinates(d),
-                        pt2: t.to_world_coordinates(d),
-                        to: t.to_world_coordinates(d),
-                    }),
-                ],
-                style: Default::default(),
-            },
-
-            // the helpers
-            DrawCommand::ScreenPath {
-                style: Style::path_helper(),
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 0.0, -80.0 )), LineTo(Vec2D::new_screen( -30.0, -80.0 )),
-                ],
-            },
-            DrawCommand::ScreenPath {
-                style: Style::path_helper(),
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 80.0, 0.0 )), LineTo(Vec2D::new_screen( 80.0, -20.0 ))
-                ],
-            },
-            DrawCommand::ScreenPath {
-                style: Style::path_helper(),
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 0.0, -80.0 )), LineTo(Vec2D::new_screen( 30.0, -80.0 ))
-                ],
-            },
-            DrawCommand::ScreenCircle {
-                center: Vec2D::new_screen( 0.0, -80.0 ), radius: 10.0.into(),
-                style: Style::circle_helper(),
-            },
-            DrawCommand::ScreenPath {
-                style: Style::path_helper(),
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 80.0, 20.0 )), LineTo(Vec2D::new_screen( 80.0, 20.0 )),
-                ],
-            },
-            DrawCommand::ScreenPath {
-                style: Style::path_helper(),
-                commands: vec![
-                    MoveTo(Vec2D::new_screen( 80.0, 0.0 )), LineTo(Vec2D::new_screen( 80.0, 20.0 )),
-                ],
-            },
-            DrawCommand::ScreenCircle {
-                center: Vec2D::new_screen( 80.0, 0.0 ), radius: 10.0.into(),
-                style: Style::circle_helper(),
-            },
-        ]);
+        assert_eq!(
+            poly.draw_commands(t, SNAP),
+            vec![
+                // the paths
+                DrawCommand::Path {
+                    commands: vec![
+                        MoveTo(t.to_world_coordinates(a)),
+                        CurveTo(CubicBezierCurve {
+                            pt1: t.to_world_coordinates(b),
+                            pt2: Vec2D::new_world(80.0, -20.0),
+                            to: t.to_world_coordinates(c),
+                        }),
+                        CurveTo(CubicBezierCurve {
+                            pt1: t.to_world_coordinates(d),
+                            pt2: t.to_world_coordinates(d),
+                            to: t.to_world_coordinates(d),
+                        }),
+                    ],
+                    style: Default::default(),
+                },
+                // the helpers
+                DrawCommand::ScreenPath {
+                    style: Style::path_helper(),
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(0.0, -80.0)),
+                        LineTo(Vec2D::new_screen(-30.0, -80.0)),
+                    ],
+                },
+                DrawCommand::ScreenPath {
+                    style: Style::path_helper(),
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(80.0, 0.0)),
+                        LineTo(Vec2D::new_screen(80.0, -20.0))
+                    ],
+                },
+                DrawCommand::ScreenPath {
+                    style: Style::path_helper(),
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(0.0, -80.0)),
+                        LineTo(Vec2D::new_screen(30.0, -80.0))
+                    ],
+                },
+                DrawCommand::ScreenCircle {
+                    center: Vec2D::new_screen(0.0, -80.0),
+                    radius: 10.0.into(),
+                    style: Style::circle_helper(),
+                },
+                DrawCommand::ScreenPath {
+                    style: Style::path_helper(),
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(80.0, 20.0)),
+                        LineTo(Vec2D::new_screen(80.0, 20.0)),
+                    ],
+                },
+                DrawCommand::ScreenPath {
+                    style: Style::path_helper(),
+                    commands: vec![
+                        MoveTo(Vec2D::new_screen(80.0, 0.0)),
+                        LineTo(Vec2D::new_screen(80.0, 20.0)),
+                    ],
+                },
+                DrawCommand::ScreenCircle {
+                    center: Vec2D::new_screen(80.0, 0.0),
+                    radius: 10.0.into(),
+                    style: Style::circle_helper(),
+                },
+            ]
+        );
     }
 }

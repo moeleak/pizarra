@@ -17,9 +17,7 @@ impl<T: Copy> Matrix<T> {
         assert_ne!(width, 0);
         assert_eq!(contents.len() % width, 0);
 
-        Matrix {
-            contents, width,
-        }
+        Matrix { contents, width }
     }
 
     pub fn row_count(&self) -> usize {
@@ -39,7 +37,7 @@ impl<T: Copy> Matrix<T> {
         let col_num = self.width;
         let row_num = self.contents.len() / self.width;
 
-        for i  in 0..col_num {
+        for i in 0..col_num {
             // add every column to the output
             let mut col = Vec::with_capacity(self.contents.len() / self.width);
 
@@ -60,25 +58,15 @@ mod tests {
 
     #[test]
     fn matrix_can_iterate_rows_and_cols() {
-        let matrix = Matrix::from_parts(vec![
-            1, 2, 3,
-            4, 5, 6,
-        ], 3);
+        let matrix = Matrix::from_parts(vec![1, 2, 3, 4, 5, 6], 3);
 
-        let expected_rows = [
-            [1, 2, 3],
-            [4, 5, 6],
-        ];
+        let expected_rows = [[1, 2, 3], [4, 5, 6]];
 
         for (orig, new) in matrix.rows().iter().zip(expected_rows.iter()) {
             assert_eq!(orig, new);
         }
 
-        let expected_cols = [
-            [1, 4],
-            [2, 5],
-            [3, 6],
-        ];
+        let expected_cols = [[1, 4], [2, 5], [3, 6]];
 
         assert_eq!(matrix.cols().len(), 3);
 

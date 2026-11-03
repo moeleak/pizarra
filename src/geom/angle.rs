@@ -1,6 +1,6 @@
-use std::ops::{Add, Sub, Mul, Neg};
+use std::ops::{Add, Mul, Neg, Sub};
 
-use crate::point::{Vec2D, Unit};
+use crate::point::{Unit, Vec2D};
 
 /// Stores the angle in radians internally
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
@@ -32,7 +32,7 @@ impl Angle {
             return Angle::from_radians(0.0);
         }
 
-        let angle = (a.dot(b)/(a.magnitude() * b.magnitude())).acos();
+        let angle = (a.dot(b) / (a.magnitude() * b.magnitude())).acos();
 
         Self::from_radians(if a.x.val() * b.y.val() - a.y.val() * b.x.val() < 0.0 {
             (-angle).val()
@@ -46,7 +46,7 @@ impl Mul<f64> for Angle {
     type Output = Self;
 
     fn mul(self, s: f64) -> Angle {
-        Angle::from_radians(self.radians() *  s)
+        Angle::from_radians(self.radians() * s)
     }
 }
 

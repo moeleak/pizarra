@@ -1,10 +1,10 @@
-use crate::point::{Vec2D, WorldUnit, ScreenUnit};
-use crate::shape::{ShapeBuilder, ShapeFinished};
+use crate::draw_commands::{cancel_helper, circle_helper, DrawCommand};
+use crate::geom::{self, circle_through_three_points, Angle};
+use crate::point::{ScreenUnit, Vec2D, WorldUnit};
 use crate::shape::stored::ellipse::Ellipse;
-use crate::draw_commands::{DrawCommand, circle_helper, cancel_helper};
-use crate::transform::Transform;
-use crate::geom::{self, Angle, circle_through_three_points};
+use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::style::Style;
+use crate::transform::Transform;
 
 #[derive(Debug, Copy, Clone)]
 enum State {
@@ -20,7 +20,10 @@ pub struct CircleThroughThreePointsBuilder {
 }
 
 impl CircleThroughThreePointsBuilder {
-    pub fn start(initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> CircleThroughThreePointsBuilder {
+    pub fn start(
+        initial: Vec2D<WorldUnit>,
+        style: Style<WorldUnit>,
+    ) -> CircleThroughThreePointsBuilder {
         CircleThroughThreePointsBuilder {
             state: State::One(initial),
             style,
@@ -43,9 +46,15 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
         }
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) {}
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) {
+    }
 
-    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
+    fn handle_button_released(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        t: Transform,
+        snap: ScreenUnit,
+    ) -> ShapeFinished {
         self.handle_mouse_moved(pos, t, snap);
 
         match self.state {
@@ -65,27 +74,21 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
             State::Three(p1, p2, p3) => {
                 let (center, radius) = circle_through_three_points(p1, p2, p3);
 
-                ShapeFinished::Yes(vec![Box::new(
-                    Ellipse::from_parts(
-                        center,
-                        radius,
-                        radius,
-                        Angle::from_radians(0.0),
-                        self.style,
-                    )
-                )])
+                ShapeFinished::Yes(vec![Box::new(Ellipse::from_parts(
+                    center,
+                    radius,
+                    radius,
+                    Angle::from_radians(0.0),
+                    self.style,
+                ))])
             }
         }
     }
 
     fn draw_commands(&self, t: Transform, snap: ScreenUnit) -> Vec<DrawCommand> {
         match self.state {
-            State::One(p1) => vec![
-                circle_helper(t.to_screen_coordinates(p1), snap),
-            ],
-            State::Two(p1, p2) => vec![
-                cancel_helper(p1, p2, t, snap),
-            ],
+            State::One(p1) => vec![circle_helper(t.to_screen_coordinates(p1), snap)],
+            State::Two(p1, p2) => vec![cancel_helper(p1, p2, t, snap)],
             State::Three(p1, p2, p3) => {
                 let (center, radius) = circle_through_three_points(p1, p2, p3);
 
@@ -99,7 +102,6 @@ impl ShapeBuilder for CircleThroughThreePointsBuilder {
                         },
                         style: self.style,
                     },
-
                     circle_helper(t.to_screen_coordinates(p1), snap),
                     circle_helper(t.to_screen_coordinates(p2), snap),
                     circle_helper(t.to_screen_coordinates(p3), snap),

@@ -1,21 +1,21 @@
 use std::mem;
 use std::path::PathBuf;
 
-use crate::draw_commands::DrawCommand;
-use crate::storage::Storage;
-use crate::shape::{Shape, ShapeTool, ShapeFinished, ShapeBuilder};
-use crate::color::Color;
 use crate::action::Action;
-use crate::point::{Vec2D, Unit, WorldUnit, ScreenUnit};
-use crate::transform::Transform;
-use crate::geom::{Angle, bbox_from_points};
-use crate::key::Key;
+use crate::color::Color;
 use crate::config::Config;
-use crate::ui::Flags;
-use crate::style::{Style, Stroke};
+use crate::draw_commands::DrawCommand;
+use crate::geom::{bbox_from_points, Angle};
+use crate::key::Key;
+use crate::point::{ScreenUnit, Unit, Vec2D, WorldUnit};
 use crate::shape::ShapeStored;
+use crate::shape::{Shape, ShapeBuilder, ShapeFinished, ShapeTool};
+use crate::storage::Storage;
+use crate::style::{Stroke, Style};
+use crate::transform::Transform;
+use crate::ui::Flags;
 
-#[derive(Copy,Clone,Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /// Describes the possible states of the undo_queue and a pointer that moves
 /// in it
 enum UndoState {
@@ -129,12 +129,12 @@ impl Pizarra {
         // end of the undo_queue
         match self.undo_state {
             UndoState::At(point) => {
-                self.undo_queue.resize_with(point+1, Default::default);
-            },
+                self.undo_queue.resize_with(point + 1, Default::default);
+            }
             UndoState::Reset => {
                 self.undo_queue.resize_with(0, Default::default);
-            },
-            UndoState::InSync => {},
+            }
+            UndoState::InSync => {}
         }
 
         self.undo_queue.push(action);
@@ -148,30 +148,43 @@ impl Pizarra {
         };
     }
 
-    fn handle_tool_button_pressed(&mut self, point: Vec2D<ScreenUnit>, tool_override: Option<SelectedTool>) -> ShouldRedraw {
+    fn handle_tool_button_pressed(
+        &mut self,
+        point: Vec2D<ScreenUnit>,
+        tool_override: Option<SelectedTool>,
+    ) -> ShouldRedraw {
         let transformed_point = self.transform.to_world_coordinates(point);
 
         match tool_override.unwrap_or(self.selected_tool) {
             SelectedTool::Shape(shape) => {
                 if let Some(shape) = self.current_shape.as_mut() {
-                    shape.handle_button_pressed(point, self.transform, self.config.point_snap_radius);
+                    shape.handle_button_pressed(
+                        point,
+                        self.transform,
+                        self.config.point_snap_radius,
+                    );
                 } else {
-                    let new_shape = shape.start(transformed_point, Style {
-                        stroke: Some(Stroke {
-                            size: self.transform.to_world_units(self.stroke),
-                            color: self.selected_color,
-                        }),
-                        fill: None,
-                    });
+                    let new_shape = shape.start(
+                        transformed_point,
+                        Style {
+                            stroke: Some(Stroke {
+                                size: self.transform.to_world_units(self.stroke),
+                                color: self.selected_color,
+                            }),
+                            fill: None,
+                        },
+                    );
 
                     self.current_shape = Some(new_shape);
                 }
 
                 ShouldRedraw::Shape
-            },
+            }
             SelectedTool::Eraser => {
-                let deleted_shapes = self.storage
-                    .remove_circle(transformed_point, self.transform.to_world_units(self.erase_radius));
+                let deleted_shapes = self.storage.remove_circle(
+                    transformed_point,
+                    self.transform.to_world_units(self.erase_radius),
+                );
 
                 self.eraser_is_active = true;
                 let prev_len = self.erased.len();
@@ -182,43 +195,53 @@ impl Pizarra {
                 } else {
                     ShouldRedraw::No
                 }
-            },
+            }
         }
     }
 
-
-    fn handle_tool_button_released(&mut self, point: Vec2D<ScreenUnit>, tool_override: Option<SelectedTool>) -> Action {
+    fn handle_tool_button_released(
+        &mut self,
+        point: Vec2D<ScreenUnit>,
+        tool_override: Option<SelectedTool>,
+    ) -> Action {
         let transformed_point = self.transform.to_world_coordinates(point);
 
         match tool_override.unwrap_or(self.selected_tool) {
             SelectedTool::Shape(_shape) => {
                 let finished = if let Some(shape) = self.current_shape.as_mut() {
-                    shape.handle_button_released(point, self.transform, self.config.point_snap_radius)
+                    shape.handle_button_released(
+                        point,
+                        self.transform,
+                        self.config.point_snap_radius,
+                    )
                 } else {
                     ShapeFinished::No
                 };
 
                 match finished {
                     ShapeFinished::Yes(shapes) => {
-                        let shape_ids = shapes.into_iter().map(|shape| {
-                            self.storage.add(shape)
-                        }).collect();
+                        let shape_ids = shapes
+                            .into_iter()
+                            .map(|shape| self.storage.add(shape))
+                            .collect();
 
                         self.current_shape = None;
 
                         Action::Draw(shape_ids)
-                    },
+                    }
                     ShapeFinished::Cancelled => {
                         self.current_shape = None;
 
                         Action::Empty
-                    },
+                    }
                     ShapeFinished::No => Action::Unfinished,
                 }
-            },
+            }
             SelectedTool::Eraser => {
-                let deleted_shapes = self.storage
-                    .remove_circle(transformed_point, self.transform.to_world_units(self.erase_radius));
+                let deleted_shapes = self.storage.remove_circle(
+                    transformed_point,
+                    self.transform.to_world_units(self.erase_radius),
+                );
 
                 self.eraser_is_active = false;
 
@@ -229,11 +252,15 @@ impl Pizarra {
                 } else {
                     Action::Empty
                 }
-            },
+            }
         }
     }
 
-    fn handle_tool_mouse_move(&mut self, point: Vec2D<ScreenUnit>, tool_override: Option<SelectedTool>) -> ShouldRedraw {
+    fn handle_tool_mouse_move(
+        &mut self,
+        point: Vec2D<ScreenUnit>,
+        tool_override: Option<SelectedTool>,
+    ) -> ShouldRedraw {
         let transformed_point = self.transform.to_world_coordinates(point);
 
         match tool_override.unwrap_or(self.selected_tool) {
@@ -244,10 +271,12 @@ impl Pizarra {
                 } else {
                     ShouldRedraw::No
                 }
-            },
+            }
             SelectedTool::Eraser => {
-                let deleted_shapes = self.storage
-                    .remove_circle(transformed_point, self.transform.to_world_units(self.erase_radius));
+                let deleted_shapes = self.storage.remove_circle(
+                    transformed_point,
+                    self.transform.to_world_units(self.erase_radius),
+                );
 
                 let prev_len = self.erased.len();
 
@@ -258,7 +287,7 @@ impl Pizarra {
                 } else {
                     ShouldRedraw::No
                 }
-            },
+            }
         }
     }
 
@@ -267,15 +296,20 @@ impl Pizarra {
             Action::Unfinished => Action::Unfinished,
             Action::Empty => Action::Empty,
 
-            Action::Draw(ids) => Action::Erase(ids.into_iter().filter_map(|id| {
-                self.storage.remove(id)
-            }).collect()),
+            Action::Draw(ids) => Action::Erase(
+                ids.into_iter()
+                    .filter_map(|id| self.storage.remove(id))
+                    .collect(),
+            ),
 
             Action::Erase(shapes) => {
-                let ids = shapes.into_iter().map(|shape| self.storage.restore(shape)).collect();
+                let ids = shapes
+                    .into_iter()
+                    .map(|shape| self.storage.restore(shape))
+                    .collect();
 
                 Action::Draw(ids)
-            },
+            }
         }
     }
 
@@ -309,10 +343,13 @@ impl Pizarra {
     /// top-left, top-right, bottom-right, and bottom-left corners.
     fn visible_extent(&self) -> [Vec2D<WorldUnit>; 4] {
         [
-            self.transform.to_world_coordinates(Vec2D::new_screen(0.0, 0.0)),
-            self.transform.to_world_coordinates(Vec2D::new(self.dimensions.x, 0.0.into())),
+            self.transform
+                .to_world_coordinates(Vec2D::new_screen(0.0, 0.0)),
+            self.transform
+                .to_world_coordinates(Vec2D::new(self.dimensions.x, 0.0.into())),
             self.transform.to_world_coordinates(self.dimensions),
-            self.transform.to_world_coordinates(Vec2D::new(0.0.into(), self.dimensions.y)),
+            self.transform
+                .to_world_coordinates(Vec2D::new(0.0.into(), self.dimensions.y)),
         ]
     }
 
@@ -408,27 +445,25 @@ impl Pizarra {
 
     pub fn draw_commands_for_tool(&self) -> Vec<DrawCommand> {
         if let SelectedTool::Eraser = self.selected_tool {
-            vec![
-                DrawCommand::ScreenCircle {
-                    center: self.last_mouse_pos,
-                    radius: self.erase_radius,
-                    style: Style {
-                        stroke: Some(Stroke {
-                            size: 1.0.into(),
-                            color: if self.eraser_is_active {
-                                Color::red()
-                            } else {
-                                Color::gray()
-                            },
-                        }),
-                        fill: if self.eraser_is_active {
-                            Some(Color::red().half_transparent())
+            vec![DrawCommand::ScreenCircle {
+                center: self.last_mouse_pos,
+                radius: self.erase_radius,
+                style: Style {
+                    stroke: Some(Stroke {
+                        size: 1.0.into(),
+                        color: if self.eraser_is_active {
+                            Color::red()
                         } else {
-                            None
+                            Color::gray()
                         },
+                    }),
+                    fill: if self.eraser_is_active {
+                        Some(Color::red().half_transparent())
+                    } else {
+                        None
                     },
-                }
-            ]
+                },
+            }]
         } else {
             vec![]
         }
@@ -437,12 +472,14 @@ impl Pizarra {
     /// returns only the draw commands needed to paint the current shape on the
     /// screen.
     pub fn draw_commands_for_current_shape(&self) -> Option<Vec<DrawCommand>> {
-        self.current_shape.as_ref().map(|s| s.draw_commands(self.transform, self.config.point_snap_radius))
+        self.current_shape
+            .as_ref()
+            .map(|s| s.draw_commands(self.transform, self.config.point_snap_radius))
     }
 
     /// Returns all the shapes of the storage ordered by their z-index. Used for
     /// serializing
-    pub fn shapes_by_index(&self) -> impl Iterator<Item=&dyn ShapeStored> {
+    pub fn shapes_by_index(&self) -> impl Iterator<Item = &dyn ShapeStored> {
         self.storage.shapes_by_index()
     }
 
@@ -492,24 +529,40 @@ impl Pizarra {
 
     /// Public method that the UI must call whenever a button of the mouse or
     /// pen is pressed.
-    pub fn handle_mouse_button_pressed_flags(&mut self, button: MouseButton, point: Vec2D<ScreenUnit>, tool_override: Option<SelectedTool>) -> ShouldRedraw {
-        log::debug!("handle_mouse_button_pressed_flags({:?}, {:?}, {:?})", button, point, tool_override);
+    pub fn handle_mouse_button_pressed_flags(
+        &mut self,
+        button: MouseButton,
+        point: Vec2D<ScreenUnit>,
+        tool_override: Option<SelectedTool>,
+    ) -> ShouldRedraw {
+        log::debug!(
+            "handle_mouse_button_pressed_flags({:?}, {:?}, {:?})",
+            button,
+            point,
+            tool_override
+        );
 
         let (new_board_state, should_redraw) = match self.board_state {
-            current@BoardState::Idle => match button {
-                MouseButton::Left => (BoardState::UsingTool, self.handle_tool_button_pressed(point, tool_override)),
+            current @ BoardState::Idle => match button {
+                MouseButton::Left => (
+                    BoardState::UsingTool,
+                    self.handle_tool_button_pressed(point, tool_override),
+                ),
                 MouseButton::Middle => (BoardState::Moving(point), ShouldRedraw::No),
                 MouseButton::Right => (current, ShouldRedraw::No),
                 MouseButton::Unknown => (current, ShouldRedraw::No),
             },
-            current@BoardState::UsingTool => match button {
-                MouseButton::Left => (current, self.handle_tool_button_pressed(point, tool_override)),
+            current @ BoardState::UsingTool => match button {
+                MouseButton::Left => (
+                    current,
+                    self.handle_tool_button_pressed(point, tool_override),
+                ),
                 MouseButton::Middle => (BoardState::MovingWhileUsingTool(point), ShouldRedraw::No),
                 MouseButton::Right => (current, ShouldRedraw::No),
                 MouseButton::Unknown => (current, ShouldRedraw::No),
             },
-            current@BoardState::Moving(_) => (current, ShouldRedraw::No),
-            current@BoardState::MovingWhileUsingTool(_) => (current, ShouldRedraw::No),
+            current @ BoardState::Moving(_) => (current, ShouldRedraw::No),
+            current @ BoardState::MovingWhileUsingTool(_) => (current, ShouldRedraw::No),
         };
 
         self.board_state = new_board_state;
@@ -517,18 +570,34 @@ impl Pizarra {
         should_redraw
     }
 
-    pub fn handle_mouse_button_pressed(&mut self, button: MouseButton, point: Vec2D<ScreenUnit>) -> ShouldRedraw {
+    pub fn handle_mouse_button_pressed(
+        &mut self,
+        button: MouseButton,
+        point: Vec2D<ScreenUnit>,
+    ) -> ShouldRedraw {
         self.handle_mouse_button_pressed_flags(button, point, None)
     }
 
     /// Public method that the UI must call whenever a button of the mouse or pen
     /// is released.
-    pub fn handle_mouse_button_released_flags(&mut self, button: MouseButton, point: Vec2D<ScreenUnit>, flags: Flags, tool_override: Option<SelectedTool>) -> ShouldRedraw {
-        log::debug!("handle_mouse_button_released_flags({:?}, {:?}, {:?}, {:?})", button, point, flags, tool_override);
+    pub fn handle_mouse_button_released_flags(
+        &mut self,
+        button: MouseButton,
+        point: Vec2D<ScreenUnit>,
+        flags: Flags,
+        tool_override: Option<SelectedTool>,
+    ) -> ShouldRedraw {
+        log::debug!(
+            "handle_mouse_button_released_flags({:?}, {:?}, {:?}, {:?})",
+            button,
+            point,
+            flags,
+            tool_override
+        );
 
         let (new_board_state, should_redraw) = match self.board_state {
-            current@BoardState::Idle => (current, ShouldRedraw::No),
-            current@BoardState::UsingTool => match button {
+            current @ BoardState::Idle => (current, ShouldRedraw::No),
+            current @ BoardState::UsingTool => match button {
                 MouseButton::Left => match self.handle_tool_button_released(point, tool_override) {
                     Action::Unfinished => (current, ShouldRedraw::Shape),
                     Action::Empty => (BoardState::Idle, ShouldRedraw::Shape),
@@ -541,31 +610,31 @@ impl Pizarra {
                 MouseButton::Right => (current, ShouldRedraw::No),
                 MouseButton::Unknown => (current, ShouldRedraw::No),
             },
-            current@BoardState::Moving(old_point) => match button {
+            current @ BoardState::Moving(old_point) => match button {
                 MouseButton::Left => (current, ShouldRedraw::No),
                 MouseButton::Middle => {
                     self.handle_move(old_point, point, flags);
 
                     (BoardState::Idle, ShouldRedraw::All)
-                },
+                }
                 MouseButton::Right => (current, ShouldRedraw::No),
                 MouseButton::Unknown => (current, ShouldRedraw::No),
             },
-            current@BoardState::MovingWhileUsingTool(old_point) => match button {
+            current @ BoardState::MovingWhileUsingTool(old_point) => match button {
                 MouseButton::Left => match self.handle_tool_button_released(point, tool_override) {
-                        Action::Unfinished => (current, ShouldRedraw::All),
-                        Action::Empty => (BoardState::Moving(point), ShouldRedraw::All),
-                        x => {
-                            self.conclude_action(x);
+                    Action::Unfinished => (current, ShouldRedraw::All),
+                    Action::Empty => (BoardState::Moving(point), ShouldRedraw::All),
+                    x => {
+                        self.conclude_action(x);
 
-                            (BoardState::Moving(point), ShouldRedraw::All)
-                        }
+                        (BoardState::Moving(point), ShouldRedraw::All)
+                    }
                 },
                 MouseButton::Middle => {
                     self.handle_move(old_point, point, flags);
 
                     (BoardState::UsingTool, ShouldRedraw::All)
-                },
+                }
                 MouseButton::Right => (current, ShouldRedraw::No),
                 MouseButton::Unknown => (current, ShouldRedraw::No),
             },
@@ -576,27 +645,44 @@ impl Pizarra {
         should_redraw
     }
 
-    pub fn handle_mouse_button_released(&mut self, button: MouseButton, point: Vec2D<ScreenUnit>) -> ShouldRedraw {
+    pub fn handle_mouse_button_released(
+        &mut self,
+        button: MouseButton,
+        point: Vec2D<ScreenUnit>,
+    ) -> ShouldRedraw {
         self.handle_mouse_button_released_flags(button, point, Default::default(), None)
     }
 
     /// Public methid that the UI must call with updates on the cursor position
-    pub fn handle_mouse_move_flags(&mut self, pos: Vec2D<ScreenUnit>, flags: Flags, tool_override: Option<SelectedTool>) -> ShouldRedraw {
-        log::debug!("handle_mouse_move_flags({:?}, {:?}, {:?})", pos, flags, tool_override);
+    pub fn handle_mouse_move_flags(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        flags: Flags,
+        tool_override: Option<SelectedTool>,
+    ) -> ShouldRedraw {
+        log::debug!(
+            "handle_mouse_move_flags({:?}, {:?}, {:?})",
+            pos,
+            flags,
+            tool_override
+        );
 
         let (new_board_state, should_redraw) = match self.board_state {
             BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
-            BoardState::UsingTool => (BoardState::UsingTool, self.handle_tool_mouse_move(pos, tool_override)),
+            BoardState::UsingTool => (
+                BoardState::UsingTool,
+                self.handle_tool_mouse_move(pos, tool_override),
+            ),
             BoardState::Moving(old_point) => {
                 self.handle_move(old_point, pos, flags);
 
                 (BoardState::Moving(pos), ShouldRedraw::All)
-            },
+            }
             BoardState::MovingWhileUsingTool(old_point) => {
                 self.handle_move(old_point, pos, flags);
 
                 (BoardState::MovingWhileUsingTool(pos), ShouldRedraw::All)
-            },
+            }
         };
 
         self.board_state = new_board_state;
@@ -623,9 +709,7 @@ impl Pizarra {
 
                 ShouldRedraw::All
             }
-            _ => {
-                ShouldRedraw::No
-            }
+            _ => ShouldRedraw::No,
         }
     }
 
@@ -646,7 +730,10 @@ impl Pizarra {
     pub fn scroll(&mut self, delta: Vec2D<ScreenUnit>, flags: Flags) {
         log::debug!("scroll({})", delta);
         if flags.shift {
-            self.rotate(Angle::from_degrees((delta.y * self.config.scroll_factor.into()).val()), self.dimensions / 2.0);
+            self.rotate(
+                Angle::from_degrees((delta.y * self.config.scroll_factor.into()).val()),
+                self.dimensions / 2.0,
+            );
         } else {
             self.translate(delta * self.config.scroll_factor);
         }
@@ -683,7 +770,7 @@ impl Pizarra {
                         self.undo_state = UndoState::At(self.undo_queue.len() - 2);
                     }
                 }
-            },
+            }
 
             UndoState::At(point) => {
                 let action_to_undo = mem::replace(&mut self.undo_queue[point], Action::Empty);
@@ -695,10 +782,10 @@ impl Pizarra {
                 } else {
                     self.undo_state = UndoState::At(point - 1);
                 }
-            },
+            }
 
             // nothing has to be done for we're past the end of the queue
-            UndoState::Reset => { },
+            UndoState::Reset => {}
         }
     }
 
@@ -708,7 +795,7 @@ impl Pizarra {
 
         match self.undo_state {
             // nothing has to be done for nothing has been undone
-            UndoState::InSync => {},
+            UndoState::InSync => {}
 
             UndoState::At(point) => {
                 let action_to_redo = mem::replace(&mut self.undo_queue[point + 1], Action::Empty);
@@ -720,7 +807,7 @@ impl Pizarra {
                 } else {
                     self.undo_state = UndoState::At(point + 1);
                 }
-            },
+            }
 
             UndoState::Reset => {
                 // there's something to redo
@@ -735,7 +822,7 @@ impl Pizarra {
                         self.undo_state = UndoState::At(0);
                     }
                 }
-            },
+            }
         }
     }
 
@@ -795,12 +882,13 @@ impl Pizarra {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        draw_commands::DrawCommand, app::SelectedTool,
-        path_command::{PathCommand::*, CubicBezierCurve},
-    };
-    use crate::style::{Style, Stroke};
     use crate::shape::stored::path::Path;
+    use crate::style::{Stroke, Style};
+    use crate::{
+        app::SelectedTool,
+        draw_commands::DrawCommand,
+        path_command::{CubicBezierCurve, PathCommand::*},
+    };
 
     use super::*;
 
@@ -818,17 +906,20 @@ mod tests {
 
         let commands = app.draw_commands_for_screen();
 
-        assert_eq!(commands[0], DrawCommand::Path {
-            style: Default::default(),
-            commands: vec![
-                MoveTo(Vec2D::new_world( -40.0, -30.0 )),
-                CurveTo(CubicBezierCurve {
-                    pt1: Vec2D::new_world( -39.666666666666664, -30.0 ),
-                    pt2: Vec2D::new_world( -39.333333333333336, -30.0 ),
-                    to: Vec2D::new_world( -39.0, -30.0 )
-                }),
-            ],
-        });
+        assert_eq!(
+            commands[0],
+            DrawCommand::Path {
+                style: Default::default(),
+                commands: vec![
+                    MoveTo(Vec2D::new_world(-40.0, -30.0)),
+                    CurveTo(CubicBezierCurve {
+                        pt1: Vec2D::new_world(-39.666666666666664, -30.0),
+                        pt2: Vec2D::new_world(-39.333333333333336, -30.0),
+                        to: Vec2D::new_world(-39.0, -30.0)
+                    }),
+                ],
+            }
+        );
     }
 
     #[test]
@@ -847,23 +938,26 @@ mod tests {
 
         let commands = app.draw_commands_for_screen();
 
-        assert_eq!(commands[0], DrawCommand::Path {
-            style: Style {
-                stroke: Some(Stroke {
-                    color: Default::default(),
-                    size: (Config::default().thickness / 2.0).val().into(),
-                }),
-                fill: None,
-            },
-            commands: vec![
-                MoveTo(Vec2D::new_world( -20.0, -15.0 )),
-                CurveTo(CubicBezierCurve {
-                    pt1: Vec2D::new_world( -19.833333333333332, -15.0 ),
-                    pt2: Vec2D::new_world( -19.666666666666668, -15.0 ),
-                    to: Vec2D::new_world( -19.5, -15.0 )
-                }),
-            ],
-        });
+        assert_eq!(
+            commands[0],
+            DrawCommand::Path {
+                style: Style {
+                    stroke: Some(Stroke {
+                        color: Default::default(),
+                        size: (Config::default().thickness / 2.0).val().into(),
+                    }),
+                    fill: None,
+                },
+                commands: vec![
+                    MoveTo(Vec2D::new_world(-20.0, -15.0)),
+                    CurveTo(CubicBezierCurve {
+                        pt1: Vec2D::new_world(-19.833333333333332, -15.0),
+                        pt2: Vec2D::new_world(-19.666666666666668, -15.0),
+                        to: Vec2D::new_world(-19.5, -15.0)
+                    }),
+                ],
+            }
+        );
     }
 
     #[test]
@@ -934,7 +1028,10 @@ mod tests {
 
         app.zoom_out();
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-80.0, -60.0), Vec2D::new_world(80.0, 60.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-80.0, -60.0), Vec2D::new_world(80.0, 60.0)]
+        );
     }
 
     #[test]
@@ -1036,35 +1133,53 @@ mod tests {
     fn r#move() {
         let mut app = Pizarra::new_for_testing();
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-40.0, -30.0), Vec2D::new_world(40.0, 30.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-40.0, -30.0), Vec2D::new_world(40.0, 30.0)]
+        );
 
         app.handle_mouse_button_pressed(MouseButton::Middle, Vec2D::new_screen(0.0, 0.0));
         app.handle_mouse_button_released(MouseButton::Middle, Vec2D::new_screen(-1.0, 0.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-39.0, -30.0), Vec2D::new_world(41.0, 30.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-39.0, -30.0), Vec2D::new_world(41.0, 30.0)]
+        );
     }
 
     #[test]
     fn move_while_in_zoom_is_coherent() {
         let mut app = Pizarra::new_for_testing();
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-40.0, -30.0), Vec2D::new_world(40.0, 30.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-40.0, -30.0), Vec2D::new_world(40.0, 30.0)]
+        );
 
         app.zoom_in();
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-20.0, -15.0), Vec2D::new_world(20.0, 15.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-20.0, -15.0), Vec2D::new_world(20.0, 15.0)]
+        );
 
         app.handle_mouse_button_pressed(MouseButton::Middle, Vec2D::new_screen(0.0, 0.0));
         app.handle_mouse_button_released(MouseButton::Middle, Vec2D::new_screen(-1.0, 0.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-19.5, -15.0), Vec2D::new_world(20.5, 15.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-19.5, -15.0), Vec2D::new_world(20.5, 15.0)]
+        );
     }
 
     #[test]
     fn move_while_drawing() {
         let mut app = Pizarra::new_for_testing();
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-40.0, -30.0), Vec2D::new_world(40.0, 30.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-40.0, -30.0), Vec2D::new_world(40.0, 30.0)]
+        );
 
         app.set_tool(SelectedTool::Shape(ShapeTool::Path));
 
@@ -1076,44 +1191,59 @@ mod tests {
         app.handle_mouse_move(Vec2D::new_screen(40.0, 10.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2D::new_screen(40.0, 10.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-50.0, -30.0), Vec2D::new_world(30.0, 30.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-50.0, -30.0), Vec2D::new_world(30.0, 30.0)]
+        );
         assert_eq!(app.storage.shape_count(), 1);
 
         let commands = app.draw_commands_for_screen();
 
         assert_eq!(commands.len(), 1);
 
-        assert_eq!(commands[0], DrawCommand::Path {
-            style: Default::default(),
-            commands: vec![
-                MoveTo(Vec2D::new_world( -30.0, -20.0 )),
-                CurveTo(CubicBezierCurve {
-                    pt1: Vec2D::new_world( -26.666666666666668, -20.0 ),
-                    pt2: Vec2D::new_world( -23.333333333333332, -20.0 ),
-                    to: Vec2D::new_world( -20.0, -20.0 )
-                }),
-                CurveTo(CubicBezierCurve {
-                    pt1: Vec2D::new_world( -16.666666666666668, -20.0 ),
-                    pt2: Vec2D::new_world( -13.333333333333332, -20.0 ),
-                    to: Vec2D::new_world( -10.0, -20.0 )
-                }),
-            ],
-        });
+        assert_eq!(
+            commands[0],
+            DrawCommand::Path {
+                style: Default::default(),
+                commands: vec![
+                    MoveTo(Vec2D::new_world(-30.0, -20.0)),
+                    CurveTo(CubicBezierCurve {
+                        pt1: Vec2D::new_world(-26.666666666666668, -20.0),
+                        pt2: Vec2D::new_world(-23.333333333333332, -20.0),
+                        to: Vec2D::new_world(-20.0, -20.0)
+                    }),
+                    CurveTo(CubicBezierCurve {
+                        pt1: Vec2D::new_world(-16.666666666666668, -20.0),
+                        pt2: Vec2D::new_world(-13.333333333333332, -20.0),
+                        to: Vec2D::new_world(-10.0, -20.0)
+                    }),
+                ],
+            }
+        );
     }
 
     #[test]
     fn zoom_must_be_idempotent() {
         let mut app = Pizarra::new_for_testing();
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-40.0, -30.0), Vec2D::new_world(40.0, 30.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-40.0, -30.0), Vec2D::new_world(40.0, 30.0)]
+        );
 
         app.zoom_in();
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-20.0, -15.0), Vec2D::new_world(20.0, 15.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-20.0, -15.0), Vec2D::new_world(20.0, 15.0)]
+        );
 
         app.zoom_in();
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-10.0, -7.5), Vec2D::new_world(10.0, 7.5)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-10.0, -7.5), Vec2D::new_world(10.0, 7.5)]
+        );
     }
 
     #[test]
@@ -1227,11 +1357,20 @@ mod tests {
 
         app.resize(Vec2D::new_screen(100.0, 100.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-50.0, -50.0), Vec2D::new_world(50.0, 50.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [Vec2D::new_world(-50.0, -50.0), Vec2D::new_world(50.0, 50.0)]
+        );
 
         app.resize(Vec2D::new_screen(200.0, 300.0));
 
-        assert_eq!(app.visible_bbox(), [Vec2D::new_world(-100.0, -150.0), Vec2D::new_world(100.0, 150.0)]);
+        assert_eq!(
+            app.visible_bbox(),
+            [
+                Vec2D::new_world(-100.0, -150.0),
+                Vec2D::new_world(100.0, 150.0)
+            ]
+        );
     }
 
     #[test]
@@ -1261,117 +1400,925 @@ mod tests {
         use super::MouseButton::Left;
         use super::SelectedTool::Eraser;
 
-        app.resize(Vec2D::new_screen( 800.0, 600.0 ));
+        app.resize(Vec2D::new_screen(800.0, 600.0));
 
         // draw the shape
-        app.handle_mouse_move_flags(Vec2D::new_screen( 403.578857421875, 281.02178955078125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_button_pressed(Left, Vec2D::new_screen( 403.578857421875, 281.02178955078125 ));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 400.51129150390625, 279.93914794921875 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 399.669189453125, 278.4234619140625 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 399.6090087890625, 278.0986328125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 399.6090087890625, 277.88214111328125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 399.6090087890625, 277.88214111328125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 399.6090087890625, 277.88214111328125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 399.6090087890625, 277.88214111328125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 399.54888916015625, 278.04449462890625 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 399.18798828125, 278.85650634765625 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 397.74444580078125, 281.23834228515625 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 395.5189208984375, 287.5177001953125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 395.5791015625, 289.3040771484375 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 397.08282470703125, 291.0904541015625 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 398.16546630859375, 292.2813720703125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 400.03009033203125, 294.554931640625 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 402.25555419921875, 297.4781494140625 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 405.92462158203125, 301.700439453125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 410.6162109375, 304.1905517578125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 419.9993896484375, 303.05377197265625 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 428.54046630859375, 298.29010009765625 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 434.13427734375, 292.93096923828125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 435.938720703125, 285.29827880859375 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 431.06671142578125, 277.2325439453125 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 424.69097900390625, 275.716796875 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 416.8115234375, 277.17840576171875 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 411.097412109375, 279.7767333984375 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 408.33056640625, 281.5631103515625 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 406.64642333984375, 283.72845458984375 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 406.10504150390625, 284.91937255859375 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_button_released_flags(Left, Vec2D::new_screen( 406.10504150390625, 284.91937255859375 ), Flags { shift: false, ctrl: false, alt: false }, None);
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(403.578857421875, 281.02178955078125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_button_pressed(
+            Left,
+            Vec2D::new_screen(403.578857421875, 281.02178955078125),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(400.51129150390625, 279.93914794921875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(399.669189453125, 278.4234619140625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(399.6090087890625, 278.0986328125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(399.6090087890625, 277.88214111328125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(399.6090087890625, 277.88214111328125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(399.6090087890625, 277.88214111328125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(399.6090087890625, 277.88214111328125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(399.54888916015625, 278.04449462890625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(399.18798828125, 278.85650634765625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(397.74444580078125, 281.23834228515625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(395.5189208984375, 287.5177001953125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(395.5791015625, 289.3040771484375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(397.08282470703125, 291.0904541015625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(398.16546630859375, 292.2813720703125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(400.03009033203125, 294.554931640625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(402.25555419921875, 297.4781494140625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(405.92462158203125, 301.700439453125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(410.6162109375, 304.1905517578125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(419.9993896484375, 303.05377197265625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(428.54046630859375, 298.29010009765625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(434.13427734375, 292.93096923828125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(435.938720703125, 285.29827880859375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(431.06671142578125, 277.2325439453125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(424.69097900390625, 275.716796875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(416.8115234375, 277.17840576171875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(411.097412109375, 279.7767333984375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(408.33056640625, 281.5631103515625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(406.64642333984375, 283.72845458984375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(406.10504150390625, 284.91937255859375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_button_released_flags(
+            Left,
+            Vec2D::new_screen(406.10504150390625, 284.91937255859375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
 
         // there must be a line
         assert_eq!(app.storage.shape_count(), 1);
 
-        app.handle_mouse_move_flags(Vec2D::new_screen( 405.3231201171875, 287.9508056640625 ), Flags { shift: false, ctrl: false, alt: false }, None);
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.6610107421875, 291.14459228515625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(405.3231201171875, 287.9508056640625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            None,
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.6610107421875, 291.14459228515625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
 
         // use the hardware eraser
-        app.handle_mouse_button_pressed(Left, Vec2D::new_screen( 420.6610107421875, 291.14459228515625 ));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.6610107421875, 291.14459228515625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.6610107421875, 291.14459228515625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.6610107421875, 291.14459228515625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.54071044921875, 290.982177734375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.54071044921875, 290.982177734375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.54071044921875, 290.982177734375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.54071044921875, 290.982177734375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.54071044921875, 290.982177734375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.4805908203125, 291.14459228515625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.600830078125, 291.415283203125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.6610107421875, 291.57763671875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.78131103515625, 291.74005126953125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.901611328125, 291.9024658203125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.901611328125, 291.9024658203125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.901611328125, 291.9024658203125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 420.901611328125, 291.9024658203125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 421.1422119140625, 291.84832763671875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 421.3828125, 291.74005126953125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 421.68353271484375, 291.5235595703125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 422.04443359375, 291.19873046875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 422.525634765625, 290.7115478515625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 423.00677490234375, 290.0078125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 423.6082763671875, 289.1417236328125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 424.20977783203125, 288.1131591796875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 424.87139892578125, 286.97637939453125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 425.59320068359375, 285.839599609375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 426.31494140625, 284.70281982421875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 427.096923828125, 283.62017822265625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 427.87884521484375, 282.645751953125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 428.6005859375, 281.7796630859375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 429.26226806640625, 281.02178955078125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 429.92388916015625, 280.53460693359375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 430.4652099609375, 280.1015625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 430.88623046875, 279.83087158203125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 431.30731201171875, 279.6143798828125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 431.6080322265625, 279.45196533203125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 431.8486328125, 279.34368896484375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 432.14935302734375, 279.1812744140625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 432.38995361328125, 279.07305908203125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 432.7508544921875, 278.8023681640625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 433.171875, 278.47760009765625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 433.653076171875, 277.93621826171875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 434.19439697265625, 277.17840576171875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 434.8560791015625, 276.0416259765625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 435.6981201171875, 274.36346435546875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 436.72064208984375, 272.19818115234375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 437.7431640625, 269.8704833984375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 438.58526611328125, 267.975830078125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 439.24688720703125, 266.5142822265625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 439.547607421875, 265.7022705078125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 439.90850830078125, 265.1068115234375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 440.2694091796875, 264.5113525390625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 440.510009765625, 264.024169921875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 440.7506103515625, 263.6993408203125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 440.9310302734375, 263.5369873046875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 440.9310302734375, 263.5369873046875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 441.2318115234375, 263.48284912109375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 441.4122314453125, 263.48284912109375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 441.4122314453125, 263.48284912109375 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 441.59271240234375, 263.59112548828125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 441.59271240234375, 263.59112548828125 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 441.65283203125, 263.75347900390625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 441.65283203125, 263.75347900390625 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 441.65283203125, 263.9158935546875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 441.65283203125, 263.9158935546875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_move_flags(Vec2D::new_screen( 441.65283203125, 263.9158935546875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
-        app.handle_mouse_button_released_flags(Left, Vec2D::new_screen( 441.65283203125, 263.9158935546875 ), Flags { shift: false, ctrl: false, alt: false }, Some(Eraser));
+        app.handle_mouse_button_pressed(
+            Left,
+            Vec2D::new_screen(420.6610107421875, 291.14459228515625),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.6610107421875, 291.14459228515625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.6610107421875, 291.14459228515625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.6610107421875, 291.14459228515625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.54071044921875, 290.982177734375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.54071044921875, 290.982177734375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.54071044921875, 290.982177734375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.54071044921875, 290.982177734375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.54071044921875, 290.982177734375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.4805908203125, 291.14459228515625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.600830078125, 291.415283203125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.6610107421875, 291.57763671875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.78131103515625, 291.74005126953125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.901611328125, 291.9024658203125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.901611328125, 291.9024658203125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.901611328125, 291.9024658203125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(420.901611328125, 291.9024658203125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(421.1422119140625, 291.84832763671875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(421.3828125, 291.74005126953125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(421.68353271484375, 291.5235595703125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(422.04443359375, 291.19873046875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(422.525634765625, 290.7115478515625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(423.00677490234375, 290.0078125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(423.6082763671875, 289.1417236328125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(424.20977783203125, 288.1131591796875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(424.87139892578125, 286.97637939453125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(425.59320068359375, 285.839599609375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(426.31494140625, 284.70281982421875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(427.096923828125, 283.62017822265625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(427.87884521484375, 282.645751953125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(428.6005859375, 281.7796630859375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(429.26226806640625, 281.02178955078125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(429.92388916015625, 280.53460693359375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(430.4652099609375, 280.1015625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(430.88623046875, 279.83087158203125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(431.30731201171875, 279.6143798828125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(431.6080322265625, 279.45196533203125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(431.8486328125, 279.34368896484375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(432.14935302734375, 279.1812744140625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(432.38995361328125, 279.07305908203125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(432.7508544921875, 278.8023681640625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(433.171875, 278.47760009765625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(433.653076171875, 277.93621826171875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(434.19439697265625, 277.17840576171875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(434.8560791015625, 276.0416259765625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(435.6981201171875, 274.36346435546875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(436.72064208984375, 272.19818115234375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(437.7431640625, 269.8704833984375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(438.58526611328125, 267.975830078125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(439.24688720703125, 266.5142822265625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(439.547607421875, 265.7022705078125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(439.90850830078125, 265.1068115234375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(440.2694091796875, 264.5113525390625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(440.510009765625, 264.024169921875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(440.7506103515625, 263.6993408203125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(440.9310302734375, 263.5369873046875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(440.9310302734375, 263.5369873046875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(441.2318115234375, 263.48284912109375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(441.4122314453125, 263.48284912109375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(441.4122314453125, 263.48284912109375),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(441.59271240234375, 263.59112548828125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(441.59271240234375, 263.59112548828125),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(441.65283203125, 263.75347900390625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(441.65283203125, 263.75347900390625),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(441.65283203125, 263.9158935546875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(441.65283203125, 263.9158935546875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_move_flags(
+            Vec2D::new_screen(441.65283203125, 263.9158935546875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
+        app.handle_mouse_button_released_flags(
+            Left,
+            Vec2D::new_screen(441.65283203125, 263.9158935546875),
+            Flags {
+                shift: false,
+                ctrl: false,
+                alt: false,
+            },
+            Some(Eraser),
+        );
 
         // there must be no line
         assert_eq!(app.storage.shape_count(), 0);
@@ -1391,12 +2338,20 @@ mod tests {
     fn all_shapes_that_are_touched_are_erased_at_once() {
         let mut app = Pizarra::new_for_testing();
 
-        app.add_sample_shape(Box::new(Path::from_parts(vec![
-            MoveTo(Vec2D::new_world(0.0, 0.0)), LineTo(Vec2D::new_world(20.0, 0.0)),
-        ], Default::default())));
-        app.add_sample_shape(Box::new(Path::from_parts(vec![
-            MoveTo(Vec2D::new_world(0.0, 0.0)), LineTo(Vec2D::new_world(20.0, 0.0)),
-        ], Default::default())));
+        app.add_sample_shape(Box::new(Path::from_parts(
+            vec![
+                MoveTo(Vec2D::new_world(0.0, 0.0)),
+                LineTo(Vec2D::new_world(20.0, 0.0)),
+            ],
+            Default::default(),
+        )));
+        app.add_sample_shape(Box::new(Path::from_parts(
+            vec![
+                MoveTo(Vec2D::new_world(0.0, 0.0)),
+                LineTo(Vec2D::new_world(20.0, 0.0)),
+            ],
+            Default::default(),
+        )));
 
         assert_eq!(app.storage.shape_count(), 2);
 
@@ -1422,7 +2377,7 @@ mod tests {
 
         match app.handle_mouse_button_released(MouseButton::Left, (1.0, 1.0).into()) {
             ShouldRedraw::Shape => {}
-            _ => panic!()
+            _ => panic!(),
         }
     }
 }

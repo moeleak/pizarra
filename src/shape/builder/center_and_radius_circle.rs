@@ -1,6 +1,6 @@
 use crate::draw_commands::{cancel_helper, path_helper, DrawCommand};
 use crate::geom::{self, Angle};
-use crate::point::{Vec2D, ScreenUnit, WorldUnit};
+use crate::point::{ScreenUnit, Vec2D, WorldUnit};
 use crate::shape::stored::ellipse::Ellipse;
 use crate::shape::{ShapeBuilder, ShapeFinished};
 use crate::style::Style;
@@ -28,9 +28,15 @@ impl ShapeBuilder for CenterAndRadiusCircle {
         self.point = t.to_world_coordinates(pos);
     }
 
-    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) {}
+    fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) {
+    }
 
-    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, snap: ScreenUnit) -> ShapeFinished {
+    fn handle_button_released(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        t: Transform,
+        snap: ScreenUnit,
+    ) -> ShapeFinished {
         self.handle_mouse_moved(pos, t, snap);
 
         if t.to_screen_coordinates(self.center).distance(pos) < snap {
@@ -39,15 +45,13 @@ impl ShapeBuilder for CenterAndRadiusCircle {
 
         let radius = self.point.distance(self.center);
 
-        ShapeFinished::Yes(vec![Box::new(
-            Ellipse::from_parts(
-                self.center,
-                radius,
-                radius,
-                Angle::from_radians(0.0),
-                self.style,
-            )
-        )])
+        ShapeFinished::Yes(vec![Box::new(Ellipse::from_parts(
+            self.center,
+            radius,
+            radius,
+            Angle::from_radians(0.0),
+            self.style,
+        ))])
     }
 
     fn draw_commands(&self, t: Transform, snap: ScreenUnit) -> Vec<DrawCommand> {
@@ -63,12 +67,10 @@ impl ShapeBuilder for CenterAndRadiusCircle {
                 },
                 style: self.style,
             },
-
             path_helper(vec![
                 t.to_screen_coordinates(self.center),
                 t.to_screen_coordinates(self.point),
             ]),
-
             cancel_helper(self.center, self.point, t, snap),
         ]
     }

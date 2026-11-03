@@ -1,24 +1,24 @@
-use std::fmt;
 use std::borrow::Borrow;
+use std::fmt;
 
 use xml::writer::EventWriter;
 
-use crate::point::{Vec2D, ScreenUnit, WorldUnit};
-use crate::transform::Transform;
 use crate::draw_commands::DrawCommand;
+use crate::point::{ScreenUnit, Vec2D, WorldUnit};
 use crate::style::Style;
+use crate::transform::Transform;
 
 pub mod builder;
 pub mod stored;
 
-use self::builder::free_hand_line::FreeHandLine;
-use self::builder::foci_and_point_ellipse::FociAndPointEllipse;
-use self::builder::polygon::PolygonBuilder;
 use self::builder::center_and_radius_circle::CenterAndRadiusCircle;
+use self::builder::foci_and_point_ellipse::FociAndPointEllipse;
+use self::builder::free_grid::FreeGrid;
+use self::builder::free_hand_line::FreeHandLine;
+use self::builder::grid::Grid;
+use self::builder::polygon::PolygonBuilder;
 use self::builder::rectangle::AxisAlignedRectangleBuilder;
 use self::builder::three_point_circle::CircleThroughThreePointsBuilder;
-use self::builder::grid::Grid;
-use self::builder::free_grid::FreeGrid;
 
 /// Shapes handle input from the user, and they're responsible of notifying when
 /// they're finished, for example in the case of a polygon
@@ -49,13 +49,21 @@ pub enum ShapeTool {
 }
 
 impl ShapeTool {
-    pub fn start(&self, initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> Box<dyn ShapeBuilder> {
+    pub fn start(
+        &self,
+        initial: Vec2D<WorldUnit>,
+        style: Style<WorldUnit>,
+    ) -> Box<dyn ShapeBuilder> {
         match *self {
             ShapeTool::Path => Box::new(FreeHandLine::start(initial, style)),
             ShapeTool::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(initial, style)),
             ShapeTool::Polygon => Box::new(PolygonBuilder::start(initial, style)),
-            ShapeTool::CircleByCenterAndPoint => Box::new(CenterAndRadiusCircle::start(initial, style)),
-            ShapeTool::CircleThroughThreePoints => Box::new(CircleThroughThreePointsBuilder::start(initial, style)),
+            ShapeTool::CircleByCenterAndPoint => {
+                Box::new(CenterAndRadiusCircle::start(initial, style))
+            }
+            ShapeTool::CircleThroughThreePoints => {
+                Box::new(CircleThroughThreePointsBuilder::start(initial, style))
+            }
             ShapeTool::ThreePointEllipse => Box::new(FociAndPointEllipse::start(initial, style)),
             ShapeTool::Grid => Box::new(Grid::start(initial, style)),
             ShapeTool::FreeGrid => Box::new(FreeGrid::start(initial, style)),
@@ -67,11 +75,26 @@ pub trait ShapeBuilder: fmt::Debug {
     /// Must handle new coordinates given to this shape. If this method is
     /// called it means that the shape is being modified (thus this is the most
     /// recently added shape
-    fn handle_mouse_moved(&mut self, pos: Vec2D<ScreenUnit>, transform: Transform, snap: ScreenUnit);
+    fn handle_mouse_moved(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        transform: Transform,
+        snap: ScreenUnit,
+    );
 
-    fn handle_button_pressed(&mut self, pos: Vec2D<ScreenUnit>, transform: Transform, snap: ScreenUnit);
+    fn handle_button_pressed(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        transform: Transform,
+        snap: ScreenUnit,
+    );
 
-    fn handle_button_released(&mut self, pos: Vec2D<ScreenUnit>, transform: Transform, snap: ScreenUnit) -> ShapeFinished;
+    fn handle_button_released(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        transform: Transform,
+        snap: ScreenUnit,
+    ) -> ShapeFinished;
 
     /// Must return the necessary commands to display this shape on the screen
     /// when building it
@@ -169,6 +192,12 @@ impl Shape {
 
 impl fmt::Debug for Shape {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Shape({:?}, {}, {:?})", self.shape_impl.shape_type(), self.id, self.style())
+        write!(
+            f,
+            "Shape({:?}, {}, {:?})",
+            self.shape_impl.shape_type(),
+            self.id,
+            self.style()
+        )
     }
 }

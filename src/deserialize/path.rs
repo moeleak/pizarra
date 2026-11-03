@@ -4,7 +4,10 @@ use std::iter::Enumerate;
 use std::str;
 use std::str::Bytes;
 
-use crate::path_command::{PathCommand::{self, *}, CubicBezierCurve};
+use crate::path_command::{
+    CubicBezierCurve,
+    PathCommand::{self, *},
+};
 use crate::point::{Vec2D, WorldUnit};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
