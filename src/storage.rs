@@ -198,7 +198,7 @@ impl Storage {
 
         commands.sort_unstable_by_key(|(i, _dc)| *i);
 
-        commands.into_iter().map(|(_i, dc)| dc).collect()
+        commands.into_iter().flat_map(|(_i, dc)| dc).collect()
     }
 
     /// Returns the shapes stored in this storage ordered by their index. It is

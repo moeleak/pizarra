@@ -149,8 +149,9 @@ pub trait ShapeBuilder: fmt::Debug {
 }
 
 pub trait ShapeStored: fmt::Debug {
-    /// return the commands needed to draw this shape
-    fn draw_commands(&self) -> DrawCommand;
+    /// return the commands needed to draw this shape. Most shapes need one;
+    /// a pressure stroke needs one per segment.
+    fn draw_commands(&self) -> Vec<DrawCommand>;
 
     /// Must know its bbox
     fn bbox(&self) -> [Vec2D<WorldUnit>; 2];
@@ -204,7 +205,7 @@ impl Shape {
         }
     }
 
-    pub fn draw_commands(&self) -> DrawCommand {
+    pub fn draw_commands(&self) -> Vec<DrawCommand> {
         self.shape_impl.draw_commands()
     }
 

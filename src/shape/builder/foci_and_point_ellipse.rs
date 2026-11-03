@@ -243,7 +243,7 @@ mod tests {
         match builder.handle_button_released(e, t, SNAP) {
             ShapeFinished::Yes(shape) => {
                 assert_eq!(
-                    shape[0].draw_commands(),
+                    shape[0].draw_commands()[0],
                     DrawCommand::Ellipse {
                         style: Default::default(),
                         ellipse: geom::Ellipse {

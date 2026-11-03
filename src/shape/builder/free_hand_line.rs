@@ -3,7 +3,7 @@ use crate::geom::{bisector, thirds};
 use crate::path_command::{CubicBezierCurve, PathCommand};
 use crate::point::{ScreenUnit, Unit, Vec2D, WorldUnit};
 use crate::shape::stored::path::Path;
-use crate::shape::{ShapeBuilder, ShapeFinished};
+use crate::shape::{ShapeBuilder, ShapeFinished, ShapeStored};
 use crate::style::Style;
 use crate::transform::Transform;
 
@@ -199,22 +199,11 @@ impl ShapeBuilder for FreeHandLine {
         _t: Transform,
         _snap: ScreenUnit,
     ) -> ShapeFinished {
-        let shapes = self
-            .to_path()
-            .draw_commands_all()
-            .into_iter()
-            .filter_map(|command| match command {
-                DrawCommand::Path { commands, style } => {
-                    Some(Box::new(Path::from_parts(commands, style))
-                        as Box<dyn crate::shape::ShapeStored>)
-                }
-                _ => None,
-            })
-            .collect();
-        ShapeFinished::Yes(shapes)
+        // A pressure stroke stays one shape, so the eraser removes it whole.
+        ShapeFinished::Yes(vec![Box::new(self.to_path())])
     }
 
     fn draw_commands(&self, _t: Transform, _snap: ScreenUnit) -> Vec<DrawCommand> {
-        self.to_path().draw_commands_all()
+        self.to_path().draw_commands()
     }
 }

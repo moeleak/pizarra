@@ -7,12 +7,18 @@ use crate::point::{Unit, Vec2D, WorldUnit};
 use crate::shape::{ShapeStored, ShapeType};
 use crate::style::Style;
 
+/// Name, in the pizarra namespace, of the attribute that numbers the `<path>`
+/// elements a pressure stroke is saved as, so that loading can join them back
+/// into one shape.
+pub(crate) const PRESSURE_SEGMENT_ATTR: &str = "pressure-segment";
+
 #[derive(Debug)]
 pub struct Path {
     commands: Vec<PathCommand<WorldUnit>>,
-    /// Absolute stroke width at each command, for pressure-sensitive strokes.
-    /// `None` means the single width in `style` applies to the whole path.
-    widths: Option<Vec<WorldUnit>>,
+    /// Absolute stroke width of each segment (between consecutive commands)
+    /// of a pressure-sensitive stroke. `None` means the single width in
+    /// `style` applies to the whole path.
+    segment_widths: Option<Vec<WorldUnit>>,
     style: Style<WorldUnit>,
 }
 
@@ -20,26 +26,62 @@ impl Path {
     pub fn from_parts(commands: Vec<PathCommand<WorldUnit>>, style: Style<WorldUnit>) -> Path {
         Path {
             commands,
-            widths: None,
+            segment_widths: None,
             style,
         }
     }
 
+    /// A pressure stroke with the given width at each command. Each segment
+    /// takes the average width of its two ends.
     pub fn from_parts_with_widths(
         commands: Vec<PathCommand<WorldUnit>>,
         style: Style<WorldUnit>,
         widths: Vec<WorldUnit>,
     ) -> Path {
-        let widths = (widths.len() == commands.len()).then_some(widths);
+        let segment_widths = (widths.len() == commands.len() && commands.len() >= 2).then(|| {
+            widths
+                .windows(2)
+                .map(|ends| ((ends[0].val() + ends[1].val()) / 2.0).into())
+                .collect()
+        });
         Path {
             commands,
-            widths,
+            segment_widths,
             style,
         }
     }
 
+    /// Joins the segments a pressure stroke was saved as back into one
+    /// stroke. Each segment keeps its own width.
+    pub(crate) fn from_pressure_segments(segments: Vec<Path>) -> Option<Path> {
+        let first = segments.first()?;
+        let mut commands = vec![PathCommand::MoveTo(first.commands.first()?.to())];
+        let mut segment_widths = Vec::new();
+
+        for segment in &segments {
+            let width = segment.style.stroke.map(|s| s.size).unwrap_or_default();
+            for command in segment.commands.iter().skip(1) {
+                commands.push(*command);
+                segment_widths.push(width);
+            }
+        }
+
+        let mut path = Path {
+            commands,
+            segment_widths: Some(segment_widths),
+            style: first.style,
+        };
+        // The stroke's own width is the widest segment, which is what hit
+        // testing and the bounding box need.
+        path.style.stroke = path.style.stroke.map(|stroke| crate::style::Stroke {
+            size: path.max_width().unwrap_or(stroke.size),
+            ..stroke
+        });
+        Some(path)
+    }
+
     fn max_width(&self) -> Option<WorldUnit> {
-        if let Some(widths) = &self.widths {
+        if let Some(widths) = &self.segment_widths {
             return widths
                 .iter()
                 .copied()
@@ -58,49 +100,32 @@ impl Path {
         }
     }
 
-    /// Pressure strokes are drawn as one path per segment, each with the
-    /// width sampled at both ends. Round caps and joins hide the seams.
+    /// Pressure strokes are drawn as one path per segment, each with its own
+    /// width. Round caps and joins hide the seams.
     fn segments_with_widths(&self) -> Vec<(Vec<PathCommand<WorldUnit>>, Style<WorldUnit>)> {
-        let Some(widths) = &self.widths else {
+        let Some(widths) = &self.segment_widths else {
             return vec![(self.commands.clone(), self.style)];
         };
-        if self.commands.len() < 2 {
-            return vec![(self.commands.clone(), self.style)];
-        }
 
         self.commands
             .windows(2)
-            .zip(widths.windows(2))
-            .map(|(commands, widths)| {
-                let width = (widths[0].val() + widths[1].val()) / 2.0;
+            .zip(widths)
+            .map(|(commands, width)| {
                 (
                     vec![PathCommand::MoveTo(commands[0].to()), commands[1]],
-                    self.segment_style(width.into()),
+                    self.segment_style(*width),
                 )
             })
-            .collect()
-    }
-
-    /// Every segment as its own draw command, each with its own width.
-    pub fn draw_commands_all(&self) -> Vec<DrawCommand> {
-        self.segments_with_widths()
-            .into_iter()
-            .map(|(commands, style)| DrawCommand::Path { commands, style })
             .collect()
     }
 }
 
 impl ShapeStored for Path {
-    fn draw_commands(&self) -> DrawCommand {
-        // The stored shape contract only allows one command. Render the first
-        // segment here and let callers that need all of them use
-        // `draw_commands_all`.
-        let (commands, style) = self
-            .segments_with_widths()
+    fn draw_commands(&self) -> Vec<DrawCommand> {
+        self.segments_with_widths()
             .into_iter()
-            .next()
-            .unwrap_or((Vec::new(), self.style));
-        DrawCommand::Path { commands, style }
+            .map(|(commands, style)| DrawCommand::Path { commands, style })
+            .collect()
     }
 
     // The bounding box of the path needs to consider the beizer handles
@@ -122,8 +147,8 @@ impl ShapeStored for Path {
 
     fn intersects_circle(&self, center: Vec2D<WorldUnit>, radius: WorldUnit) -> bool {
         let mut last_point = None;
-        let radius = if let Some(stroke) = self.style.stroke {
-            radius + stroke.size / 2.0
+        let radius = if let Some(size) = self.max_width() {
+            radius + size / 2.0
         } else {
             radius
         };
@@ -145,19 +170,28 @@ impl ShapeStored for Path {
 
     fn serialize(&self, writer: &mut EventWriter<&mut Vec<u8>>) {
         // SVG has no variable stroke width, so a pressure stroke is written as
-        // one path per segment, like it is rendered.
-        for (commands, style) in self.segments_with_widths() {
+        // one path per segment, like it is rendered. Numbering the segments
+        // lets loading join them back into one shape.
+        let pressure = self.segment_widths.is_some();
+        let attr_name = format!("pizarra:{PRESSURE_SEGMENT_ATTR}");
+        for (index, (commands, style)) in self.segments_with_widths().into_iter().enumerate() {
             let d: String = commands.iter().map(|p| p.to_string()).collect();
+            let style = format!(
+                "fill:{fill};stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
+                fill = style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
+                stroke = style.stroke.map(|s| s.size).unwrap_or_else(|| 0.0.into()),
+                color = style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
+                alpha = style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
+            );
+            let index = index.to_string();
 
-            writer.write(XmlEvent::start_element("path")
-                .attr("style", &format!(
-                    "fill:{fill};stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
-                    fill = style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
-                    stroke = style.stroke.map(|s| s.size).unwrap_or_else(|| 0.0.into()),
-                    color = style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
-                    alpha = style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
-                ))
-                .attr("d", &d)).unwrap();
+            let mut element = XmlEvent::start_element("path")
+                .attr("style", &style)
+                .attr("d", &d);
+            if pressure {
+                element = element.attr(attr_name.as_str(), &index);
+            }
+            writer.write(element).unwrap();
             writer.write(XmlEvent::end_element()).unwrap();
         }
     }

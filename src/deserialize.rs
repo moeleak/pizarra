@@ -12,7 +12,10 @@ use crate::config::Config;
 use crate::geom::Angle;
 use crate::point::{Unit, Vec2D, WorldUnit};
 use crate::shape::{
-    stored::{ellipse::Ellipse, path::Path},
+    stored::{
+        ellipse::Ellipse,
+        path::{Path, PRESSURE_SEGMENT_ATTR},
+    },
     ShapeStored,
 };
 use crate::storage::Storage;
@@ -379,6 +382,14 @@ enum DeState {
         background: Color,
     },
 
+    /// Inside a pressure stroke: the `<path>` segments read so far, joined
+    /// into one shape when the stroke ends.
+    V2PressureStroke {
+        storage: Storage,
+        background: Color,
+        segments: Vec<Path>,
+    },
+
     /// So far it looks like a correct v1 file
     V1Started,
 
@@ -494,6 +505,28 @@ macro_rules! parse_shape_external {
             },
         }
     }};
+}
+
+/// Reads one `<path>` of a pressure stroke as a concrete [`Path`], so it can
+/// be joined with the other segments of the stroke.
+fn parse_pressure_segment(attributes: Vec<OwnedAttribute>, config: Config) -> Result<Path, Error> {
+    let attributes = xml_attrs_as_hashmap(attributes);
+    let style = attributes
+        .get("style")
+        .ok_or_else(|| Error::PathMissingAttribute("style".into()))?;
+    let d = attributes
+        .get("d")
+        .ok_or_else(|| Error::PathMissingAttribute("d".into()))?;
+
+    Path::from_xml_attributes(style, d, config)
+}
+
+/// Index of a pressure stroke segment, see [`PRESSURE_SEGMENT_ATTR`].
+fn pressure_segment_index(attributes: &[OwnedAttribute]) -> Option<usize> {
+    get_single_attr(attributes, PRESSURE_SEGMENT_ATTR, Some("pizarra"))?
+        .trim()
+        .parse()
+        .ok()
 }
 
 /// Used to quickly return a transition to the External state given a found
@@ -714,7 +747,22 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
                 name, attributes, ..
             },
         ) if name.local_name == "path" => {
-            parse_shape_v2!(Path, attributes, config, storage, background)
+            if pressure_segment_index(&attributes) == Some(0) {
+                match parse_pressure_segment(attributes, config) {
+                    Ok(segment) => V2PressureStroke {
+                        storage,
+                        background,
+                        segments: vec![segment],
+                    },
+                    Err(e) => External {
+                        storage,
+                        background,
+                        errors: vec![e],
+                    },
+                }
+            } else {
+                parse_shape_v2!(Path, attributes, config, storage, background)
+            }
         }
         (
             V2StorageStarted {
@@ -748,6 +796,57 @@ fn step(state: DeState, event: XmlEvent, config: Config) -> DeState {
             storage,
             background,
         },
+
+        // The next segment of the pressure stroke being read
+        (
+            V2PressureStroke {
+                storage,
+                background,
+                mut segments,
+            },
+            XmlEvent::StartElement {
+                name, attributes, ..
+            },
+        ) if name.local_name == "path"
+            && pressure_segment_index(&attributes) == Some(segments.len()) =>
+        {
+            match parse_pressure_segment(attributes, config) {
+                Ok(segment) => {
+                    segments.push(segment);
+                    V2PressureStroke {
+                        storage,
+                        background,
+                        segments,
+                    }
+                }
+                Err(e) => External {
+                    storage,
+                    background,
+                    errors: vec![e],
+                },
+            }
+        }
+        // Anything else ends the stroke: store it and handle the event as usual
+        (
+            V2PressureStroke {
+                mut storage,
+                background,
+                segments,
+            },
+            event @ (XmlEvent::StartElement { .. } | XmlEvent::EndDocument),
+        ) => {
+            if let Some(stroke) = Path::from_pressure_segments(segments) {
+                storage.add(Box::new(stroke));
+            }
+            step(
+                V2StorageStarted {
+                    storage,
+                    background,
+                },
+                event,
+                config,
+            )
+        }
 
         (
             V1Started,
@@ -1089,7 +1188,7 @@ mod tests {
 
         if let DrawCommand::Path {
             commands, style, ..
-        } = line.draw_commands()
+        } = line.draw_commands().remove(0)
         {
             assert_eq!(
                 style.stroke.unwrap().color,
@@ -1149,7 +1248,7 @@ mod tests {
 
         let deserialized = Ellipse::deserialize(attrs, Default::default()).unwrap();
 
-        match deserialized.draw_commands() {
+        match deserialized.draw_commands().remove(0) {
             DrawCommand::Ellipse { ellipse: e, style } => {
                 assert_eq!(e.center, Vec2D::new_world(20.4, -30.5));
                 assert_eq!(e.semimajor, 5.6.into());

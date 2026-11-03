@@ -124,7 +124,7 @@ mod tests {
         match rect.handle_button_released(b, t, SNAP) {
             ShapeFinished::Yes(s) => {
                 assert_eq!(
-                    s[0].draw_commands(),
+                    s[0].draw_commands()[0],
                     DrawCommand::Path {
                         style: Default::default(),
                         commands: vec![

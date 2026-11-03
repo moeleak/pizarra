@@ -35,11 +35,11 @@ impl Ellipse {
 }
 
 impl ShapeStored for Ellipse {
-    fn draw_commands(&self) -> DrawCommand {
-        DrawCommand::Ellipse {
+    fn draw_commands(&self) -> Vec<DrawCommand> {
+        vec![DrawCommand::Ellipse {
             ellipse: self.ellipse,
             style: self.style,
-        }
+        }]
     }
 
     fn bbox(&self) -> [Vec2D<WorldUnit>; 2] {

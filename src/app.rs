@@ -1312,6 +1312,83 @@ mod tests {
         assert!(app.draw_commands_for_current_shape().is_some());
     }
 
+    /// Draws a free-hand stroke along `y` with rising pen pressure.
+    fn draw_pressure_stroke(app: &mut Pizarra, y: f64) {
+        app.set_tool(SelectedTool::Shape(ShapeTool::Path));
+        app.handle_mouse_button_pressed_pressure(
+            MouseButton::Left,
+            Vec2D::new_screen(10.0, y),
+            0.2,
+            None,
+        );
+        for (i, x) in [20.0, 30.0, 40.0, 50.0, 60.0].into_iter().enumerate() {
+            app.handle_mouse_move_pressure(
+                Vec2D::new_screen(x, y),
+                0.2 + 0.15 * i as f64,
+                Default::default(),
+                None,
+            );
+        }
+        app.handle_mouse_button_released_pressure(
+            MouseButton::Left,
+            Vec2D::new_screen(60.0, y),
+            1.0,
+            Default::default(),
+            None,
+        );
+    }
+
+    fn path_commands(commands: Vec<DrawCommand>) -> usize {
+        commands
+            .iter()
+            .filter(|command| matches!(command, DrawCommand::Path { .. }))
+            .count()
+    }
+
+    #[test]
+    fn eraser_removes_a_whole_pressure_stroke() {
+        let mut app = Pizarra::new_for_testing();
+        app.set_stroke(10.0.into());
+        draw_pressure_stroke(&mut app, 10.0);
+
+        // One shape, drawn as one path per segment.
+        assert_eq!(app.storage.shape_count(), 1);
+        assert!(path_commands(app.draw_commands_for_screen()) > 1);
+
+        // Touching only the start of the stroke removes all of it.
+        app.set_tool(SelectedTool::Eraser);
+        app.handle_mouse_button_pressed(MouseButton::Left, Vec2D::new_screen(10.0, 10.0));
+        app.handle_mouse_button_released(MouseButton::Left, Vec2D::new_screen(10.0, 10.0));
+
+        assert_eq!(app.storage.shape_count(), 0);
+        assert_eq!(path_commands(app.draw_commands_for_screen()), 0);
+
+        // And undo brings it back whole.
+        app.undo();
+        assert_eq!(app.storage.shape_count(), 1);
+    }
+
+    #[test]
+    fn pressure_strokes_stay_whole_after_saving_and_loading() {
+        let mut app = Pizarra::new_for_testing();
+        app.set_stroke(10.0.into());
+        draw_pressure_stroke(&mut app, 10.0);
+        draw_pressure_stroke(&mut app, 30.0);
+        let drawn = app.draw_commands_for_drawing();
+
+        let svg = app.to_svg();
+        assert!(svg.contains("pizarra:pressure-segment=\"1\""), "{svg}");
+
+        let crate::deserialize::DeserializeResult::Ok(loaded) =
+            Pizarra::from_svg(&svg, Default::default())
+        else {
+            panic!("the saved drawing should load cleanly");
+        };
+        // Two strokes, each a single shape, with the same segment widths.
+        assert_eq!(loaded.storage.shape_count(), 2);
+        assert_eq!(loaded.draw_commands_for_drawing(), drawn);
+    }
+
     #[test]
     fn move_while_drawing() {
         let mut app = Pizarra::new_for_testing();

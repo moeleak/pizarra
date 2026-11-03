@@ -579,7 +579,7 @@ mod tests {
         poly.handle_button_pressed(a, t, SNAP);
         if let ShapeFinished::Yes(s) = poly.handle_button_released(a, t, SNAP) {
             assert_eq!(
-                s[0].draw_commands(),
+                s[0].draw_commands()[0],
                 DrawCommand::Path {
                     commands: vec![
                         MoveTo(t.to_world_coordinates(a)),
