@@ -71,7 +71,12 @@ fn add_smooth<T: Unit + 'static>(
     }
 }
 
-fn add_point<T: Unit + 'static>(commands: &mut Vec<PathCommand<T>>, pos: Vec2D<T>) {
+fn add_point<T: Unit + 'static>(
+    commands: &mut Vec<PathCommand<T>>,
+    widths: &mut Vec<WorldUnit>,
+    pos: Vec2D<T>,
+    width: WorldUnit,
+) {
     let sub = commands
         .len()
         .checked_sub(2)
@@ -85,29 +90,77 @@ fn add_point<T: Unit + 'static>(commands: &mut Vec<PathCommand<T>>, pos: Vec2D<T
 
     if let Some(new) = new {
         commands.push(new);
+        widths.push(width);
     }
 }
+
+/// Narrowest a pressure stroke can get, as a fraction of the configured
+/// width. A light touch still leaves a visible line.
+const MIN_PRESSURE_WIDTH: f64 = 0.08;
+
+/// How much a new pressure sample moves the smoothed value. Low enough to hide
+/// sensor jitter, high enough to follow a deliberate change.
+const PRESSURE_SMOOTHING: f64 = 0.35;
 
 #[derive(Debug, PartialEq)]
 pub struct FreeHandLine {
     commands: Vec<PathCommand<WorldUnit>>,
+    /// Width of every command's endpoint, parallel to `commands`.
+    widths: Vec<WorldUnit>,
     style: Style<WorldUnit>,
+    base_width: WorldUnit,
+    smoothed_pressure: f64,
 }
 
 impl FreeHandLine {
-    pub fn start(initial: Vec2D<WorldUnit>, style: Style<WorldUnit>) -> FreeHandLine {
+    pub fn start(
+        initial: Vec2D<WorldUnit>,
+        style: Style<WorldUnit>,
+        pressure: f64,
+    ) -> FreeHandLine {
         let mut commands = Vec::with_capacity(1000);
 
         commands.push(PathCommand::MoveTo(initial));
 
-        FreeHandLine { commands, style }
+        let base_width = style.stroke.map(|s| s.size).unwrap_or_default();
+        let smoothed_pressure = pressure.clamp(0.0, 1.0);
+
+        FreeHandLine {
+            commands,
+            widths: vec![Self::width_for(base_width, smoothed_pressure)],
+            style,
+            base_width,
+            smoothed_pressure,
+        }
     }
 
     pub fn with_params(
         commands: Vec<PathCommand<WorldUnit>>,
         style: Style<WorldUnit>,
     ) -> FreeHandLine {
-        FreeHandLine { commands, style }
+        let width = style.stroke.map(|s| s.size).unwrap_or_default();
+        FreeHandLine {
+            widths: vec![width; commands.len()],
+            commands,
+            style,
+            base_width: width,
+            smoothed_pressure: 1.0,
+        }
+    }
+
+    fn width_for(base_width: WorldUnit, pressure: f64) -> WorldUnit {
+        (base_width.val() * (MIN_PRESSURE_WIDTH + (1.0 - MIN_PRESSURE_WIDTH) * pressure)).into()
+    }
+
+    fn push_point(&mut self, pos: Vec2D<WorldUnit>, pressure: f64) {
+        self.smoothed_pressure +=
+            (pressure.clamp(0.0, 1.0) - self.smoothed_pressure) * PRESSURE_SMOOTHING;
+        let width = Self::width_for(self.base_width, self.smoothed_pressure);
+        add_point(&mut self.commands, &mut self.widths, pos, width);
+    }
+
+    fn to_path(&self) -> Path {
+        Path::from_parts_with_widths(self.commands.clone(), self.style, self.widths.clone())
     }
 }
 
@@ -123,7 +176,18 @@ impl ShapeBuilder for FreeHandLine {
     //    its two control points but the last one sits in the segment between
     //    the last two points.
     fn handle_mouse_moved(&mut self, pos: Vec2D<ScreenUnit>, t: Transform, _snap: ScreenUnit) {
-        add_point(&mut self.commands, t.to_world_coordinates(pos));
+        self.push_point(t.to_world_coordinates(pos), 1.0);
+    }
+
+    fn handle_mouse_moved_with_pressure(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        pressure: f64,
+        t: Transform,
+        snap: ScreenUnit,
+    ) {
+        self.push_point(t.to_world_coordinates(pos), pressure);
+        let _ = snap;
     }
 
     fn handle_button_pressed(&mut self, _pos: Vec2D<ScreenUnit>, _t: Transform, _snap: ScreenUnit) {
@@ -135,16 +199,22 @@ impl ShapeBuilder for FreeHandLine {
         _t: Transform,
         _snap: ScreenUnit,
     ) -> ShapeFinished {
-        ShapeFinished::Yes(vec![Box::new(Path::from_parts(
-            self.commands.clone(),
-            self.style,
-        ))])
+        let shapes = self
+            .to_path()
+            .draw_commands_all()
+            .into_iter()
+            .filter_map(|command| match command {
+                DrawCommand::Path { commands, style } => {
+                    Some(Box::new(Path::from_parts(commands, style))
+                        as Box<dyn crate::shape::ShapeStored>)
+                }
+                _ => None,
+            })
+            .collect();
+        ShapeFinished::Yes(shapes)
     }
 
     fn draw_commands(&self, _t: Transform, _snap: ScreenUnit) -> Vec<DrawCommand> {
-        vec![DrawCommand::Path {
-            commands: self.commands.clone(),
-            style: self.style,
-        }]
+        self.to_path().draw_commands_all()
     }
 }

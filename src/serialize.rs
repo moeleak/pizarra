@@ -50,7 +50,7 @@ impl Pizarra {
         let min = bbox[0].min(bbox[1]);
         let min_x = (min.x - export_padding).to_string();
         let min_y = (min.y - export_padding).to_string();
-        let view_box = format!("{} {} {} {}", &min_x, &min_y, width, height);
+        let view_box = format!("{} {} {} {}", min_x, min_y, width, height);
         let background_style = format!(
             "fill:{fill};fill-opacity:1;stroke:none;",
             fill = self.bgcolor().css()

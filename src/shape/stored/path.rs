@@ -3,37 +3,111 @@ use xml::writer::{EventWriter, XmlEvent};
 use crate::draw_commands::DrawCommand;
 use crate::geom::bbox_from_points;
 use crate::path_command::PathCommand;
-use crate::point::{Vec2D, WorldUnit};
+use crate::point::{Unit, Vec2D, WorldUnit};
 use crate::shape::{ShapeStored, ShapeType};
 use crate::style::Style;
 
 #[derive(Debug)]
 pub struct Path {
     commands: Vec<PathCommand<WorldUnit>>,
+    /// Absolute stroke width at each command, for pressure-sensitive strokes.
+    /// `None` means the single width in `style` applies to the whole path.
+    widths: Option<Vec<WorldUnit>>,
     style: Style<WorldUnit>,
 }
 
 impl Path {
     pub fn from_parts(commands: Vec<PathCommand<WorldUnit>>, style: Style<WorldUnit>) -> Path {
-        Path { commands, style }
+        Path {
+            commands,
+            widths: None,
+            style,
+        }
+    }
+
+    pub fn from_parts_with_widths(
+        commands: Vec<PathCommand<WorldUnit>>,
+        style: Style<WorldUnit>,
+        widths: Vec<WorldUnit>,
+    ) -> Path {
+        let widths = (widths.len() == commands.len()).then_some(widths);
+        Path {
+            commands,
+            widths,
+            style,
+        }
+    }
+
+    fn max_width(&self) -> Option<WorldUnit> {
+        if let Some(widths) = &self.widths {
+            return widths
+                .iter()
+                .copied()
+                .reduce(|a, b| a.val().max(b.val()).into());
+        }
+        self.style.stroke.map(|s| s.size)
+    }
+
+    fn segment_style(&self, width: WorldUnit) -> Style<WorldUnit> {
+        Style {
+            stroke: self.style.stroke.map(|stroke| crate::style::Stroke {
+                size: width,
+                ..stroke
+            }),
+            fill: self.style.fill,
+        }
+    }
+
+    /// Pressure strokes are drawn as one path per segment, each with the
+    /// width sampled at both ends. Round caps and joins hide the seams.
+    fn segments_with_widths(&self) -> Vec<(Vec<PathCommand<WorldUnit>>, Style<WorldUnit>)> {
+        let Some(widths) = &self.widths else {
+            return vec![(self.commands.clone(), self.style)];
+        };
+        if self.commands.len() < 2 {
+            return vec![(self.commands.clone(), self.style)];
+        }
+
+        self.commands
+            .windows(2)
+            .zip(widths.windows(2))
+            .map(|(commands, widths)| {
+                let width = (widths[0].val() + widths[1].val()) / 2.0;
+                (
+                    vec![PathCommand::MoveTo(commands[0].to()), commands[1]],
+                    self.segment_style(width.into()),
+                )
+            })
+            .collect()
+    }
+
+    /// Every segment as its own draw command, each with its own width.
+    pub fn draw_commands_all(&self) -> Vec<DrawCommand> {
+        self.segments_with_widths()
+            .into_iter()
+            .map(|(commands, style)| DrawCommand::Path { commands, style })
+            .collect()
     }
 }
 
 impl ShapeStored for Path {
     fn draw_commands(&self) -> DrawCommand {
-        DrawCommand::Path {
-            commands: self.commands.clone(),
-            style: self.style,
-        }
+        // The stored shape contract only allows one command. Render the first
+        // segment here and let callers that need all of them use
+        // `draw_commands_all`.
+        let (commands, style) = self
+            .segments_with_widths()
+            .into_iter()
+            .next()
+            .unwrap_or((Vec::new(), self.style));
+        DrawCommand::Path { commands, style }
     }
 
     // The bounding box of the path needs to consider the beizer handles
     fn bbox(&self) -> [Vec2D<WorldUnit>; 2] {
         let points = self.commands.iter().flat_map(|c| c.points());
         let [topleft, bottomright] = bbox_from_points(points);
-        let (topleftpad, bottomrightpad) = if let Some(stroke) = self.style.stroke {
-            let size = stroke.size;
-
+        let (topleftpad, bottomrightpad) = if let Some(size) = self.max_width() {
             (Vec2D::new(-size, -size), Vec2D::new(size, size))
         } else {
             Default::default()
@@ -70,18 +144,22 @@ impl ShapeStored for Path {
     }
 
     fn serialize(&self, writer: &mut EventWriter<&mut Vec<u8>>) {
-        let d: String = self.commands.iter().map(|p| p.to_string()).collect();
+        // SVG has no variable stroke width, so a pressure stroke is written as
+        // one path per segment, like it is rendered.
+        for (commands, style) in self.segments_with_widths() {
+            let d: String = commands.iter().map(|p| p.to_string()).collect();
 
-        writer.write(XmlEvent::start_element("path")
-            .attr("style", &format!(
-                "fill:{fill};stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
-                fill = self.style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
-                stroke = self.style.stroke.map(|s| s.size).unwrap_or_else(|| 0.0.into()),
-                color = self.style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
-                alpha = self.style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
-            ))
-            .attr("d", &d)).unwrap();
-        writer.write(XmlEvent::end_element()).unwrap();
+            writer.write(XmlEvent::start_element("path")
+                .attr("style", &format!(
+                    "fill:{fill};stroke-width:{stroke};stroke-linecap:round;stroke-linejoin:round;stroke:{color};stroke-opacity:{alpha};stroke-miterlimit:10;",
+                    fill = style.fill.map(|c| c.css()).unwrap_or_else(|| "none".into()),
+                    stroke = style.stroke.map(|s| s.size).unwrap_or_else(|| 0.0.into()),
+                    color = style.stroke.map(|s| s.color.css()).unwrap_or_else(|| "none".into()),
+                    alpha = style.stroke.map(|s| s.color.float_alpha()).unwrap_or(1.0),
+                ))
+                .attr("d", &d)).unwrap();
+            writer.write(XmlEvent::end_element()).unwrap();
+        }
     }
 }
 

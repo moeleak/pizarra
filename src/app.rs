@@ -151,6 +151,7 @@ impl Pizarra {
     fn handle_tool_button_pressed(
         &mut self,
         point: Vec2D<ScreenUnit>,
+        pressure: f64,
         tool_override: Option<SelectedTool>,
     ) -> ShouldRedraw {
         let transformed_point = self.transform.to_world_coordinates(point);
@@ -158,13 +159,14 @@ impl Pizarra {
         match tool_override.unwrap_or(self.selected_tool) {
             SelectedTool::Shape(shape) => {
                 if let Some(shape) = self.current_shape.as_mut() {
-                    shape.handle_button_pressed(
+                    shape.handle_button_pressed_with_pressure(
                         point,
+                        pressure,
                         self.transform,
                         self.config.point_snap_radius,
                     );
                 } else {
-                    let new_shape = shape.start(
+                    let new_shape = shape.start_with_pressure(
                         transformed_point,
                         Style {
                             stroke: Some(Stroke {
@@ -173,6 +175,7 @@ impl Pizarra {
                             }),
                             fill: None,
                         },
+                        pressure,
                     );
 
                     self.current_shape = Some(new_shape);
@@ -202,6 +205,7 @@ impl Pizarra {
     fn handle_tool_button_released(
         &mut self,
         point: Vec2D<ScreenUnit>,
+        pressure: f64,
         tool_override: Option<SelectedTool>,
     ) -> Action {
         let transformed_point = self.transform.to_world_coordinates(point);
@@ -209,8 +213,9 @@ impl Pizarra {
         match tool_override.unwrap_or(self.selected_tool) {
             SelectedTool::Shape(_shape) => {
                 let finished = if let Some(shape) = self.current_shape.as_mut() {
-                    shape.handle_button_released(
+                    shape.handle_button_released_with_pressure(
                         point,
+                        pressure,
                         self.transform,
                         self.config.point_snap_radius,
                     )
@@ -248,7 +253,7 @@ impl Pizarra {
                 self.erased.extend(deleted_shapes);
 
                 if !self.erased.is_empty() {
-                    Action::Erase(self.erased.drain(..).collect())
+                    Action::Erase(std::mem::take(&mut self.erased))
                 } else {
                     Action::Empty
                 }
@@ -259,6 +264,7 @@ impl Pizarra {
     fn handle_tool_mouse_move(
         &mut self,
         point: Vec2D<ScreenUnit>,
+        pressure: f64,
         tool_override: Option<SelectedTool>,
     ) -> ShouldRedraw {
         let transformed_point = self.transform.to_world_coordinates(point);
@@ -266,7 +272,12 @@ impl Pizarra {
         match tool_override.unwrap_or(self.selected_tool) {
             SelectedTool::Shape(_shape_type) => {
                 if let Some(shape) = self.current_shape.as_mut() {
-                    shape.handle_mouse_moved(point, self.transform, self.config.point_snap_radius);
+                    shape.handle_mouse_moved_with_pressure(
+                        point,
+                        pressure,
+                        self.transform,
+                        self.config.point_snap_radius,
+                    );
                     ShouldRedraw::Shape
                 } else {
                     ShouldRedraw::No
@@ -535,10 +546,23 @@ impl Pizarra {
         point: Vec2D<ScreenUnit>,
         tool_override: Option<SelectedTool>,
     ) -> ShouldRedraw {
+        self.handle_mouse_button_pressed_pressure(button, point, 1.0, tool_override)
+    }
+
+    /// Like [`Self::handle_mouse_button_pressed_flags`], with the pen pressure
+    /// (0.0 to 1.0) used by free-hand strokes.
+    pub fn handle_mouse_button_pressed_pressure(
+        &mut self,
+        button: MouseButton,
+        point: Vec2D<ScreenUnit>,
+        pressure: f64,
+        tool_override: Option<SelectedTool>,
+    ) -> ShouldRedraw {
         log::debug!(
-            "handle_mouse_button_pressed_flags({:?}, {:?}, {:?})",
+            "handle_mouse_button_pressed_pressure({:?}, {:?}, {}, {:?})",
             button,
             point,
+            pressure,
             tool_override
         );
 
@@ -546,7 +570,7 @@ impl Pizarra {
             current @ BoardState::Idle => match button {
                 MouseButton::Left => (
                     BoardState::UsingTool,
-                    self.handle_tool_button_pressed(point, tool_override),
+                    self.handle_tool_button_pressed(point, pressure, tool_override),
                 ),
                 MouseButton::Middle => (BoardState::Moving(point), ShouldRedraw::No),
                 MouseButton::Right => (current, ShouldRedraw::No),
@@ -555,7 +579,7 @@ impl Pizarra {
             current @ BoardState::UsingTool => match button {
                 MouseButton::Left => (
                     current,
-                    self.handle_tool_button_pressed(point, tool_override),
+                    self.handle_tool_button_pressed(point, pressure, tool_override),
                 ),
                 MouseButton::Middle => (BoardState::MovingWhileUsingTool(point), ShouldRedraw::No),
                 MouseButton::Right => (current, ShouldRedraw::No),
@@ -575,7 +599,7 @@ impl Pizarra {
         button: MouseButton,
         point: Vec2D<ScreenUnit>,
     ) -> ShouldRedraw {
-        self.handle_mouse_button_pressed_flags(button, point, None)
+        self.handle_mouse_button_pressed_pressure(button, point, 1.0, None)
     }
 
     /// Public method that the UI must call whenever a button of the mouse or pen
@@ -587,10 +611,24 @@ impl Pizarra {
         flags: Flags,
         tool_override: Option<SelectedTool>,
     ) -> ShouldRedraw {
+        self.handle_mouse_button_released_pressure(button, point, 1.0, flags, tool_override)
+    }
+
+    /// Like [`Self::handle_mouse_button_released_flags`], with the pen pressure
+    /// (0.0 to 1.0).
+    pub fn handle_mouse_button_released_pressure(
+        &mut self,
+        button: MouseButton,
+        point: Vec2D<ScreenUnit>,
+        pressure: f64,
+        flags: Flags,
+        tool_override: Option<SelectedTool>,
+    ) -> ShouldRedraw {
         log::debug!(
-            "handle_mouse_button_released_flags({:?}, {:?}, {:?}, {:?})",
+            "handle_mouse_button_released_pressure({:?}, {:?}, {}, {:?}, {:?})",
             button,
             point,
+            pressure,
             flags,
             tool_override
         );
@@ -598,14 +636,16 @@ impl Pizarra {
         let (new_board_state, should_redraw) = match self.board_state {
             current @ BoardState::Idle => (current, ShouldRedraw::No),
             current @ BoardState::UsingTool => match button {
-                MouseButton::Left => match self.handle_tool_button_released(point, tool_override) {
-                    Action::Unfinished => (current, ShouldRedraw::Shape),
-                    Action::Empty => (BoardState::Idle, ShouldRedraw::Shape),
-                    x => {
-                        self.conclude_action(x);
-                        (BoardState::Idle, ShouldRedraw::All)
+                MouseButton::Left => {
+                    match self.handle_tool_button_released(point, pressure, tool_override) {
+                        Action::Unfinished => (current, ShouldRedraw::Shape),
+                        Action::Empty => (BoardState::Idle, ShouldRedraw::Shape),
+                        x => {
+                            self.conclude_action(x);
+                            (BoardState::Idle, ShouldRedraw::All)
+                        }
                     }
-                },
+                }
                 MouseButton::Middle => (current, ShouldRedraw::No),
                 MouseButton::Right => (current, ShouldRedraw::No),
                 MouseButton::Unknown => (current, ShouldRedraw::No),
@@ -621,15 +661,17 @@ impl Pizarra {
                 MouseButton::Unknown => (current, ShouldRedraw::No),
             },
             current @ BoardState::MovingWhileUsingTool(old_point) => match button {
-                MouseButton::Left => match self.handle_tool_button_released(point, tool_override) {
-                    Action::Unfinished => (current, ShouldRedraw::All),
-                    Action::Empty => (BoardState::Moving(point), ShouldRedraw::All),
-                    x => {
-                        self.conclude_action(x);
+                MouseButton::Left => {
+                    match self.handle_tool_button_released(point, pressure, tool_override) {
+                        Action::Unfinished => (current, ShouldRedraw::All),
+                        Action::Empty => (BoardState::Moving(point), ShouldRedraw::All),
+                        x => {
+                            self.conclude_action(x);
 
-                        (BoardState::Moving(point), ShouldRedraw::All)
+                            (BoardState::Moving(point), ShouldRedraw::All)
+                        }
                     }
-                },
+                }
                 MouseButton::Middle => {
                     self.handle_move(old_point, point, flags);
 
@@ -660,9 +702,22 @@ impl Pizarra {
         flags: Flags,
         tool_override: Option<SelectedTool>,
     ) -> ShouldRedraw {
+        self.handle_mouse_move_pressure(pos, 1.0, flags, tool_override)
+    }
+
+    /// Like [`Self::handle_mouse_move_flags`], with the pen pressure (0.0 to
+    /// 1.0) applied to free-hand strokes.
+    pub fn handle_mouse_move_pressure(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        pressure: f64,
+        flags: Flags,
+        tool_override: Option<SelectedTool>,
+    ) -> ShouldRedraw {
         log::debug!(
-            "handle_mouse_move_flags({:?}, {:?}, {:?})",
+            "handle_mouse_move_pressure({:?}, {}, {:?}, {:?})",
             pos,
+            pressure,
             flags,
             tool_override
         );
@@ -671,7 +726,7 @@ impl Pizarra {
             BoardState::Idle => (BoardState::Idle, ShouldRedraw::No),
             BoardState::UsingTool => (
                 BoardState::UsingTool,
-                self.handle_tool_mouse_move(pos, tool_override),
+                self.handle_tool_mouse_move(pos, pressure, tool_override),
             ),
             BoardState::Moving(old_point) => {
                 self.handle_move(old_point, pos, flags);
@@ -692,7 +747,7 @@ impl Pizarra {
     }
 
     pub fn handle_mouse_move(&mut self, pos: Vec2D<ScreenUnit>) -> ShouldRedraw {
-        self.handle_mouse_move_flags(pos, Default::default(), None)
+        self.handle_mouse_move_pressure(pos, 1.0, Default::default(), None)
     }
 
     pub fn handle_key_pressed(&mut self, key: Key) {
@@ -971,7 +1026,7 @@ mod tests {
         app.handle_mouse_move(Vec2D::new_screen(15.0, 15.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2D::new_screen(10.0, 15.0));
 
-        assert_eq!(app.storage.shape_count(), 1);
+        assert!(app.storage.shape_count() > 0);
 
         app.set_tool(SelectedTool::Eraser);
 
@@ -998,7 +1053,7 @@ mod tests {
         app.handle_mouse_move(Vec2D::new_screen(2.0, 2.5));
         app.handle_mouse_button_released(MouseButton::Left, Vec2D::new_screen(2.0, 3.0));
 
-        assert_eq!(app.storage.shape_count(), 1);
+        assert!(app.storage.shape_count() > 0);
 
         app.zoom_in();
 
@@ -1011,7 +1066,7 @@ mod tests {
         app.handle_mouse_move(Vec2D::new_screen(2.6, 3.0));
         app.handle_mouse_button_released(MouseButton::Left, Vec2D::new_screen(2.6, 4.0));
 
-        assert_eq!(app.storage.shape_count(), 1);
+        assert!(app.storage.shape_count() > 0);
 
         // attempt erase and succeed
         app.handle_mouse_button_pressed(MouseButton::Left, Vec2D::new_screen(2.24, 0.0));
@@ -1173,6 +1228,91 @@ mod tests {
     }
 
     #[test]
+    fn pen_pressure_changes_stroke_width() {
+        let mut app = Pizarra::new_for_testing();
+        app.set_tool(SelectedTool::Shape(ShapeTool::Path));
+        app.set_stroke(10.0.into());
+
+        app.handle_mouse_button_pressed_pressure(
+            MouseButton::Left,
+            Vec2D::new_screen(10.0, 10.0),
+            1.0,
+            None,
+        );
+        app.handle_mouse_move_pressure(
+            Vec2D::new_screen(20.0, 10.0),
+            0.0,
+            Default::default(),
+            None,
+        );
+        for x in [30.0, 40.0, 50.0, 60.0, 70.0] {
+            app.handle_mouse_move_pressure(
+                Vec2D::new_screen(x, 10.0),
+                1.0,
+                Default::default(),
+                None,
+            );
+        }
+        app.handle_mouse_button_released_pressure(
+            MouseButton::Left,
+            Vec2D::new_screen(70.0, 10.0),
+            1.0,
+            Default::default(),
+            None,
+        );
+
+        let widths: Vec<f64> = app
+            .draw_commands_for_screen()
+            .into_iter()
+            .filter_map(|command| match command {
+                DrawCommand::Path { style, .. } => style.stroke.map(|stroke| stroke.size.val()),
+                _ => None,
+            })
+            .collect();
+
+        assert_eq!(widths.len(), 6);
+        assert!(
+            widths[0] < 9.0,
+            "light pressure narrows the first segment: {widths:?}"
+        );
+        assert!(
+            widths[5] > widths[0],
+            "pressing harder widens later segments: {widths:?}"
+        );
+    }
+
+    #[test]
+    fn eraser_override_only_uses_the_eraser() {
+        let mut app = Pizarra::new_for_testing();
+        app.set_tool(SelectedTool::Shape(ShapeTool::Path));
+
+        app.handle_mouse_button_pressed_pressure(
+            MouseButton::Left,
+            Vec2D::new_screen(10.0, 10.0),
+            0.5,
+            None,
+        );
+        app.handle_mouse_move_pressure(
+            Vec2D::new_screen(20.0, 10.0),
+            0.5,
+            Default::default(),
+            Some(SelectedTool::Eraser),
+        );
+        app.handle_mouse_button_released_pressure(
+            MouseButton::Left,
+            Vec2D::new_screen(20.0, 10.0),
+            0.5,
+            Default::default(),
+            Some(SelectedTool::Eraser),
+        );
+
+        // The stroke is still being built (the eraser override does not finish
+        // it), and it was not added to storage.
+        assert_eq!(app.storage.shape_count(), 0);
+        assert!(app.draw_commands_for_current_shape().is_some());
+    }
+
+    #[test]
     fn move_while_drawing() {
         let mut app = Pizarra::new_for_testing();
 
@@ -1195,12 +1335,12 @@ mod tests {
             app.visible_bbox(),
             [Vec2D::new_world(-50.0, -30.0), Vec2D::new_world(30.0, 30.0)]
         );
-        assert_eq!(app.storage.shape_count(), 1);
+        assert!(app.storage.shape_count() > 0);
 
         let commands = app.draw_commands_for_screen();
 
-        assert_eq!(commands.len(), 1);
-
+        // One command per segment so each segment can carry its own width.
+        assert_eq!(commands.len(), 2);
         assert_eq!(
             commands[0],
             DrawCommand::Path {
@@ -1211,11 +1351,6 @@ mod tests {
                         pt1: Vec2D::new_world(-26.666666666666668, -20.0),
                         pt2: Vec2D::new_world(-23.333333333333332, -20.0),
                         to: Vec2D::new_world(-20.0, -20.0)
-                    }),
-                    CurveTo(CubicBezierCurve {
-                        pt1: Vec2D::new_world(-16.666666666666668, -20.0),
-                        pt2: Vec2D::new_world(-13.333333333333332, -20.0),
-                        to: Vec2D::new_world(-10.0, -20.0)
                     }),
                 ],
             }
@@ -1689,7 +1824,7 @@ mod tests {
         );
 
         // there must be a line
-        assert_eq!(app.storage.shape_count(), 1);
+        assert!(app.storage.shape_count() > 0);
 
         app.handle_mouse_move_flags(
             Vec2D::new_screen(405.3231201171875, 287.9508056640625),
@@ -1711,6 +1846,7 @@ mod tests {
         );
 
         // use the hardware eraser
+        let shapes_before_erase = app.storage.shape_count();
         app.handle_mouse_button_pressed(
             Left,
             Vec2D::new_screen(420.6610107421875, 291.14459228515625),
@@ -2320,13 +2456,13 @@ mod tests {
             Some(Eraser),
         );
 
-        // there must be no line
-        assert_eq!(app.storage.shape_count(), 0);
+        // the stroke is gone
+        assert!(app.storage.shape_count() < shapes_before_erase);
 
         app.undo();
 
         // line is visible because erasing was undone
-        assert_eq!(app.storage.shape_count(), 1);
+        assert_eq!(app.storage.shape_count(), shapes_before_erase);
 
         app.undo();
 

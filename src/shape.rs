@@ -54,8 +54,21 @@ impl ShapeTool {
         initial: Vec2D<WorldUnit>,
         style: Style<WorldUnit>,
     ) -> Box<dyn ShapeBuilder> {
+        self.start_with_pressure(initial, style, 1.0)
+    }
+
+    /// Starts a shape with the pressure of the input device that began it.
+    ///
+    /// Only free-hand paths vary their width along the stroke; the other tools
+    /// keep the configured width.
+    pub fn start_with_pressure(
+        &self,
+        initial: Vec2D<WorldUnit>,
+        style: Style<WorldUnit>,
+        pressure: f64,
+    ) -> Box<dyn ShapeBuilder> {
         match *self {
-            ShapeTool::Path => Box::new(FreeHandLine::start(initial, style)),
+            ShapeTool::Path => Box::new(FreeHandLine::start(initial, style, pressure)),
             ShapeTool::Rectangle => Box::new(AxisAlignedRectangleBuilder::start(initial, style)),
             ShapeTool::Polygon => Box::new(PolygonBuilder::start(initial, style)),
             ShapeTool::CircleByCenterAndPoint => {
@@ -95,6 +108,40 @@ pub trait ShapeBuilder: fmt::Debug {
         transform: Transform,
         snap: ScreenUnit,
     ) -> ShapeFinished;
+
+    /// Variants that also receive the pressure of a pen (0.0 to 1.0).
+    ///
+    /// Shapes that do not care about pressure inherit the default
+    /// implementations.
+    fn handle_mouse_moved_with_pressure(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        _pressure: f64,
+        transform: Transform,
+        snap: ScreenUnit,
+    ) {
+        self.handle_mouse_moved(pos, transform, snap);
+    }
+
+    fn handle_button_pressed_with_pressure(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        _pressure: f64,
+        transform: Transform,
+        snap: ScreenUnit,
+    ) {
+        self.handle_button_pressed(pos, transform, snap);
+    }
+
+    fn handle_button_released_with_pressure(
+        &mut self,
+        pos: Vec2D<ScreenUnit>,
+        _pressure: f64,
+        transform: Transform,
+        snap: ScreenUnit,
+    ) -> ShapeFinished {
+        self.handle_button_released(pos, transform, snap)
+    }
 
     /// Must return the necessary commands to display this shape on the screen
     /// when building it

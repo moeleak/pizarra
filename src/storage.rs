@@ -228,8 +228,8 @@ impl Storage {
 
         Some(self.shapes.iter().map(|shape| shape.envelope()).fold(
             [
-                Vec2D::new_world(f64::MAX, f64::MAX),
-                Vec2D::new_world(f64::MIN, f64::MIN),
+                Vec2D::new_world(<f64>::MAX, <f64>::MAX),
+                Vec2D::new_world(<f64>::MIN, <f64>::MIN),
             ],
             |acc, cur| {
                 let lower = cur.lower();
